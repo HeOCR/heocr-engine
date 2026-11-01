@@ -10,8 +10,10 @@ The default is `--language heb --psm 3`; use e.g. `--language heb+eng` for a mix
 
 ## Prediction contract
 
-One JSON object per page, `schema_version: "1.0"`. `page_id` is `sha256:` plus the image file's SHA-256; the `input` object records that hash and pixel dimensions. `engine` records the Tesseract version, executable hash, ordered language/model hashes, and page segmentation mode. No source, executable, model, or temporary path is recorded. `text` is the unmodified UTF-8 text produced by Tesseract. It is expected to be Unicode logical order; no RTL reversal or normalization is performed. `words` follows Tesseract TSV order without sorting, each containing the unmodified word, confidence on Tesseract's 0–100 scale, and `[x, y, width, height]` in pixels, with origin at the top left and right/bottom edges exclusive. `geometry_status` is `valid` for positive-area boxes and `degenerate` when Tesseract reports zero width or height. Degenerate boxes are preserved exactly and do not define a usable crop. This schema is not a statement of reading-order correctness or OCR accuracy. A consumer should explicitly map content-derived page IDs to its own dataset IDs.
+Each run writes one `heocr_engine_prediction.v1` JSON object per page; see [docs/prediction_contract.md](docs/prediction_contract.md). `page_id` is `sha256:` plus the image file's SHA-256, and `engine` records the Tesseract version, executable hash, ordered language/model hashes, and page segmentation mode. No source, executable, model, or temporary path is recorded. `text` is the unmodified UTF-8 text produced by Tesseract; no RTL reversal or normalization is performed. `words` follows Tesseract TSV order without sorting. Degenerate (zero-area) boxes are preserved and marked. Invalid images, missing model/output files, failed calls, timeouts, invalid coordinates, and invalid confidence values fail the run. Avoid putting sensitive text in publicly shared predictions.
 
-Text and word lists are separate Tesseract outputs and need not align exactly. Invalid images, missing model/output files, failed calls, timeouts, invalid coordinates, and invalid confidence values fail the run. Avoid putting sensitive text in publicly shared predictions.
+## Planning
+
+Roadmap, notation and decision records live in [planning/](planning/README.md). Scoring stays in hocrgen; this repository produces predictions.
 
 Run offline tests with `python -m unittest discover -s tests`. The tests use generated synthetic pixels and a mocked backend; they make no OCR accuracy claim.

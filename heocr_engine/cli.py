@@ -17,6 +17,8 @@ import tempfile
 
 from PIL import Image, UnidentifiedImageError
 
+from heocr_engine.contract import SCHEMA_ID
+
 MAX_BYTES = 50_000_000
 MAX_PIXELS = 40_000_000
 LANGUAGE = re.compile(r"[A-Za-z0-9_]+(?:\+[A-Za-z0-9_]+)*\Z")
@@ -139,8 +141,8 @@ def predict(image_path: Path, executable: Path, tessdata: Path, language: str = 
         except UnicodeDecodeError as exc:
             raise EngineError("Invalid Tesseract output encoding") from exc
     sha = digest(raw)
-    return {"schema_version": "1.0", "page_id": "sha256:" + sha,
-            "input": {"sha256": sha, "width": width, "height": height},
+    return {"schema_version": SCHEMA_ID, "page_id": "sha256:" + sha,
+            "input": {"sha256": sha, "width": width, "height": height}, "track": "open",
             "engine": {"name": "tesseract", "version": version,
                        "executable_sha256": executable_hash, "models": models, "psm": psm},
             "text": text, "words": parse_words(tsv, width, height)}
