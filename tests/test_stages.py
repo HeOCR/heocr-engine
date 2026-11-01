@@ -102,6 +102,36 @@ class ValidateTests(unittest.TestCase):
             with self.subTest(case=name):
                 self.assertTrue(validate_prediction(record)[0])
 
+    def test_contract_rules_each_enforced(self):
+        def stage_record(**changes):
+            record = {'kind': 'recognize', 'name': 'n', 'version': '1', 'track': 'open',
+                      'deterministic': True, 'requires_network': False}
+            record.update(changes)
+            return record
+        # A prediction is proprietary if any stage is proprietary.
+        vendor = stage_record(track='proprietary', requires_network=True)
+        self.assertTrue(validate_prediction(prediction(pipeline=[vendor]))[0])
+        self.assertEqual(validate_prediction(prediction(track='proprietary', pipeline=[vendor]))[0], [])
+        # Every open stage declares requires_network: false, even inside a proprietary prediction.
+        for value in (True, None):
+            with self.subTest(requires_network=value):
+                record = prediction(track='proprietary', pipeline=[stage_record(requires_network=value)])
+                self.assertTrue(validate_prediction(record)[0])
+        # No path-like strings anywhere in provenance, including pipeline details.
+        for value in ('/opt/models/x', '~/m', 'C:\\models\\m', 'file:///m', 'cache/home/user/m'):
+            with self.subTest(path=value):
+                record = prediction(pipeline=[stage_record(details={'model': value})])
+                self.assertTrue(validate_prediction(record)[0])
+        # Legacy 1.0 reads as open, and cannot claim proprietary stages.
+        legacy = prediction(schema_version='1.0')
+        del legacy['track']
+        self.assertEqual(validate_prediction(legacy)[1]['track'], 'open')
+        self.assertTrue(validate_prediction(dict(legacy, pipeline=[vendor]))[0])
+        # Confidence may be null.
+        word = {'text': 'w', 'confidence': None, 'bbox': [0, 0, 1, 1], 'geometry_status': 'valid'}
+        self.assertEqual(validate_prediction(prediction(words=[word]))[0], [])
+        self.assertTrue(validate_prediction(prediction(words=[dict(word, confidence='high')]))[0])
+
     def test_recognized_text_is_not_path_checked(self):
         words = [{'text': '/', 'confidence': 1, 'bbox': [0, 0, 1, 1], 'geometry_status': 'valid'}]
         self.assertEqual(validate_prediction(prediction(text='/home/ page', words=words))[0], [])

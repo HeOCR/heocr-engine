@@ -260,6 +260,12 @@ def build_stage(spec: dict, base: Path):
         return TesseractRecognizer(local(spec["executable"]), local(spec["tessdata_dir"]),
                                    spec.get("language", "heb"), spec.get("psm", 3),
                                    spec.get("timeout", 60))
+    if kind == "kraken":
+        from heocr_engine.kraken import KrakenRecognizer
+
+        return KrakenRecognizer(local(spec["executable"]), local(spec["segmentation_model"]),
+                                local(spec["recognition_model"]), spec.get("base_dir", "R"),
+                                spec.get("timeout", 600))
     if kind == "subprocess":
         manifest = json.loads(read_limited(local(spec["manifest"]), 1_000_000).decode("utf-8"))
         command = list(spec["command"])

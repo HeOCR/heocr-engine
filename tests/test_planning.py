@@ -22,7 +22,10 @@ class PlanningTests(unittest.TestCase):
         self.assertEqual(numbers, list(range(1, len(records) + 1)))
         for path in records:
             with self.subTest(record=path.name):
-                self.assertIn('- Status: ', path.read_text(encoding='utf-8'))
+                status = re.search(r'^- Status: (\S+)', path.read_text(encoding='utf-8'), re.M)
+                self.assertIsNotNone(status)
+                # Records are accepted, or superseded by a later record (planning/README.md).
+                self.assertIn(status.group(1), {'accepted', 'superseded'})
 
     def test_contract_doc_matches_constants(self):
         doc = (ROOT / 'docs' / 'prediction_contract.md').read_text(encoding='utf-8')
