@@ -12,7 +12,7 @@ Make heocr-engine a governed home for local OCR/HTR baselines whose predictions 
 |---|---|---|
 | R1a | Governance, planning notation, decision records, and the `heocr_engine_prediction.v1` contract id with optional `pipeline[]` provenance | done (PR #2) |
 | R1b | Stage interface (preprocessor, recognizer, post-corrector), subprocess adapter, and `validate-predictions` for predictions-only submissions | done (PR #3) |
-| R1c | Kraken baseline from local, hashed segmentation and recognition models | in review |
+| R1c | Kraken baseline from local, hashed segmentation and recognition models | done (PR #4) |
 
 The Tesseract baseline predates this milestone (PR #1) and is the first `recognize` stage.
 
