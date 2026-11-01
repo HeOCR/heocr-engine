@@ -1,0 +1,133 @@
+import io
+import json
+import os
+import signal
+import subprocess
+import sys
+import time
+from pathlib import Path
+import tempfile
+import unittest
+from unittest.mock import patch
+
+from PIL import Image
+from heocr_engine.cli import EngineError, parse_words, predict, run_process
+
+HEADER = 'level\tleft\ttop\twidth\theight\tconf\ttext\n'
+
+
+class EngineTests(unittest.TestCase):
+    def setUp(self):
+        self.tmp = tempfile.TemporaryDirectory()
+        self.addCleanup(self.tmp.cleanup)
+        self.root = Path(self.tmp.name)
+        self.image = self.root / 'private-name.png'
+        # Original synthetic image, with no source data.
+        Image.new('RGB', (32, 24), 'white').save(self.image)
+        self.exe = self.root / 'tesseract'
+        self.exe.write_bytes(b'fake executable')
+        self.models = self.root / 'models'
+        self.models.mkdir()
+        (self.models / 'heb.traineddata').write_bytes(b'fake model')
+
+    def fake_run(self, args, timeout):
+        if args[-1] == '--version':
+            return b'tesseract 5.5.3\n'
+        target = Path(args[2])
+        target.with_suffix('.txt').write_text('שלום 123\n', encoding='utf-8')
+        target.with_suffix('.tsv').write_text(HEADER + '5\t2\t3\t10\t8\t91.5\tשלום\n', encoding='utf-8')
+        return b''
+
+    def test_prediction_is_deterministic_and_path_free(self):
+        with patch('heocr_engine.cli.run_process', side_effect=self.fake_run):
+            first = predict(self.image, self.exe, self.models)
+            second = predict(self.image, self.exe, self.models)
+        self.assertEqual(first, second)
+        self.assertEqual(first['text'], 'שלום 123\n')
+        self.assertEqual(first['words'][0]['bbox'], [2, 3, 10, 8])
+        self.assertEqual(first['words'][0]['geometry_status'], 'valid')
+        self.assertNotIn(str(self.root), json.dumps(first, ensure_ascii=False))
+        self.assertEqual(first['page_id'], 'sha256:' + first['input']['sha256'])
+
+    def test_zero_area_backend_boxes_are_preserved(self):
+        tsv = (HEADER + '5\t0\t2\t0\t2\t95\tword\n'
+               + '5\t32\t24\t0\t0\t88\tborder\n'
+               + '5\t3\t24\t4\t0\t90\tflat\n')
+        words = parse_words(tsv, 32, 24)
+        self.assertEqual([word['bbox'] for word in words], [[0, 2, 0, 2], [32, 24, 0, 0], [3, 24, 4, 0]])
+        self.assertEqual([word['geometry_status'] for word in words], ['degenerate'] * 3)
+        self.assertEqual([word['text'] for word in words], ['word', 'border', 'flat'])
+        with self.assertRaises(EngineError):
+            parse_words(HEADER + '5\t33\t0\t0\t1\t95\tout\n', 32, 24)
+        with self.assertRaises(EngineError):
+            parse_words(HEADER + '5\t0\t0\t-1\t1\t95\tnegative\n', 32, 24)
+
+    def test_bad_geometry_and_confidence(self):
+        for row in ('5\t30\t0\t3\t1\t90\ta\n', '5\t0\t0\t1\t1\tNaN\ta\n',
+                    '5\t0\t0\t1\t1\t101\ta\n'):
+            with self.subTest(row=row), self.assertRaises(EngineError):
+                parse_words(HEADER + row, 32, 24)
+
+    def test_literal_quotes_and_strict_row_shape(self):
+        rows = HEADER + '5\t0\t0\t1\t1\t90\t"quoted"\n5\t1\t0\t1\t1\t80\t"unmatched\n'
+        self.assertEqual([word['text'] for word in parse_words(rows, 32, 24)],
+                         ['"quoted"', '"unmatched'])
+        for row in ('5\t0\t0\t1\t1\t90\tword\textra\n',
+                    '5\t0\t0\t1\t1\t90\n'):
+            with self.subTest(row=row), self.assertRaises(EngineError):
+                parse_words(HEADER + row, 32, 24)
+
+    def test_osd_modes_are_rejected_before_backend(self):
+        with patch('heocr_engine.cli.run_process') as runner:
+            for psm in (0, 1, 2, 12):
+                with self.subTest(psm=psm), self.assertRaises(EngineError):
+                    predict(self.image, self.exe, self.models, psm=psm)
+            runner.assert_not_called()
+
+    def test_bad_inputs(self):
+        for lang in ('../eng', 'heb+heb', '-l'):
+            with self.subTest(lang=lang), self.assertRaises(EngineError):
+                predict(self.image, self.exe, self.models, language=lang)
+        self.image.write_bytes(b'not an image')
+        with self.assertRaises(EngineError):
+            predict(self.image, self.exe, self.models)
+
+    def test_missing_output(self):
+        with patch('heocr_engine.cli.run_process', return_value=b'tesseract 5.5.3\n'):
+            with self.assertRaises(EngineError):
+                predict(self.image, self.exe, self.models)
+
+    def test_interrupt_kills_real_child(self):
+        pid_file = self.root / 'child.pid'
+        child = 'import os, pathlib, time; pathlib.Path(%r).write_text(str(os.getpid())); time.sleep(30)' % str(pid_file)
+        wrapper = ('from heocr_engine.cli import run_process; import sys; '
+                   'run_process([sys.executable, "-c", %r], 30)' % child)
+        process = subprocess.Popen([sys.executable, '-c', wrapper], stdout=subprocess.DEVNULL,
+                                   stderr=subprocess.DEVNULL)
+        try:
+            deadline = time.monotonic() + 5
+            while not pid_file.exists() and time.monotonic() < deadline:
+                time.sleep(.01)
+            self.assertTrue(pid_file.exists())
+            child_pid = int(pid_file.read_text())
+            process.send_signal(signal.SIGINT)
+            process.wait(timeout=5)
+            with self.assertRaises(ProcessLookupError):
+                os.kill(child_pid, 0)
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+
+    def test_timeout_kills_child(self):
+        pid_file = self.root / 'timeout.pid'
+        child = 'import os, pathlib, time; pathlib.Path(%r).write_text(str(os.getpid())); time.sleep(30)' % str(pid_file)
+        with self.assertRaisesRegex(EngineError, 'timed out'):
+            run_process([sys.executable, '-c', child], .5)
+        self.assertTrue(pid_file.exists())
+        with self.assertRaises(ProcessLookupError):
+            os.kill(int(pid_file.read_text()), 0)
+
+
+if __name__ == '__main__':
+    unittest.main()

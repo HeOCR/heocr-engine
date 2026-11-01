@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "heocr-engine"
+version = "0.1.0"
+description = "Local, inspectable OCR baseline for Hebrew and other scripts"
+requires-python = ">=3.11"
+dependencies = ["Pillow>=10,<12"]
+
+[project.scripts]
+heocr-engine = "heocr_engine.cli:main"
+
+[tool.setuptools.packages.find]
+include = ["heocr_engine*"]
