@@ -14,7 +14,7 @@ Each run writes one `heocr_engine_prediction.v1` JSON object per page; see [docs
 
 ## Kraken baseline
 
-`heocr-engine kraken IMAGE OUT --executable … --segmentation-model … --recognition-model …` runs an installed kraken with local models. See [docs/baselines.md](docs/baselines.md) for the reference models and their licences.
+`heocr-engine kraken IMAGE OUT --executable … --segmentation-model … --recognition-model …` runs kraken (`pip install 'heocr-engine[kraken]'`) with local, user-supplied models. See [docs/baselines.md](docs/baselines.md) for the reference models and their licences.
 
 ## Pipelines and outside contributions
 

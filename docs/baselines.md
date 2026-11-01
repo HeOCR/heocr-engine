@@ -15,17 +15,19 @@ heocr-engine kraken page.png prediction.json \
   --recognition-model /path/to/BiblIA_01.mlmodel
 ```
 
-- Kraken itself must be installed separately (tested with kraken 7.0.2). It runs `segment -bl` (baseline segmentation), then `ocr --reorder --base-dir R`, so the text comes out in Unicode logical order with a right-to-left base direction. Use `--base-dir auto` or `L` for other material.
+- Install Kraken with the optional extra, `pip install 'heocr-engine[kraken]'` (tested with kraken 7.0.2), or point `--executable` at an existing install. The core package and CI do not need it. It runs `segment -bl` (baseline segmentation), then `ocr --reorder --base-dir R`, so the text comes out in Unicode logical order with a right-to-left base direction. Use `--base-dir auto` or `L` for other material.
 - The prediction has one `recognize` stage named `kraken`. Its artifacts are the executable, `model:segmentation` and `model:recognition` hashes.
 - `words` is empty: Kraken's plain-text output has no word geometry.
 - The default timeout is 600 seconds per call, up to a maximum of 3600, because CPU inference on a full page can be slow.
 - In a pipeline config: `{"type": "kraken", "executable": "…", "segmentation_model": "…", "recognition_model": "…", "base_dir": "R"}`.
 
-Reference models and their licences, verified 2026-11-01 and recorded in [decision 0006](../planning/decisions/0006-model-licences.md):
+Reference models, verified 2026-11-01 and recorded in [decision 0006](../planning/decisions/0006-model-licences.md). Pin runs by model sha256 and version DOI, never by concept DOI:
 
-| Model | Source | Licence |
-|---|---|---|
-| `blla.mlmodel` (baseline segmentation) | concept DOI 10.5281/zenodo.14602568 | Apache-2.0 |
-| `BiblIA_01.mlmodel` (medieval Hebrew bookhand) | 10.5281/zenodo.5468286 | CC-BY-SA-4.0 |
+| Model | Version DOI | Licence | sha256 |
+|---|---|---|---|
+| `blla.mlmodel` (baseline segmentation, 2025-01-06) | 10.5281/zenodo.14602569 | Apache-2.0 | `77a638a83c9e535620827a09e410ed36391e9e8e8126d5796a0f15b978186056` |
+| `BiblIA_01.mlmodel` (medieval Hebrew bookhand) | 10.5281/zenodo.5468286 | CC-BY-SA-4.0 | `bb48c481d8c46b41465920482e253dc990163405c584d24700cfb0d9b4ca9147` |
 
-BiblIA_01 was trained on medieval manuscripts. On modern cursive it recognizes little. In a local smoke run on a public-domain 1892 manuscript page it produced only scattered characters. Treat it as a floor and a check that the pipeline works, not as a target. Because the segmentation concept DOI resolves to its newest version, compare `model:*` hashes, not DOIs, when comparing runs.
+Attribution: BiblIA_01, Medieval Hebrew manuscripts version 1.0, by Daniel Stökl Ben Ezra, licensed CC BY-SA 4.0, doi:10.5281/zenodo.5468286. heocr-engine does not redistribute either model. Whether ShareAlike reaches predictions made with BiblIA_01 is *Needs verification*.
+
+BiblIA_01 was trained on medieval manuscripts. On modern cursive it recognizes little. In a local smoke run on a public-domain 1892 manuscript page it produced only scattered characters. Treat it as a floor and a check that the pipeline works, not as a target. The segmentation concept DOI (10.5281/zenodo.14602568) resolves to its newest version, so it does not identify a model.
