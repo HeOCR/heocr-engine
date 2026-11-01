@@ -10,7 +10,7 @@ Record the first scored baseline runs, then fix what those runs exposed in the r
 
 | Notation | Summary | Status |
 |---|---|---|
-| R2a | First synthetic-gold results for Tesseract and Kraken in `docs/baselines.md`; `run_process` failures name the failing command; the Kraken 7.0.2 macOS exit-time crash is documented | in review |
+| R2a | First synthetic-gold results for Tesseract and Kraken in `docs/baselines.md`; `run_process` failures name the failing command; the Kraken 7.0.2 macOS exit-time crash is documented | done (PR #5) |
 
 ## Boundaries
 
