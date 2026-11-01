@@ -229,6 +229,10 @@ class SubprocessTests(unittest.TestCase):
         with self.assertRaisesRegex(EngineError, 'invalid JSON'):
             run_pipeline(png(), self.make('recognize', mode='bad-json'))
 
+    def test_failed_stage_is_named_and_output_is_discarded(self):
+        with self.assertRaisesRegex(EngineError, r'\AStage fixture failed with exit status 134\Z'):
+            run_pipeline(png(), self.make('recognize', mode='crash-after-output'))
+
     def test_run_command_with_config_file(self):
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)

@@ -210,7 +210,8 @@ class SubprocessStage:
                    "page": {"media_type": page.media_type, "width": page.width, "height": page.height,
                             "image_base64": base64.b64encode(page.data).decode("ascii")}, **extra}
         stdout = run_process(self.command, self.timeout,
-                             stdin=json.dumps(request, ensure_ascii=False).encode("utf-8"))
+                             stdin=json.dumps(request, ensure_ascii=False).encode("utf-8"),
+                             name=f"Stage {self.info.name}")
         if len(stdout) > MAX_RESPONSE_BYTES:
             raise EngineError(f"Stage {self.info.name} response exceeds the size limit")
         try:

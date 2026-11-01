@@ -15,5 +15,10 @@ else:
     response = {"text": request["text"].replace("עולם", "עולם!"), "words": request["words"]}
 if mode == "bad-json":
     sys.stdout.write("not json")
+elif mode == "crash-after-output":
+    # Write a valid response, then exit non-zero, as Kraken 7.0.2 sometimes does on macOS.
+    json.dump(response, sys.stdout, ensure_ascii=False)
+    sys.stdout.flush()
+    sys.exit(134)
 else:
     json.dump(response, sys.stdout, ensure_ascii=False)
