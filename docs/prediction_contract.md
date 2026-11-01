@@ -29,6 +29,7 @@ Producers must not record source, model, executable or temporary paths, and shou
 | `license` | no | SPDX expression of the stage implementation, or `null` if unknown. |
 | `artifacts` | no | List of `{ "role", "sha256" }` for models, executables or dictionaries the stage loaded. |
 | `config_sha256` | no | SHA-256 of the stage's canonical JSON configuration. |
+| `details` | no | Object with stage-specific provenance, such as Tesseract's `psm`. No paths. |
 
 A post-correction stage that deliberately changes text is recorded here as `postcorrect`; it is never a hidden normalization.
 

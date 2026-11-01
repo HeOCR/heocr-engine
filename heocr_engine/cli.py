@@ -32,14 +32,15 @@ def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def run_process(args: list[str], timeout: float) -> bytes:
+def run_process(args: list[str], timeout: float, stdin: bytes | None = None) -> bytes:
     try:
-        process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+        process = subprocess.Popen(args, stdin=subprocess.DEVNULL if stdin is None else subprocess.PIPE,
+                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                    start_new_session=True)
     except OSError as exc:
         raise EngineError("Could not start Tesseract") from exc
     try:
-        stdout, _ = process.communicate(timeout=timeout)
+        stdout, _ = process.communicate(input=stdin, timeout=timeout)
     except BaseException as exc:
         # Reap the child and its process group on timeout or interruption.
         try:
@@ -96,16 +97,8 @@ def parse_words(tsv: str, width: int, height: int) -> list[dict]:
     return words
 
 
-def predict(image_path: Path, executable: Path, tessdata: Path, language: str = "heb",
-            psm: int = 3, timeout: float = 60) -> dict:
-    if not LANGUAGE.fullmatch(language) or len(language) > 200:
-        raise EngineError("Invalid language list")
-    if not 0 <= psm <= 13 or psm in {0, 1, 2, 12} or not math.isfinite(timeout) or not 0 < timeout <= 600:
-        raise EngineError("Invalid or unsupported PSM, or invalid timeout")
-    languages = language.split("+")
-    if len(set(languages)) != len(languages):
-        raise EngineError("Duplicate languages")
-    raw = read_limited(image_path, MAX_BYTES)
+def inspect_image(raw: bytes) -> tuple[int, int]:
+    """Validate a single-frame PNG or JPEG and return its pixel size."""
     try:
         with Image.open(io.BytesIO(raw)) as image:
             if image.format not in {"PNG", "JPEG"} or getattr(image, "n_frames", 1) != 1:
@@ -116,6 +109,31 @@ def predict(image_path: Path, executable: Path, tessdata: Path, language: str = 
             image.verify()
     except (UnidentifiedImageError, OSError, ValueError, Image.DecompressionBombError) as exc:
         raise EngineError("Invalid image") from exc
+    return width, height
+
+
+def predict(image_path: Path, executable: Path, tessdata: Path, language: str = "heb",
+            psm: int = 3, timeout: float = 60) -> dict:
+    raw = read_limited(image_path, MAX_BYTES)
+    width, height = inspect_image(raw)
+    text, words, engine = tesseract_recognize(raw, width, height, executable, tessdata,
+                                              language, psm, timeout)
+    sha = digest(raw)
+    return {"schema_version": SCHEMA_ID, "page_id": "sha256:" + sha,
+            "input": {"sha256": sha, "width": width, "height": height}, "track": "open",
+            "engine": engine, "text": text, "words": words}
+
+
+def tesseract_recognize(raw: bytes, width: int, height: int, executable: Path, tessdata: Path,
+                        language: str = "heb", psm: int = 3,
+                        timeout: float = 60) -> tuple[str, list[dict], dict]:
+    if not LANGUAGE.fullmatch(language) or len(language) > 200:
+        raise EngineError("Invalid language list")
+    if not 0 <= psm <= 13 or psm in {0, 1, 2, 12} or not math.isfinite(timeout) or not 0 < timeout <= 600:
+        raise EngineError("Invalid or unsupported PSM, or invalid timeout")
+    languages = language.split("+")
+    if len(set(languages)) != len(languages):
+        raise EngineError("Duplicate languages")
     executable = executable.resolve()
     tessdata = tessdata.resolve()
     executable_hash = digest(read_limited(executable, 200_000_000))
@@ -140,16 +158,25 @@ def predict(image_path: Path, executable: Path, tessdata: Path, language: str = 
             tsv = read_limited(target.with_suffix(".tsv"), 100_000_000).decode("utf-8")
         except UnicodeDecodeError as exc:
             raise EngineError("Invalid Tesseract output encoding") from exc
-    sha = digest(raw)
-    return {"schema_version": SCHEMA_ID, "page_id": "sha256:" + sha,
-            "input": {"sha256": sha, "width": width, "height": height}, "track": "open",
-            "engine": {"name": "tesseract", "version": version,
-                       "executable_sha256": executable_hash, "models": models, "psm": psm},
-            "text": text, "words": parse_words(tsv, width, height)}
+    engine = {"name": "tesseract", "version": version,
+              "executable_sha256": executable_hash, "models": models, "psm": psm}
+    return text, parse_words(tsv, width, height), engine
 
 
-def main() -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+def write_prediction(result: dict, output: Path) -> None:
+    # Exclusive creation avoids clobbering inputs or prior predictions.
+    with output.open("x", encoding="utf-8") as stream:
+        try:
+            json.dump(result, stream, ensure_ascii=False, indent=2, allow_nan=False)
+            stream.write("\n")
+            stream.flush()
+        except (OSError, ValueError):
+            output.unlink(missing_ok=True)
+            raise
+
+
+def _tesseract_main(argv: list[str]) -> int:
+    parser = argparse.ArgumentParser(prog="heocr-engine [tesseract]", description=__doc__)
     parser.add_argument("image", type=Path)
     parser.add_argument("output", type=Path)
     parser.add_argument("--executable", type=Path, required=True)
@@ -157,22 +184,52 @@ def main() -> int:
     parser.add_argument("--language", default="heb", help="Tesseract language codes joined by +")
     parser.add_argument("--psm", type=int, default=3)
     parser.add_argument("--timeout", type=float, default=60)
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
+    result = predict(args.image, args.executable, args.tessdata_dir, args.language, args.psm, args.timeout)
+    write_prediction(result, args.output)
+    return 0
+
+
+def _run_main(argv: list[str]) -> int:
+    from heocr_engine.stages import run_config
+
+    parser = argparse.ArgumentParser(prog="heocr-engine run",
+                                     description="Run a configured open-track stage pipeline on one image.")
+    parser.add_argument("image", type=Path)
+    parser.add_argument("output", type=Path)
+    parser.add_argument("--pipeline", type=Path, required=True, help="Pipeline JSON config")
+    args = parser.parse_args(argv)
+    write_prediction(run_config(args.image, args.pipeline), args.output)
+    return 0
+
+
+def _validate_main(argv: list[str]) -> int:
+    from heocr_engine.validate import validate_files
+
+    parser = argparse.ArgumentParser(prog="heocr-engine validate-predictions",
+                                     description="Validate heocr_engine_prediction.v1 files.")
+    parser.add_argument("predictions", type=Path, nargs="+")
+    parser.add_argument("--expect-track", choices=["open", "proprietary"],
+                        help="Fail any file whose track differs")
+    args = parser.parse_args(argv)
+    report = validate_files(args.predictions, args.expect_track)
+    json.dump(report, sys.stdout, ensure_ascii=False, indent=2)
+    sys.stdout.write("\n")
+    return 0 if report["valid_count"] == report["file_count"] else 1
+
+
+COMMANDS = {"tesseract": _tesseract_main, "run": _run_main, "validate-predictions": _validate_main}
+
+
+def main(argv: list[str] | None = None) -> int:
+    argv = sys.argv[1:] if argv is None else argv
+    # Without a subcommand, keep the original Tesseract command line working.
+    command = COMMANDS.get(argv[0]) if argv else None
     try:
-        result = predict(args.image, args.executable, args.tessdata_dir, args.language, args.psm, args.timeout)
-        # Exclusive creation avoids clobbering inputs or prior predictions.
-        with args.output.open("x", encoding="utf-8") as output:
-            try:
-                json.dump(result, output, ensure_ascii=False, indent=2, allow_nan=False)
-                output.write("\n")
-                output.flush()
-            except (OSError, ValueError):
-                args.output.unlink(missing_ok=True)
-                raise
+        return command(argv[1:]) if command else _tesseract_main(argv)
     except (EngineError, OSError) as exc:
         print(f"heocr-engine: {exc if isinstance(exc, EngineError) else 'Could not write output'}", file=sys.stderr)
         return 1
-    return 0
 
 
 if __name__ == "__main__":
