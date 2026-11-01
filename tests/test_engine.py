@@ -119,7 +119,7 @@ class EngineTests(unittest.TestCase):
                 process.kill()
                 process.wait()
 
-    def test_timeout_kills_process_group(self):
+    def test_timeout_kills_child(self):
         pid_file = self.root / 'timeout.pid'
         child = 'import os, pathlib, time; pathlib.Path(%r).write_text(str(os.getpid())); time.sleep(30)' % str(pid_file)
         with self.assertRaisesRegex(EngineError, 'timed out'):
