@@ -120,8 +120,13 @@ class EngineTests(unittest.TestCase):
                 process.wait()
 
     def test_timeout_kills_process_group(self):
+        pid_file = self.root / 'timeout.pid'
+        child = 'import os, pathlib, time; pathlib.Path(%r).write_text(str(os.getpid())); time.sleep(30)' % str(pid_file)
         with self.assertRaisesRegex(EngineError, 'timed out'):
-            run_process(['/bin/sh', '-c', 'sleep 10'], .05)
+            run_process([sys.executable, '-c', child], .5)
+        self.assertTrue(pid_file.exists())
+        with self.assertRaises(ProcessLookupError):
+            os.kill(int(pid_file.read_text()), 0)
 
 
 if __name__ == '__main__':
