@@ -45,8 +45,22 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(first, second)
         self.assertEqual(first['text'], 'שלום 123\n')
         self.assertEqual(first['words'][0]['bbox'], [2, 3, 10, 8])
+        self.assertEqual(first['words'][0]['geometry_status'], 'valid')
         self.assertNotIn(str(self.root), json.dumps(first, ensure_ascii=False))
         self.assertEqual(first['page_id'], 'sha256:' + first['input']['sha256'])
+
+    def test_zero_area_backend_boxes_are_preserved(self):
+        tsv = (HEADER + '5\t0\t2\t0\t2\t95\tword\n'
+               + '5\t32\t24\t0\t0\t88\tborder\n'
+               + '5\t3\t24\t4\t0\t90\tflat\n')
+        words = parse_words(tsv, 32, 24)
+        self.assertEqual([word['bbox'] for word in words], [[0, 2, 0, 2], [32, 24, 0, 0], [3, 24, 4, 0]])
+        self.assertEqual([word['geometry_status'] for word in words], ['degenerate'] * 3)
+        self.assertEqual([word['text'] for word in words], ['word', 'border', 'flat'])
+        with self.assertRaises(EngineError):
+            parse_words(HEADER + '5\t33\t0\t0\t1\t95\tout\n', 32, 24)
+        with self.assertRaises(EngineError):
+            parse_words(HEADER + '5\t0\t0\t-1\t1\t95\tnegative\n', 32, 24)
 
     def test_bad_geometry_and_confidence(self):
         for row in ('5\t30\t0\t3\t1\t90\ta\n', '5\t0\t0\t1\t1\tNaN\ta\n',

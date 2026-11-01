@@ -84,10 +84,11 @@ def parse_words(tsv: str, width: int, height: int) -> list[dict]:
                 continue
             x, y, w, h = (int(row[key]) for key in ("left", "top", "width", "height"))
             confidence = float(row["conf"])
-            if (x < 0 or y < 0 or w <= 0 or h <= 0 or x + w > width or y + h > height
+            if (x < 0 or y < 0 or w < 0 or h < 0 or x + w > width or y + h > height
                     or not math.isfinite(confidence) or not 0 <= confidence <= 100):
                 raise ValueError("out of range")
-            words.append({"text": text, "confidence": confidence, "bbox": [x, y, w, h]})
+            words.append({"text": text, "confidence": confidence, "bbox": [x, y, w, h],
+                          "geometry_status": "degenerate" if w == 0 or h == 0 else "valid"})
     except (ValueError, TypeError, KeyError, csv.Error) as exc:
         raise EngineError("Invalid Tesseract word data") from exc
     return words
