@@ -1,6 +1,7 @@
 import io
 import json
 from pathlib import Path
+import sys
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -29,7 +30,8 @@ class KrakenTests(unittest.TestCase):
         self.rec.write_bytes(b'fake recognition')
         self.calls = []
 
-    def fake_run(self, args, timeout, stdin=None):
+    def fake_run(self, args, timeout, stdin=None, name=None):
+        self.assertEqual(name, 'Kraken')
         self.calls.append(args)
         if args[-1] == '--version':
             return b'kraken, version 7.0.2\n'
@@ -76,6 +78,23 @@ class KrakenTests(unittest.TestCase):
         with patch('heocr_engine.kraken.run_process', side_effect=self.fake_run), \
                 self.assertRaises(EngineError):
             run_pipeline(self.image.read_bytes(), self.recognizer())
+
+    def test_crash_after_output_fails_closed(self):
+        # A real executable that writes its output and then exits non-zero, like the
+        # occasional Kraken 7.0.2 exit-time crash on macOS.
+        script = self.root / 'crashing-kraken'
+        script.write_text(f"""#!{sys.executable}
+import sys
+from pathlib import Path
+if sys.argv[-1] == '--version':
+    print('kraken, version 7.0.2')
+else:
+    Path(sys.argv[3]).write_text('text written before the crash', encoding='utf-8')
+    sys.exit(134)
+""", encoding='utf-8')
+        script.chmod(0o755)
+        with self.assertRaisesRegex(EngineError, r'\AKraken failed with exit status 134\Z'):
+            run_pipeline(self.image.read_bytes(), KrakenRecognizer(script, self.seg, self.rec))
 
     def test_cli_and_pipeline_config(self):
         output = self.root / 'out.json'

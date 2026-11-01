@@ -32,13 +32,15 @@ def digest(data: bytes) -> str:
     return hashlib.sha256(data).hexdigest()
 
 
-def run_process(args: list[str], timeout: float, stdin: bytes | None = None) -> bytes:
+def run_process(args: list[str], timeout: float, stdin: bytes | None = None,
+                name: str = "Subprocess") -> bytes:
+    """Run a command and return stdout; failures fail closed and are reported under `name`."""
     try:
         process = subprocess.Popen(args, stdin=subprocess.DEVNULL if stdin is None else subprocess.PIPE,
                                    stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                    start_new_session=True)
     except OSError as exc:
-        raise EngineError("Could not start Tesseract") from exc
+        raise EngineError(f"Could not start {name}") from exc
     try:
         stdout, _ = process.communicate(input=stdin, timeout=timeout)
     except BaseException as exc:
@@ -49,10 +51,10 @@ def run_process(args: list[str], timeout: float, stdin: bytes | None = None) -> 
             pass
         process.communicate()
         if isinstance(exc, subprocess.TimeoutExpired):
-            raise EngineError("Tesseract timed out") from exc
+            raise EngineError(f"{name} timed out") from exc
         raise
     if process.returncode != 0:
-        raise EngineError("Tesseract failed")
+        raise EngineError(f"{name} failed with exit status {process.returncode}")
     return stdout
 
 
@@ -139,7 +141,7 @@ def tesseract_recognize(raw: bytes, width: int, height: int, executable: Path, t
     executable_hash = digest(read_limited(executable, 200_000_000))
     models = [{"language": lang, "sha256": digest(read_limited(tessdata / (lang + ".traineddata"), 500_000_000))}
               for lang in languages]
-    version_raw = run_process([str(executable), "--version"], timeout)
+    version_raw = run_process([str(executable), "--version"], timeout, name="Tesseract")
     try:
         version = version_raw.decode("utf-8").splitlines()[0]
     except (UnicodeDecodeError, IndexError) as exc:
@@ -152,7 +154,7 @@ def tesseract_recognize(raw: bytes, width: int, height: int, executable: Path, t
         source.write_bytes(raw)
         target = root / "result"
         run_process([str(executable), str(source), str(target), "--tessdata-dir", str(tessdata),
-                     "-l", language, "--psm", str(psm), "txt", "tsv"], timeout)
+                     "-l", language, "--psm", str(psm), "txt", "tsv"], timeout, name="Tesseract")
         try:
             text = read_limited(target.with_suffix(".txt"), 50_000_000).decode("utf-8")
             tsv = read_limited(target.with_suffix(".tsv"), 100_000_000).decode("utf-8")

@@ -30,7 +30,8 @@ class EngineTests(unittest.TestCase):
         self.models.mkdir()
         (self.models / 'heb.traineddata').write_bytes(b'fake model')
 
-    def fake_run(self, args, timeout):
+    def fake_run(self, args, timeout, name=None):
+        self.assertEqual(name, 'Tesseract')
         if args[-1] == '--version':
             return b'tesseract 5.5.3\n'
         target = Path(args[2])
@@ -121,6 +122,16 @@ class EngineTests(unittest.TestCase):
             if process.poll() is None:
                 process.kill()
                 process.wait()
+
+    def test_failures_name_the_command(self):
+        with self.assertRaisesRegex(EngineError, r'\ASubprocess failed with exit status 3\Z'):
+            run_process([sys.executable, '-c', 'raise SystemExit(3)'], 30)
+        with self.assertRaisesRegex(EngineError, r'\AKraken failed with exit status 3\Z'):
+            run_process([sys.executable, '-c', 'raise SystemExit(3)'], 30, name='Kraken')
+        with self.assertRaisesRegex(EngineError, r'\ACould not start Kraken\Z'):
+            run_process([str(self.root / 'missing')], 30, name='Kraken')
+        with self.assertRaisesRegex(EngineError, r'\AKraken timed out\Z'):
+            run_process([sys.executable, '-c', 'import time; time.sleep(30)'], .5, name='Kraken')
 
     def test_timeout_kills_child(self):
         pid_file = self.root / 'timeout.pid'

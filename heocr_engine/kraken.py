@@ -32,8 +32,8 @@ def kraken_recognize(raw: bytes, executable: Path, segmentation_model: Path,
                   "segmentation_model_sha256": digest(read_limited(segmentation_model, MAX_MODEL_BYTES)),
                   "recognition_model_sha256": digest(read_limited(recognition_model, MAX_MODEL_BYTES))}
     try:
-        match = VERSION.fullmatch(run_process([str(executable), "--version"], timeout)
-                                  .decode("utf-8").strip())
+        version = run_process([str(executable), "--version"], timeout, name="Kraken")
+        match = VERSION.fullmatch(version.decode("utf-8").strip())
     except UnicodeDecodeError as exc:
         raise EngineError("Invalid kraken version output") from exc
     if not match:
@@ -47,7 +47,7 @@ def kraken_recognize(raw: bytes, executable: Path, segmentation_model: Path,
         run_process([str(executable), "-i", str(source), str(target),
                      "segment", "-bl", "-i", str(segmentation_model),
                      "ocr", "-m", str(recognition_model), "--reorder", "--base-dir", base_dir],
-                    timeout)
+                    timeout, name="Kraken")
         try:
             text = read_limited(target, 50_000_000).decode("utf-8")
         except UnicodeDecodeError as exc:

@@ -12,7 +12,8 @@ Planned work uses `R<milestone><slice>`, for example `R1a`. `R` stands for the r
 
 ## Current milestones
 
-- [R1 — Runtime foundations and plug-in path](milestones/r1-runtime-foundations.md)
+- [R1 — Runtime foundations and plug-in path](milestones/r1-runtime-foundations.md) (complete)
+- [R2 — First baseline results and runtime hardening](milestones/r2-baseline-results.md)
 
 ## Decisions
 
