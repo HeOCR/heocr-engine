@@ -6,7 +6,7 @@ A small local OCR baseline for PNG and JPEG pages using an independently install
 heocr-engine page.png prediction.json --executable /path/to/tesseract --tessdata-dir /path/to/tessdata
 ```
 
-The default is `--language heb --psm 3`; use e.g. `--language heb+eng` for a mixed-script model set, and `--timeout 60` to set the deadline in seconds for each Tesseract call. Supply a trusted, pinned local executable and traineddata files. The program records their SHA-256 hashes and the Tesseract version; it does not verify these against an external registry. The output file must not already exist. Input is limited to 50 MB and 40 million pixels. TIFF, PDF, animation, and remote inputs are unsupported.
+The default is `--language heb --psm 3`; use e.g. `--language heb+eng` for a mixed-script model set, and `--timeout 60` to set the deadline in seconds for each Tesseract call. Supply a trusted, pinned local executable and traineddata files. The program records their SHA-256 hashes and the Tesseract version; it does not verify these against an external registry. The output file must not already exist. PSM modes 0, 1, and 12 use the additional OSD model and are rejected so that all loaded models are recorded. PSM 2 is also rejected because it does not produce OCR text. Input is limited to 50 MB and 40 million pixels. TIFF, PDF, animation, and remote inputs are unsupported.
 
 ## Prediction contract
 

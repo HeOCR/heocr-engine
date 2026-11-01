@@ -1,6 +1,10 @@
 import io
 import json
 import os
+import signal
+import subprocess
+import sys
+import time
 from pathlib import Path
 import tempfile
 import unittest
@@ -50,6 +54,22 @@ class EngineTests(unittest.TestCase):
             with self.subTest(row=row), self.assertRaises(EngineError):
                 parse_words(HEADER + row, 32, 24)
 
+    def test_literal_quotes_and_strict_row_shape(self):
+        rows = HEADER + '5\t0\t0\t1\t1\t90\t"quoted"\n5\t1\t0\t1\t1\t80\t"unmatched\n'
+        self.assertEqual([word['text'] for word in parse_words(rows, 32, 24)],
+                         ['"quoted"', '"unmatched'])
+        for row in ('5\t0\t0\t1\t1\t90\tword\textra\n',
+                    '5\t0\t0\t1\t1\t90\n'):
+            with self.subTest(row=row), self.assertRaises(EngineError):
+                parse_words(HEADER + row, 32, 24)
+
+    def test_osd_modes_are_rejected_before_backend(self):
+        with patch('heocr_engine.cli.run_process') as runner:
+            for psm in (0, 1, 2, 12):
+                with self.subTest(psm=psm), self.assertRaises(EngineError):
+                    predict(self.image, self.exe, self.models, psm=psm)
+            runner.assert_not_called()
+
     def test_bad_inputs(self):
         for lang in ('../eng', 'heb+heb', '-l'):
             with self.subTest(lang=lang), self.assertRaises(EngineError):
@@ -62,6 +82,28 @@ class EngineTests(unittest.TestCase):
         with patch('heocr_engine.cli.run_process', return_value=b'tesseract 5.5.3\n'):
             with self.assertRaises(EngineError):
                 predict(self.image, self.exe, self.models)
+
+    def test_interrupt_kills_real_child(self):
+        pid_file = self.root / 'child.pid'
+        child = 'import os, pathlib, time; pathlib.Path(%r).write_text(str(os.getpid())); time.sleep(30)' % str(pid_file)
+        wrapper = ('from heocr_engine.cli import run_process; import sys; '
+                   'run_process([sys.executable, "-c", %r], 30)' % child)
+        process = subprocess.Popen([sys.executable, '-c', wrapper], stdout=subprocess.DEVNULL,
+                                   stderr=subprocess.DEVNULL)
+        try:
+            deadline = time.monotonic() + 5
+            while not pid_file.exists() and time.monotonic() < deadline:
+                time.sleep(.01)
+            self.assertTrue(pid_file.exists())
+            child_pid = int(pid_file.read_text())
+            process.send_signal(signal.SIGINT)
+            process.wait(timeout=5)
+            with self.assertRaises(ProcessLookupError):
+                os.kill(child_pid, 0)
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
 
     def test_timeout_kills_process_group(self):
         with self.assertRaisesRegex(EngineError, 'timed out'):

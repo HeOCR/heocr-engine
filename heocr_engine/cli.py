@@ -38,13 +38,16 @@ def run_process(args: list[str], timeout: float) -> bytes:
         raise EngineError("Could not start Tesseract") from exc
     try:
         stdout, _ = process.communicate(timeout=timeout)
-    except subprocess.TimeoutExpired as exc:
+    except BaseException as exc:
+        # Reap the child and its process group on timeout or interruption.
         try:
             os.killpg(process.pid, signal.SIGKILL)
         except ProcessLookupError:
             pass
         process.communicate()
-        raise EngineError("Tesseract timed out") from exc
+        if isinstance(exc, subprocess.TimeoutExpired):
+            raise EngineError("Tesseract timed out") from exc
+        raise
     if process.returncode != 0:
         raise EngineError("Tesseract failed")
     return stdout
@@ -62,13 +65,18 @@ def read_limited(path: Path, limit: int) -> bytes:
 
 
 def parse_words(tsv: str, width: int, height: int) -> list[dict]:
-    reader = csv.DictReader(io.StringIO(tsv), delimiter="\t")
+    reader = csv.DictReader(io.StringIO(tsv), delimiter="\t", quoting=csv.QUOTE_NONE)
     required = {"level", "left", "top", "width", "height", "conf", "text"}
-    if not reader.fieldnames or not required.issubset(reader.fieldnames):
+    if (not reader.fieldnames or len(reader.fieldnames) != len(set(reader.fieldnames))
+            or not required.issubset(reader.fieldnames)):
         raise EngineError("Invalid Tesseract TSV header")
     words = []
     try:
         for row in reader:
+            if None in row or any(value is None for value in row.values()):
+                raise ValueError("invalid row shape")
+            if row["level"] not in {"1", "2", "3", "4", "5"}:
+                raise ValueError("invalid level")
             if row["level"] != "5":
                 continue
             text = row["text"]
@@ -80,7 +88,7 @@ def parse_words(tsv: str, width: int, height: int) -> list[dict]:
                     or not math.isfinite(confidence) or not 0 <= confidence <= 100):
                 raise ValueError("out of range")
             words.append({"text": text, "confidence": confidence, "bbox": [x, y, w, h]})
-    except (ValueError, TypeError, KeyError) as exc:
+    except (ValueError, TypeError, KeyError, csv.Error) as exc:
         raise EngineError("Invalid Tesseract word data") from exc
     return words
 
@@ -89,8 +97,8 @@ def predict(image_path: Path, executable: Path, tessdata: Path, language: str = 
             psm: int = 3, timeout: float = 60) -> dict:
     if not LANGUAGE.fullmatch(language) or len(language) > 200:
         raise EngineError("Invalid language list")
-    if not 0 <= psm <= 13 or not math.isfinite(timeout) or not 0 < timeout <= 600:
-        raise EngineError("Invalid PSM or timeout")
+    if not 0 <= psm <= 13 or psm in {0, 1, 2, 12} or not math.isfinite(timeout) or not 0 < timeout <= 600:
+        raise EngineError("Invalid or unsupported PSM, or invalid timeout")
     languages = language.split("+")
     if len(set(languages)) != len(languages):
         raise EngineError("Duplicate languages")
