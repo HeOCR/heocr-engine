@@ -48,6 +48,9 @@ class EngineTests(unittest.TestCase):
         self.assertEqual(first['words'][0]['geometry_status'], 'valid')
         self.assertNotIn(str(self.root), json.dumps(first, ensure_ascii=False))
         self.assertEqual(first['page_id'], 'sha256:' + first['input']['sha256'])
+        self.assertEqual(first['schema_version'], 'heocr_engine_prediction.v1')
+        self.assertEqual(first['track'], 'open')
+        self.assertNotIn('pipeline', first)
 
     def test_zero_area_backend_boxes_are_preserved(self):
         tsv = (HEADER + '5\t0\t2\t0\t2\t95\tword\n'
