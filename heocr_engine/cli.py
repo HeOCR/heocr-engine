@@ -203,6 +203,27 @@ def _run_main(argv: list[str]) -> int:
     return 0
 
 
+def _kraken_main(argv: list[str]) -> int:
+    from heocr_engine.kraken import BASE_DIRS, KrakenRecognizer
+    from heocr_engine.stages import run_pipeline
+
+    parser = argparse.ArgumentParser(prog="heocr-engine kraken",
+                                     description="Run an installed kraken CLI with local models on one image.")
+    parser.add_argument("image", type=Path)
+    parser.add_argument("output", type=Path)
+    parser.add_argument("--executable", type=Path, required=True, help="Path to the kraken command")
+    parser.add_argument("--segmentation-model", type=Path, required=True)
+    parser.add_argument("--recognition-model", type=Path, required=True)
+    parser.add_argument("--base-dir", choices=BASE_DIRS, default="R",
+                        help="Base text direction for reordering (default R)")
+    parser.add_argument("--timeout", type=float, default=600)
+    args = parser.parse_args(argv)
+    recognizer = KrakenRecognizer(args.executable, args.segmentation_model, args.recognition_model,
+                                  args.base_dir, args.timeout)
+    write_prediction(run_pipeline(read_limited(args.image, MAX_BYTES), recognizer), args.output)
+    return 0
+
+
 def _validate_main(argv: list[str]) -> int:
     from heocr_engine.validate import validate_files
 
@@ -218,7 +239,8 @@ def _validate_main(argv: list[str]) -> int:
     return 0 if report["valid_count"] == report["file_count"] else 1
 
 
-COMMANDS = {"tesseract": _tesseract_main, "run": _run_main, "validate-predictions": _validate_main}
+COMMANDS = {"tesseract": _tesseract_main, "kraken": _kraken_main, "run": _run_main,
+            "validate-predictions": _validate_main}
 
 
 def main(argv: list[str] | None = None) -> int:
