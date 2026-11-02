@@ -85,11 +85,13 @@ print(f"Training set {{train - int(os.environ.get('FAKE_KETOS_DROP', '0'))}} lin
       "lines, alphabet 41 symbols", file=sys.stderr)
 checkpoints = Path(args[args.index('-o') + 1])
 checkpoints.mkdir()
-meta = {{'0f': {{'_tasks': ['recognition'], '_model': 'TorchVGSLModel', 'metrics': [
-    [0, {{'val_accuracy': 0.25, 'val_word_accuracy': 0.1, 'val_metric': 0.25}}],
-    [1, {{'val_accuracy': 0.5, 'val_word_accuracy': 0.2, 'val_metric': 0.5}}]]}}}}
+# Shaped like ketos 7.0.2 -v output and files; its weights metadata keeps no metrics.
+for epoch, errors in enumerate((300, 179, 179)):
+    print(f'[11/02/26 06:52:34] INFO     validation run: total chars 358.0 errors {{errors}}.0 accuracy '
+          f'{{1 - errors / 358}}      vgsl.py:352', file=sys.stderr)
+    (checkpoints / f'checkpoint_{{epoch:02d}}-{{1 - errors / 358:.4f}}.ckpt').write_bytes(b'checkpoint')
+meta = {{'0f': {{'_tasks': ['recognition'], '_model': 'TorchVGSLModel', 'metrics': [], 'accuracy': []}}}}
 header = json.dumps({{'__metadata__': {{'kraken_meta': json.dumps(meta)}}}}).encode()
-(checkpoints / 'checkpoint_01-0.5000.ckpt').write_bytes(b'checkpoint')
 (checkpoints / 'best_0.5000.safetensors').write_bytes(len(header).to_bytes(8, 'little') + header + b'weights')
 print('Monitored metric val_accuracy did not improve in the last 10 records. Signaling Trainer to stop.',
       file=sys.stderr)

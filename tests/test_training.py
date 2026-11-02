@@ -216,9 +216,11 @@ class TrainKrakenTests(TrainingTestCase):
                          hashlib.sha256(self.annotations.read_bytes()).hexdigest())
         self.assertEqual(record['outcome']['stopped_by'], 'early_stopping')
         self.assertEqual(record['outcome']['best_epoch'], 1)
+        self.assertEqual(record['outcome']['epochs_completed'], 3)
         self.assertEqual(record['outcome']['validation_metric']['best'], 0.5)
         self.assertEqual(record['outcome']['lines_dropped_by_ketos'], {'train': 0, 'validation': 0})
-        self.assertEqual(len(record['outcome']['validation_history']), 2)
+        self.assertEqual(record['outcome']['validation_history'][1],
+                         {'run': 1, 'chars': 358, 'errors': 179, 'val_accuracy': 0.5})
         self.assertNotIn(str(self.root), json.dumps(record, ensure_ascii=False))
         train = record['commands']['train']
         self.assertEqual(train[0], '<ketos>')

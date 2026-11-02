@@ -42,8 +42,10 @@ SCHEDULES = ("constant", "cosine", "exponential", "step", "1cycle", "reduceonpla
 BIDI_CONTROLS = frozenset("‎‏؜‪‫‬‭‮⁦⁧⁨⁩")
 FIXED_TIME = "1970-01-01T00:00:00"
 BEST = re.compile(r"best_([0-9]+\.[0-9]{4})\.safetensors\Z")
+CHECKPOINT = re.compile(r"checkpoint_([0-9]+)-([0-9]+\.[0-9]{4})\.ckpt\Z")
 LOG_PATTERNS = {
     "lines": re.compile(r"Training set (\d+) lines, validation set (\d+) lines, alphabet (\d+) symbols"),
+    "validation": re.compile(r"validation run: total chars (\d+)(?:\.0)? errors (\d+)(?:\.0)? accuracy (\S+)"),
     "early_stopping": re.compile(r"did not improve in the last \d+ records"),
     "stopping_threshold": re.compile(r"Stopping threshold reached"),
     "epoch_limit": re.compile(r"`max_epochs=\d+` reached"),
@@ -316,31 +318,28 @@ def safetensors_kraken_metadata(path: Path) -> dict:
     return meta
 
 
-def _validation_history(meta: dict) -> list[dict]:
+def _check_recognition_model(meta: dict) -> None:
     models = [model for model in meta.values() if isinstance(model, dict) and "recognition" in model.get("_tasks", ())]
-    if len(models) != 1:
+    if len(models) != 1 or len(meta) != 1:
         raise EngineError("Expected exactly one recognition model in the weights file")
-    history = []
-    for item in models[0].get("metrics", []):
-        try:
-            epoch, metrics = item
-            row = {"epoch": int(epoch), "val_accuracy": float(metrics["val_accuracy"]),
-                   "val_word_accuracy": float(metrics["val_word_accuracy"])}
-        except (TypeError, ValueError, KeyError) as exc:
-            raise EngineError("Invalid validation metrics in the weights file") from exc
-        if not all(math.isfinite(row[key]) for key in ("val_accuracy", "val_word_accuracy")):
-            raise EngineError("Invalid validation metrics in the weights file")
-        history.append(row)
-    return history
 
 
 def _scan_log(path: Path) -> dict:
-    found: dict = {"stopped_by": None, "ketos_lines": None}
+    found: dict = {"stopped_by": None, "ketos_lines": None, "history": []}
     with path.open("r", encoding="utf-8", errors="replace") as stream:
         for line in stream:
             if (match := LOG_PATTERNS["lines"].search(line)):
                 found["ketos_lines"] = {"train": int(match[1]), "validation": int(match[2]),
                                         "alphabet": int(match[3])}
+            if (match := LOG_PATTERNS["validation"].search(line)):
+                try:
+                    accuracy = float(match[3])
+                except ValueError as exc:
+                    raise EngineError("Invalid validation line in the ketos log") from exc
+                if not math.isfinite(accuracy):
+                    raise EngineError("Invalid validation line in the ketos log")
+                found["history"].append({"run": len(found["history"]), "chars": int(match[1]),
+                                         "errors": int(match[2]), "val_accuracy": accuracy})
             for outcome in ("early_stopping", "stopping_threshold", "epoch_limit"):
                 if LOG_PATTERNS[outcome].search(line):
                     found["stopped_by"] = outcome
@@ -460,10 +459,13 @@ def train_kraken(annotations: Path, manifest: Path, work: Path, ketos: Path, *, 
     if len(best) != 1:
         raise EngineError("ketos did not write exactly one best model")
     model = read_limited(best[0], MAX_MODEL_BYTES)
-    history = _validation_history(safetensors_kraken_metadata(best[0]))
-    score = float(BEST.fullmatch(best[0].name)[1])
-    best_rows = [row for row in history if f"{row['val_accuracy']:.4f}" == f"{score:.4f}"]
+    _check_recognition_model(safetensors_kraken_metadata(best[0]))
+    score_text = BEST.fullmatch(best[0].name)[1]
+    # ketos keeps the 10 best checkpoints, named by epoch and val_accuracy; the earliest at the best score.
+    best_epochs = [int(match[1]) for path in (work / "checkpoints").glob("checkpoint_*.ckpt")
+                   if (match := CHECKPOINT.fullmatch(path.name)) and match[2] == score_text]
     scanned = _scan_log(log)
+    history = scanned["history"]
     stopped_by = "epoch_limit" if hyperparameters.quit == "fixed" else scanned["stopped_by"] or "unknown"
     expected = {"train": summary["train"]["lines"], "validation": summary["validation"]["lines"]}
     tokens = {str(ketos): "<ketos>", str(work): "<work>"}
@@ -481,8 +483,10 @@ def train_kraken(annotations: Path, manifest: Path, work: Path, ketos: Path, *, 
         "run": {"seed": seed, "deterministic": deterministic, "device": device, "precision": precision,
                 "workers": workers, "threads": threads, "environment": environment},
         "outcome": {"quit": hyperparameters.quit, "stopped_by": stopped_by,
-                    "best_epoch": best_rows[-1]["epoch"] if best_rows else None,
-                    "validation_metric": {"name": "val_accuracy", "best": score,
+                    "best_epoch": min(best_epochs) if best_epochs else None,
+                    "validation_runs": len(history),
+                    "epochs_completed": len(history) if hyperparameters.validation_frequency == 1 else None,
+                    "validation_metric": {"name": "val_accuracy", "best": float(score_text),
                                           "definition": "ketos character accuracy (1 - CER) on the validation "
                                                         "split, display order, kraken-internal; not hocrgen primary.v1"},
                     "validation_history": history,
