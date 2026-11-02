@@ -14,6 +14,7 @@ import signal
 import subprocess
 import sys
 import tempfile
+from typing import BinaryIO
 
 from PIL import Image, UnidentifiedImageError
 
@@ -33,11 +34,18 @@ def digest(data: bytes) -> str:
 
 
 def run_process(args: list[str], timeout: float, stdin: bytes | None = None,
-                name: str = "Subprocess") -> bytes:
-    """Run a command and return stdout; failures fail closed and are reported under `name`."""
+                name: str = "Subprocess", log: BinaryIO | None = None,
+                env: dict[str, str] | None = None) -> bytes:
+    """Run a command and return stdout; failures fail closed and are reported under `name`.
+
+    With `log`, stdout and stderr both go to that file instead and the result is empty.
+    `env` adds variables to the inherited environment.
+    """
     try:
         process = subprocess.Popen(args, stdin=subprocess.DEVNULL if stdin is None else subprocess.PIPE,
-                                   stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                   stdout=subprocess.PIPE if log is None else log,
+                                   stderr=subprocess.PIPE if log is None else subprocess.STDOUT,
+                                   env=None if env is None else {**os.environ, **env},
                                    start_new_session=True)
     except OSError as exc:
         raise EngineError(f"Could not start {name}") from exc
@@ -55,7 +63,7 @@ def run_process(args: list[str], timeout: float, stdin: bytes | None = None,
         raise
     if process.returncode != 0:
         raise EngineError(f"{name} failed with exit status {process.returncode}")
-    return stdout
+    return stdout or b""
 
 
 def read_limited(path: Path, limit: int) -> bytes:
@@ -241,8 +249,81 @@ def _validate_main(argv: list[str]) -> int:
     return 0 if report["valid_count"] == report["file_count"] else 1
 
 
+def _split_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("annotations", type=Path, help="hocrsyngen_line_annotations.v1 JSON")
+    parser.add_argument("manifest", type=Path, help="The generation_manifest.json the annotations name")
+    parser.add_argument("--validation-fraction", type=float, default=0.1,
+                        help="Share of samples held out for validation (default 0.1)")
+    parser.add_argument("--split-seed", type=int, default=0, help="Seed of the sample-level split (default 0)")
+
+
+def _prepare_kraken_data_main(argv: list[str]) -> int:
+    from heocr_engine.training import prepare_kraken_data
+
+    parser = argparse.ArgumentParser(prog="heocr-engine prepare-kraken-data",
+                                     description="Convert line annotations and page images to PAGE XML for ketos.")
+    _split_args(parser)
+    parser.add_argument("output", type=Path, help="New or empty output directory")
+    args = parser.parse_args(argv)
+    summary = prepare_kraken_data(args.annotations, args.manifest, args.output, args.validation_fraction,
+                                  args.split_seed)
+    json.dump(summary, sys.stdout, ensure_ascii=False, indent=2)
+    sys.stdout.write("\n")
+    return 0
+
+
+def _train_kraken_main(argv: list[str]) -> int:
+    from heocr_engine.training import DEFAULT_SPEC, Hyperparameters, train_kraken
+
+    defaults = Hyperparameters()
+    parser = argparse.ArgumentParser(prog="heocr-engine train-kraken",
+                                     description="Train a Kraken recognizer from scratch with local ketos "
+                                                 "and write a heocr_engine_training_run.v1 record.")
+    _split_args(parser)
+    parser.add_argument("work_dir", type=Path, help="New or empty directory for data, checkpoints and the log")
+    parser.add_argument("record", type=Path, help="Training-run record to create")
+    parser.add_argument("--ketos", type=Path, required=True, help="Path to the ketos command")
+    parser.add_argument("--kraken", type=Path, help="Path to the kraken command, to record its version")
+    parser.add_argument("--corpus", type=Path, action="append", default=[],
+                        help="Text corpus the pages were generated from, hashed into the record (repeatable)")
+    parser.add_argument("--device", default="cpu", help="ketos device: cpu, mps, cuda:N or auto")
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--deterministic", action="store_true")
+    parser.add_argument("--precision", default="32-true")
+    parser.add_argument("--workers", type=int, default=0,
+                        help="ketos data-loader workers (default 0; kraken 7.0.2 fails with more on macOS)")
+    parser.add_argument("--threads", type=int, default=1)
+    parser.add_argument("--spec", default=DEFAULT_SPEC, help="VGSL network spec (default: ketos 7.0.2 default)")
+    parser.add_argument("--batch-size", type=int, default=defaults.batch_size)
+    parser.add_argument("--learning-rate", type=float, default=defaults.learning_rate)
+    parser.add_argument("--optimizer", default=defaults.optimizer)
+    parser.add_argument("--schedule", default=defaults.schedule)
+    parser.add_argument("--quit", choices=["early", "fixed"], default=defaults.quit)
+    parser.add_argument("--epochs", type=int, default=defaults.epochs)
+    parser.add_argument("--min-epochs", type=int, default=defaults.min_epochs)
+    parser.add_argument("--lag", type=int, default=defaults.lag)
+    parser.add_argument("--validation-frequency", type=float, default=defaults.validation_frequency)
+    parser.add_argument("--padding", type=int, default=defaults.padding)
+    parser.add_argument("--augment", action="store_true")
+    parser.add_argument("--timeout", type=float, default=172_800, help="Seconds per ketos step (default 48h)")
+    args = parser.parse_args(argv)
+    if args.record.exists():
+        raise EngineError("Record file already exists")
+    hyperparameters = Hyperparameters(args.spec, args.batch_size, args.learning_rate, args.optimizer,
+                                      args.schedule, args.quit, args.epochs, args.min_epochs, args.lag,
+                                      args.validation_frequency, args.padding, args.augment)
+    record = train_kraken(args.annotations, args.manifest, args.work_dir, args.ketos, kraken=args.kraken,
+                          corpora=tuple(args.corpus), device=args.device, seed=args.seed,
+                          deterministic=args.deterministic, precision=args.precision, workers=args.workers,
+                          threads=args.threads, validation_fraction=args.validation_fraction,
+                          split_seed=args.split_seed, hyperparameters=hyperparameters, timeout=args.timeout)
+    write_prediction(record, args.record)
+    return 0
+
+
 COMMANDS = {"tesseract": _tesseract_main, "kraken": _kraken_main, "run": _run_main,
-            "validate-predictions": _validate_main}
+            "validate-predictions": _validate_main, "prepare-kraken-data": _prepare_kraken_data_main,
+            "train-kraken": _train_kraken_main}
 
 
 def main(argv: list[str] | None = None) -> int:
