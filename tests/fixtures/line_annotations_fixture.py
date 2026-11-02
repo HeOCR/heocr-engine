@@ -108,8 +108,10 @@ for epoch, errors in enumerate((300, 179, 179)):
 meta = {{'0f': {{'_tasks': ['recognition'], '_model': 'TorchVGSLModel', 'metrics': [], 'accuracy': []}}}}
 header = json.dumps({{'__metadata__': {{'kraken_meta': json.dumps(meta)}}}}).encode()
 (checkpoints / 'best_0.5000.safetensors').write_bytes(len(header).to_bytes(8, 'little') + header + b'weights')
-print('Monitored metric val_accuracy did not improve in the last 10 records. Signaling Trainer to stop.',
-      file=sys.stderr)
+# Real ketos 7.0.2 builds EarlyStopping without verbose=True and logs no stop message; FAKE_KETOS_QUIET mimics it.
+if not os.environ.get('FAKE_KETOS_QUIET'):
+    print('Monitored metric val_accuracy did not improve in the last 10 records. Signaling Trainer to stop.',
+          file=sys.stderr)
 sys.exit(int(os.environ.get('FAKE_KETOS_EXIT', '0')))
 """
 

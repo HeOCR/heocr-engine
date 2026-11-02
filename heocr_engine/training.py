@@ -367,6 +367,29 @@ def _scan_log(path: Path) -> dict:
     return found
 
 
+def _stop_from_history(history: list[dict], hyperparameters: Hyperparameters) -> str | None:
+    """Replay Lightning's EarlyStopping rule on the validation history.
+
+    ketos 7.0.2 builds EarlyStopping(monitor="val_accuracy", mode="max", patience=lag, stopping_threshold=1.0)
+    without verbose=True, so a real run logs no stop message. Accuracy cannot exceed the threshold, so only
+    patience can stop the run: the last `lag` runs did not beat the best before them.
+    """
+    if hyperparameters.quit != "early" or not history:
+        return None
+    best, wait = -math.inf, 0
+    for row in history:
+        if row["val_accuracy"] > best:
+            best, wait = row["val_accuracy"], 0
+        else:
+            wait += 1
+    if wait >= hyperparameters.lag:
+        return "early_stopping"
+    if (hyperparameters.epochs > 0 and hyperparameters.validation_frequency == 1
+            and len(history) == hyperparameters.epochs):
+        return "epoch_limit"
+    return None
+
+
 def _portable(args: list[str], tokens: dict[str, str]) -> list[str]:
     """Replace local paths in a command with placeholders such as <ketos> and <work>."""
     out = []
@@ -487,7 +510,8 @@ def train_kraken(annotations: Path, manifest: Path, work: Path, ketos: Path, *, 
                    if (match := CHECKPOINT.fullmatch(path.name)) and match[2] == score_text]
     scanned = _scan_log(log)
     history = scanned["history"]
-    stopped_by = "epoch_limit" if hyperparameters.quit == "fixed" else scanned["stopped_by"] or "unknown"
+    stopped_by = ("epoch_limit" if hyperparameters.quit == "fixed" else scanned["stopped_by"]
+                  or _stop_from_history(history, hyperparameters) or "unknown")
     expected = {"train": summary["train"]["lines"], "validation": summary["validation"]["lines"]}
     tokens = {str(ketos): "<ketos>", str(work): "<work>"}
     record = {

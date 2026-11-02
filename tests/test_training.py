@@ -4,6 +4,7 @@ import io
 import json
 import os
 from pathlib import Path
+import shutil
 import sys
 import tempfile
 import unittest
@@ -274,6 +275,17 @@ class TrainKrakenTests(TrainingTestCase):
         with patch.dict(os.environ, {'FAKE_KETOS_DROP': '2'}):
             record = self.train()
         self.assertEqual(record['outcome']['lines_dropped_by_ketos']['train'], 2)
+
+    def test_quiet_early_stop_is_inferred_from_history(self):
+        # Accuracies 0.162, 0.5, 0.5: one run without improvement after the best.
+        with patch.dict(os.environ, {'FAKE_KETOS_QUIET': '1'}):
+            self.assertEqual(self.train(hyperparameters=Hyperparameters(lag=1))['outcome']['stopped_by'],
+                             'early_stopping')
+            shutil.rmtree(self.root / 'work')
+            self.assertEqual(self.train(hyperparameters=Hyperparameters(lag=2))['outcome']['stopped_by'], 'unknown')
+            shutil.rmtree(self.root / 'work')
+            self.assertEqual(self.train(hyperparameters=Hyperparameters(lag=2, epochs=3))['outcome']['stopped_by'],
+                             'epoch_limit')
 
     def test_bad_settings_fail_before_running(self):
         for changes in ({'device': 'gpu; rm'}, {'precision': 'fp8'}, {'seed': -1}, {'timeout': 0},
