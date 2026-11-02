@@ -14,6 +14,7 @@ Planned work uses `R<milestone><slice>`, for example `R1a`. `R` stands for the r
 
 - [R1 — Runtime foundations and plug-in path](milestones/r1-runtime-foundations.md) (complete)
 - [R2 — First baseline results and runtime hardening](milestones/r2-baseline-results.md)
+- [R3 — First trained recognizer](milestones/r3-first-trained-recognizer.md)
 
 ## Decisions
 
@@ -25,3 +26,4 @@ Planned work uses `R<milestone><slice>`, for example `R1a`. `R` stands for the r
 | [0004](decisions/0004-scored-set.md) | Synthetic gold is the reported number; real pages are `unreviewed` diagnostics |
 | [0005](decisions/0005-proprietary-track.md) | No proprietary or network code; proprietary predictions enter as `track: proprietary` |
 | [0006](decisions/0006-model-licences.md) | Kraken baseline models are user-supplied and hashed; BiblIA_01 is CC-BY-SA-4.0, `blla` is Apache-2.0 |
+| [0007](decisions/0007-first-trained-recognizer.md) | The first trained recognizer starts from scratch (no BiblIA_01 weights); its licence is `Needs verification` with the maintainer; it is not published; segmentation stays `blla` |

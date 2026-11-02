@@ -16,6 +16,10 @@ Each run writes one `heocr_engine_prediction.v1` JSON object per page; see [docs
 
 `heocr-engine kraken IMAGE OUT --executable … --segmentation-model … --recognition-model …` runs kraken (`pip install 'heocr-engine[kraken]'`) with local, user-supplied models. See [docs/baselines.md](docs/baselines.md) for the reference models and their licences.
 
+## Training a recognizer
+
+`heocr-engine train-kraken ANNOTATIONS MANIFEST WORK_DIR RECORD --ketos …` turns a hocrsyngen batch with `line_annotations.json` into PAGE XML, trains a Kraken recognizer from scratch with a local `ketos`, and writes a path-free `heocr_engine_training_run.v1` record. `heocr-engine prepare-kraken-data` runs only the conversion. See [docs/training_run_contract.md](docs/training_run_contract.md) and decision 0007. Trained weights stay local and are not published.
+
 ## Pipelines and outside contributions
 
 `heocr-engine run IMAGE OUTPUT --pipeline pipeline.json` composes preprocess, recognize and post-correct stages, which can be local subprocesses or installed Python entry points. `heocr-engine validate-predictions FILE...` checks prediction files submitted from elsewhere, including `track: proprietary` outputs, which are reported separately. See [docs/stages.md](docs/stages.md). `heocr-engine tesseract ...` is the same as the original command.
