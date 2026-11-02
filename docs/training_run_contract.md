@@ -11,8 +11,11 @@ The training data is a hocrsyngen batch: its `generation_manifest.json`, its pag
  "coordinate_space": "final_page_pixels",
  "pages": [{"sample_id": "…", "page_id": "…", "page_sha256": "<64 hex>", "width": 1200, "height": 1600,
             "lines": [{"line_index": 0, "region": "body", "text": "שלום 96",
-                       "polygon": [[x, y], …], "baseline": [[x, y], …]}]}]}
+                       "polygon": [[x, y], …], "baseline": [[x, y], …],
+                       "logical_line_index": 0, "logical_join": null, "occluded": false}]}]}
 ```
+
+A physical line is not a logical line. Body text wraps, and each ledger cell is drawn as its own line. `logical_line_index` points into the sample's `text.logical_order.split("\n")` in the manifest. It is `null` for text that is drawn on the page but is absent from `logical_order`, such as stamps and marginalia. `logical_join` is `"space"` for a wrap continuation, `"cell"` for a ` | ` table cell, or `null` for the first segment. `occluded` is true when a stamp or overlay polygon overlaps the line. Training uses physical lines and each line's own `text`. Lines outside `logical_order` are trained on, because their text is really drawn; occluded lines are trained on and counted.
 
 The converter fails closed unless:
 
@@ -20,6 +23,8 @@ The converter fails closed unless:
 - every page appears in the manifest with the same `sample_id`, `page_sha256`, `width` and `height`, and the image bytes hash to `page_sha256`. Asset paths must stay inside the manifest's directory;
 - coordinates are integers inside the page, polygons have at least 3 points and baselines at least 2;
 - `text` is non-empty NFC with no control characters, no line or paragraph separators, no invisible bidi controls (LRM, RLM, ALM, embeddings, overrides, isolates) and no leading or trailing whitespace. Text is in logical order;
+- baselines run left to right in pixel x (first x below last, never decreasing);
+- `logical_line_index` is `null` or an index into the manifest's `logical_order` lines, `logical_join` is `null`, `"space"` or `"cell"` (and `null` when `logical_line_index` is `null`), and `occluded` is a boolean;
 - `line_index` values are unique within a page, and no page image appears twice.
 
 ## Conversion and split
@@ -46,7 +51,7 @@ Ground truth is in Unicode logical order. Kraken 7.0.2 trains on display (left-t
 | `trainer` | `name` (`ketos`), `version` (from `ketos --version`), `executable_sha256`, and `kraken_version` and `kraken_executable_sha256` when `--kraken` is given (otherwise `null`). |
 | `task` | `"recognition"`. |
 | `init` | `"from_scratch"`. No weights are loaded (`-i`, `--load` and `--resume` are rejected). See decision 0007. |
-| `data` | `annotation_schema`, `annotations_sha256`, `generation_manifest_sha256`; `corpora[]` as `{sha256, bytes}` for each `--corpus` text file; `split` (`unit: "sample"`, `method: "sha256_rank"`, `split_seed`, `validation_fraction`, and `assignment_sha256`, the sha256 of the canonical JSON of the per-page rows in `dataset.json`); `train` and `validation` as `{samples, pages, lines, pages_by_template}`. |
+| `data` | `annotation_schema`, `annotations_sha256`, `generation_manifest_sha256`; `corpora[]` as `{sha256, bytes}` for each `--corpus` text file; `split` (`unit: "sample"`, `method: "sha256_rank"`, `split_seed`, `validation_fraction`, and `assignment_sha256`, the sha256 of the canonical JSON of the per-page rows in `dataset.json`); `train` and `validation` as `{samples, pages, lines, lines_outside_logical_order, occluded_lines, pages_by_template}`. |
 | `text_order` | `ground_truth: "logical"`, `training_reorder: true`, `base_dir`, `inference_reorder: true`, `inference_base_dir`. |
 | `commands` | `compile_train`, `compile_validation` and `train` argument lists, with the ketos path replaced by `<ketos>` and the work directory by `<work>`. |
 | `hyperparameters` | Everything passed to `ketos train`: `spec` (VGSL; the default is ketos 7.0.2's own default, passed explicitly), `batch_size`, `learning_rate`, `optimizer`, `schedule`, `quit` (`early` or `fixed`), `epochs`, `min_epochs`, `lag`, `validation_frequency`, `padding`, `augment`. |

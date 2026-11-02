@@ -67,6 +67,11 @@ class ConverterTests(TrainingTestCase):
         self.assertEqual(summary['validation']['samples'], 1)
         self.assertEqual(summary['train']['lines'] + summary['validation']['lines'],
                          sum(len(lines) for _, lines in SAMPLES))
+        # Stamp text outside logical_order is real drawn text and is trained on; occlusion is only counted.
+        for key, expected in (('lines_outside_logical_order', 1), ('occluded_lines', 2)):
+            self.assertEqual(summary['train'][key] + summary['validation'][key], expected)
+        self.assertIn('אישור', '\n'.join((out / 'pages' / name).read_text(encoding='utf-8')
+                                         for name in os.listdir(out / 'pages') if name.endswith('.xml')))
         dataset = (out / 'dataset.json').read_text(encoding='utf-8')
         self.assertNotIn(str(self.root), dataset)
         listed = [Path(p) for name in ('train', 'validation')
@@ -114,6 +119,13 @@ class ConverterTests(TrainingTestCase):
             'float point': line(lambda ln: ln.update(baseline=[[0.5, 1], [3, 1]])),
             'bool point': line(lambda ln: ln.update(baseline=[[True, 1], [3, 1]])),
             'short baseline': line(lambda ln: ln.update(baseline=[[1, 1]])),
+            'right-to-left baseline': line(lambda ln: ln.update(baseline=[[200, 30], [20, 30]])),
+            'logical index past logical_order': line(lambda ln: ln.update(logical_line_index=2)),
+            'logical index type': line(lambda ln: ln.update(logical_line_index='0')),
+            'unknown join': line(lambda ln: ln.update(logical_join='newline')),
+            'join without logical line': line(lambda ln: ln.update(logical_line_index=None, logical_join='space')),
+            'missing occluded': line(lambda ln: ln.pop('occluded')),
+            'occluded not bool': line(lambda ln: ln.update(occluded=1)),
         }
         original = self.annotations.read_text(encoding='utf-8')
         for name, change in cases.items():
@@ -155,7 +167,7 @@ class ConverterTests(TrainingTestCase):
 class BidiRoundTripTests(unittest.TestCase):
     """Training and inference must apply inverse reorderings for a perfect model to score zero CER."""
 
-    LINES = [text for _, lines in SAMPLES for text in lines] + ['123 שלום', 'מחיר: $5.', 'שלום [א] {ב}']
+    LINES = [line[0] for _, lines in SAMPLES for line in lines] + ['123 שלום', 'מחיר: $5.', 'שלום [א] {ב}']
 
     def test_training_and_inference_share_direction(self):
         recognizer = KrakenRecognizer(Path('kraken'), Path('seg'), Path('rec'))
@@ -182,7 +194,7 @@ class BidiRoundTripTests(unittest.TestCase):
                 self.assertNotEqual(target, text)
                 self.assertEqual(infer(target), text)
         # Training without reordering would make a perfect model's output come back scrambled.
-        self.assertNotEqual(infer(SAMPLES[0][1][0]), SAMPLES[0][1][0])
+        self.assertNotEqual(infer(SAMPLES[0][1][0][0]), SAMPLES[0][1][0][0])
 
 
 class TrainKrakenTests(TrainingTestCase):

@@ -75,7 +75,7 @@ def _points(value, width: int, height: int, minimum: int) -> list[tuple[int, int
     return points
 
 
-def _line(line, width: int, height: int) -> dict:
+def _line(line, width: int, height: int, logical_lines: int | None) -> dict:
     if not isinstance(line, dict) or not _is_int(line.get("line_index"), 0, 1_000_000):
         raise EngineError("Invalid line annotation")
     text, region = line.get("text"), line.get("region")
@@ -85,9 +85,19 @@ def _line(line, width: int, height: int) -> dict:
             or not unicodedata.is_normalized("NFC", text)
             or any(unicodedata.category(c) in {"Cc", "Zl", "Zp"} or c in BIDI_CONTROLS for c in text)):
         raise EngineError("Line text must be non-empty NFC text without controls or outer whitespace")
+    # A physical line maps to one logical line (null for drawn text outside logical_order, such as stamps),
+    # continuing it after a wrap ("space") or as a table cell ("cell").
+    logical, join, occluded = line.get("logical_line_index"), line.get("logical_join"), line.get("occluded")
+    if (not (logical is None or _is_int(logical, 0, (logical_lines or 1_000_001) - 1))
+            or join not in (None, "space", "cell") or (logical is None and join is not None)
+            or not isinstance(occluded, bool)):
+        raise EngineError("Invalid logical line mapping or occlusion flag")
+    baseline = _points(line.get("baseline"), width, height, 2)
+    if baseline[0][0] >= baseline[-1][0] or any(a[0] > b[0] for a, b in zip(baseline, baseline[1:])):
+        raise EngineError("Baselines must run left to right")
     return {"line_index": line["line_index"], "region": region, "text": text,
-            "polygon": _points(line.get("polygon"), width, height, 3),
-            "baseline": _points(line.get("baseline"), width, height, 2)}
+            "polygon": _points(line.get("polygon"), width, height, 3), "baseline": baseline,
+            "logical_line_index": logical, "logical_join": join, "occluded": occluded}
 
 
 def _manifest_pages(manifest: dict, root: Path) -> dict[str, dict]:
@@ -100,6 +110,9 @@ def _manifest_pages(manifest: dict, root: Path) -> dict[str, dict]:
         if not isinstance(sample, dict) or not isinstance(sample.get("pages"), list):
             raise EngineError("Invalid generation manifest")
         provenance = sample.get("provenance") if isinstance(sample.get("provenance"), dict) else {}
+        text = sample.get("text") if isinstance(sample.get("text"), dict) else {}
+        logical_order = text.get("logical_order")
+        logical_lines = len(logical_order.split("\n")) if isinstance(logical_order, str) else None
         for page in sample["pages"]:
             asset = page.get("asset_path") if isinstance(page, dict) else None
             if (not isinstance(asset, str) or PurePosixPath(asset).is_absolute()
@@ -110,7 +123,8 @@ def _manifest_pages(manifest: dict, root: Path) -> dict[str, dict]:
                 raise EngineError("Invalid manifest asset path or duplicate page")
             pages[page.get("page_id")] = {"sample_id": sample.get("sample_id"), "sha256": page.get("sha256"),
                                           "width": page.get("width"), "height": page.get("height"),
-                                          "path": path, "template_id": provenance.get("template_id")}
+                                          "path": path, "template_id": provenance.get("template_id"),
+                                          "logical_lines": logical_lines}
     return pages
 
 
@@ -148,7 +162,8 @@ def load_annotated_pages(annotations: Path, manifest: Path) -> tuple[list[dict],
             raise EngineError("Page image does not match its annotation")
         if not isinstance(page.get("lines"), list):
             raise EngineError("Invalid page annotation")
-        lines = sorted((_line(line, width, height) for line in page["lines"]), key=lambda x: x["line_index"])
+        lines = sorted((_line(line, width, height, asset["logical_lines"]) for line in page["lines"]),
+                       key=lambda x: x["line_index"])
         if len({line["line_index"] for line in lines}) != len(lines):
             raise EngineError("Duplicate line index")
         pages.append({"sample_id": page["sample_id"], "page_id": page["page_id"], "page_sha256": sha,
@@ -234,7 +249,10 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
             lists[split].append(str(xml_path.resolve()))
         entries.append({"sample_id": page["sample_id"], "page_id": page["page_id"],
                         "page_sha256": page["page_sha256"], "template_id": page["template_id"],
-                        "split": split, "lines": len(page["lines"]), "page_xml_sha256": digest(xml)})
+                        "split": split, "lines": len(page["lines"]),
+                        "lines_outside_logical_order": sum(line["logical_line_index"] is None for line in page["lines"]),
+                        "occluded_lines": sum(line["occluded"] for line in page["lines"]),
+                        "page_xml_sha256": digest(xml)})
     for split, paths in lists.items():
         if not paths:
             raise EngineError(f"The {split} split has no annotated lines")
@@ -250,7 +268,10 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
             key = entry["template_id"] if isinstance(entry["template_id"], str) else "unknown"
             templates[key] = templates.get(key, 0) + 1
         summary[split] = {"samples": len({entry["sample_id"] for entry in chosen}), "pages": len(chosen),
-                          "lines": sum(entry["lines"] for entry in chosen), "pages_by_template": dict(sorted(templates.items()))}
+                          "lines": sum(entry["lines"] for entry in chosen),
+                          "lines_outside_logical_order": sum(entry["lines_outside_logical_order"] for entry in chosen),
+                          "occluded_lines": sum(entry["occluded_lines"] for entry in chosen),
+                          "pages_by_template": dict(sorted(templates.items()))}
     with (output / "dataset.json").open("x", encoding="utf-8") as stream:
         json.dump({**summary, "pages": entries}, stream, ensure_ascii=False, indent=2)
         stream.write("\n")

@@ -12,12 +12,25 @@ from pathlib import Path
 from PIL import Image, ImageDraw
 
 WIDTH, HEIGHT = 240, 160
+# Physical lines as (text, logical_line_index, logical_join, occluded). A body line may wrap ("space"),
+# a ledger row is drawn as separate cells ("cell"), and a stamp is drawn but absent from logical_order.
 SAMPLES = (
-    ("printed_letter", ["שלום עולם", "סימן 96"]),
-    ("printed_form", ['התשלום (שולם) בסך 1,250.50 ש"ח', "קובץ report.pdf נשלח"]),
-    ("handwritten_note", ["א-ב: 12/03/2024", "אותיות סופיות ךםןףץ"]),
-    ("handwritten_list", ["רשימה קצרה", "פריט 3 מתוך 7", "סוף הרשימה."]),
+    ("printed_letter", [("שלום עולם", 0, None, False), ("סימן 96", 1, None, False)]),
+    ("printed_form", [('התשלום (שולם) בסך 1,250.50 ש"ח', 0, None, False),
+                      ("קובץ report.pdf נשלח", 1, None, True), ("אישור", None, None, True)]),
+    ("handwritten_note", [("א-ב: 12/03/2024", 0, None, False), ("אותיות סופיות", 1, None, False),
+                          ("ךםןףץ", 1, "space", False)]),
+    ("ledger", [("פריט 3", 0, None, False), ("מתוך 7", 0, "cell", False), ("סוף הרשימה.", 1, None, False)]),
 )
+JOINERS = {"space": " ", "cell": " | "}
+
+
+def logical_order(lines) -> str:
+    rows: dict[int, str] = {}
+    for text, logical, join, _ in lines:
+        if logical is not None:
+            rows[logical] = rows[logical] + JOINERS[join] + text if join else text
+    return "\n".join(rows[index] for index in sorted(rows))
 
 
 def line_geometry(index: int) -> tuple[list[list[int]], list[list[int]]]:
@@ -46,13 +59,15 @@ def build_batch(root: Path, samples=SAMPLES) -> tuple[Path, Path]:
         image.save(path)
         sha = hashlib.sha256(path.read_bytes()).hexdigest()
         manifest["samples"].append({"sample_id": sample_id, "provenance": {"template_id": template, "seed": 7},
+                                    "text": {"logical_order": logical_order(lines), "unicode_normalization": "NFC"},
                                     "pages": [{"page_id": page_id, "asset_path": asset, "sha256": sha,
                                                "width": WIDTH, "height": HEIGHT, "media_type": "image/png"}]})
         pages.append({"sample_id": sample_id, "page_id": page_id, "page_sha256": sha, "width": WIDTH,
                       "height": HEIGHT, "lines": [
-                          {"line_index": index, "region": "body", "text": text,
-                           "polygon": line_geometry(index)[0], "baseline": line_geometry(index)[1]}
-                          for index, text in enumerate(lines)]})
+                          {"line_index": index, "region": "stamp" if logical is None else "body", "text": text,
+                           "polygon": line_geometry(index)[0], "baseline": line_geometry(index)[1],
+                           "logical_line_index": logical, "logical_join": join, "occluded": occluded}
+                          for index, (text, logical, join, occluded) in enumerate(lines)]})
     manifest_path = root / "generation_manifest.json"
     manifest_path.write_text(json.dumps(manifest, ensure_ascii=False, indent=2), encoding="utf-8")
     annotations = {"schema": "hocrsyngen_line_annotations.v1",
