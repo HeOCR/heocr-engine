@@ -76,3 +76,78 @@ Limits:
 - **Handwriting-style font, not handwriting.** The `handwritten_*` templates are rendered with a handwriting-style font. They do not measure real handwritten text recognition.
 - **One batch, one seed, no confidence intervals.** Small differences between engines or profiles are not established.
 - **No claim about real pages.** These numbers say nothing about HASH scans, tender pages or other real material (decision 0004). Real pages remain `unreviewed` diagnostics until references with evidence exist.
+
+## R3b: first trained recognizer, synthetic gold (2026-11-02)
+
+R3b is HeOCR's first own Kraken recognition model. It was trained from scratch on synthetic hocrsyngen pages ([decision 0007](../planning/decisions/0007-first-trained-recognizer.md)), and run with the same `blla` segmentation and Kraken 7.0.2 as the BiblIA_01 baseline: `heocr-engine kraken … --recognition-model best_0.9985.safetensors --base-dir R`. Against BiblIA_01, hocrgen attributes the delta to one stage, the recognition model being replaced. The weights are not in this repository and are not published; their licence is `Needs verification`.
+
+**Seed-101 images, S10c gold (headline).** These are the same 80 page images as R2a, scored against the corrected S10c gold, which includes stamp and marginalia text. `primary.v1` CER / WER:
+
+| Template | R3b | Tesseract | Kraken + BiblIA_01 |
+|---|---|---|---|
+| `printed_letter` | 0.267 / 0.494 | 0.111 / 0.232 | 0.261 / 0.567 |
+| `printed_letter_heavy_scan` | 0.377 / 0.701 | 0.122 / 0.230 | 0.308 / 0.602 |
+| `handwritten_note` | 0.208 / 0.438 | 0.641 / 0.998 | 0.509 / 0.953 |
+| `handwritten_note_heavy_wear` | 0.261 / 0.567 | 0.658 / 0.994 | 0.506 / 0.962 |
+| **overall** | **0.286 / 0.558** | **0.338 / 0.553** | **0.377 / 0.742** |
+
+- **Deltas (R3b minus baseline, 80 common items):**
+  - against Tesseract, ΔCER −0.052 and ΔWER +0.004;
+  - against BiblIA_01, ΔCER −0.091 and ΔWER −0.184.
+- **Other profiles, overall CER (R3b / Tesseract / BiblIA_01):** `raw.v1` 0.286 / 0.352 / 0.378; `consonantal.v1` 0.283 / 0.336 / 0.375.
+- **S8j gold, the R2a table above:** R3b scores 0.299 / 0.581 overall, against 0.379 / 0.610 and 0.428 / 0.801. By template: 0.314 / 0.555, 0.388 / 0.740, 0.206 / 0.430 and 0.254 / 0.560.
+
+**Held-out batch.** 80 new pages, 20 per benchmark template, with text from the hocrsyngen eval corpus (disjoint from the training corpus). `primary.v1` CER / WER:
+
+| Template | R3b | Tesseract |
+|---|---|---|
+| `printed_letter` | 0.408 / 0.657 | 0.102 / 0.189 |
+| `printed_letter_heavy_scan` | 0.519 / 0.841 | 0.138 / 0.218 |
+| `handwritten_note` | 0.312 / 0.585 | 0.687 / 0.976 |
+| `handwritten_note_heavy_wear` | 0.334 / 0.628 | 0.663 / 0.976 |
+| **overall** | **0.404 / 0.688** | **0.353 / 0.535** |
+
+R3b minus Tesseract is ΔCER +0.051 and ΔWER +0.153.
+
+**Oracle-line diagnostic.** This isolates recognition from segmentation. Kraken recognizes the true line polygons and baselines, and the output is compared after NFC normalization only; it is not a hocrgen score. It runs on cpu from PAGE XML in logical order, so it is not identical to ketos's own validation (mps, arrow, display order): on the validation split it counts 42 character errors where ketos counted 23 for the same weights. CER / WER:
+
+| Template | Held-out batch | R3b validation split |
+|---|---|---|
+| `printed_letter` | 0.006 / 0.013 | 0.002 / 0.008 |
+| `printed_letter_heavy_scan` | 0.002 / 0.008 | 0.002 / 0.005 |
+| `handwritten_note` | 0.012 / 0.034 | 0.018 / 0.041 |
+| `handwritten_note_heavy_wear` | 0.015 / 0.045 | 0.004 / 0.017 |
+| `archive_card` / `archive_card_faded_scan` | — | 0.000 / 0.000 |
+| `ledger` | — | 0.002 / 0.003 |
+| overall | 0.008 / 0.023 (643 lines) | 0.003 / 0.008 (1,553 lines) |
+
+**Reading.**
+- **Segmentation dominates the end-to-end error.** On the true lines, recognition error is about 1%. End to end it is 29–40%. `blla` splits lines into fragments and mixes their order, and recognition on its crops is weaker than on the training polygons.
+- **By template:** R3b is much better than both baselines on the handwriting-style templates and much worse than Tesseract on the printed ones. Tesseract's own layout analysis copes with printed pages far better.
+- **No overall ranking against Tesseract.** R3b's overall CER beats Tesseract's on the seed-101 images (0.286 against 0.338) but loses on the held-out batch (0.404 against 0.353). The overall figure depends on the template mix and the text, so only the per-template differences are robust.
+- **Next lever:** improving segmentation is the next step for this pipeline, more than recognition.
+- **Real scans:** on the 10-page `unreviewed` real-scan sanity check, R3b reads almost nothing (`consonantal.v1` CER 0.890 against BiblIA_01's 0.895). This is a diagnostic only, never a result (decision 0004).
+
+Run identities:
+
+| Part | Identity |
+|---|---|
+| heocr-engine | `37f952f` (R3a1, version 0.2.0) for training and inference |
+| hocrsyngen | `bbcaf0e` (S10c) for the training and held-out batches |
+| hocrgen | `2d3efb0` (hocrgen 0.1.0); all six sets were rescored with it, and the R2a S8j numbers reproduce exactly |
+| Training batch | Seed 5101, 1,800 pages over all 7 templates, train corpus sha256 `a3f2f0db1bf48d8cdd618579af42ca36710cadf81cdc4d5e89d2dc6c192e6611`. Manifest `29dffcca283770c56dedb4e53b57ccae289ec37124fd4399d968d93a3dd9295a`, line annotations `5d1155cff7f17044e7035ef831718ad55e4880766908c3e0c3a11f50a81f71d0` |
+| Split | By sample, split seed 0, 5%: train 1,710 pages / 27,487 lines, validation 90 pages / 1,553 lines |
+| Training | ketos 7.0.2 default VGSL spec, from scratch, `--augment`, batch 16, lr 0.001, AdamW, constant schedule. Early stopping with lag 3 and min-epochs 5. mps, seed 42, not deterministic. Stopped after 12 epochs; best epoch 8, val_accuracy 0.9985 (kraken-internal, display order) |
+| Model | `best_0.9985.safetensors`, sha256 `0b5a0c3c0d66599095068f94234e86f563e17182a34b863d7e4941ef54b9e362`; licence `Needs verification`, unpublished |
+| Seed-101 references | S10c gold, manifest `c4b4ca4ed5b92080c0a4d13c4fa2da505080da11b37203ecb0d4fa1bcb164ec3`; S8j gold, `9b6e54f7…` as above; mapping `181bc78d…` as above |
+| Held-out references | Seed 6101, eval corpus sha256 `89e52f8b90cdbb8a276fbdaf96530afff2cc266e13ad6355c215c79e5a58d97f`, manifest `d6ed102d8ef7787d03b400776924354bebfadd5af482d0e1cbe03de89724c7c1`, mapping `dc4537d46ec9886224244199e32f4468a674cfd38d35c6398585f11347f5210a` |
+| R3b predictions | Seed-101 `8542f76dc07a005fd0b747e7c5c929ca2e069a7336227538d5268244e02ae8fe`; held-out `07bd0d1741c250309ff32f22f3dad906bc2031a0f2de998909660c17234b2aa9` |
+| Tesseract predictions | Seed-101: the R2a set `9f1c36d5…`. Held-out: `21ac20191797f4f93fa9bd467763be6c13c459c5f33c3c95604ec9cfdf328d48`, same binaries and `--psm 3` |
+| BiblIA_01 predictions | Seed-101: the R2a set `bd546828…` |
+
+Limits (in addition to those above):
+
+- **Same generator for training and test.** The model has seen every font, template and degradation preset it is scored on; only the text differs. These numbers measure in-distribution synthetic performance.
+- **One training run and one seed per batch.** There are no confidence intervals.
+- **Agent-authored corpora.** The training and evaluation text was written by the project (hocrsyngen S10b), not drawn from real documents.
+- **The validation split selected the checkpoint** and was not used as a test set. The held-out batch and the seed-101 images were not seen in training.
