@@ -195,6 +195,23 @@ class KrakenPythonStageTests(unittest.TestCase):
         with self.assertRaises(EngineError):
             self.run_stage(self.stage(), FakeKraken(learned=(0, 0, 1)))
 
+    def test_missing_or_extra_recognition_records_fail_closed(self):
+        for records in (lambda lines: lines[:-1], lambda lines: lines + lines[:1]):
+            fake = FakeKraken()
+
+            def recognizer(models, records=records):
+                class Task:
+                    def predict(self, im, segmentation, config):
+                        return iter([Record(line.id, TEXT[line.id]) for line in records(segmentation.lines)])
+                return Task()
+
+            fake.recognizer = recognizer
+            for reading_order in (True, False):
+                stage = self.stage(reading_order=reading_order)
+                with self.assertRaises(EngineError):
+                    self.run_stage(stage, fake)
+                self.assertIsNone(stage.last_geometry)
+
     def test_rejects_region_level_and_mismatched_reading_order_models(self):
         for metadata in ({"level": "regions", "class_mapping": {}},
                          {"level": "baselines", "class_mapping": {"default": 2}}):
