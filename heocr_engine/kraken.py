@@ -13,20 +13,22 @@ from heocr_engine.cli import EngineError, digest, read_limited, run_process
 from heocr_engine.stages import Page, RecognitionResult, StageInfo, config_digest
 
 BASE_DIRS = ("L", "R", "auto")
-# Principal text direction for `segment -bl`, which sets kraken's line reading order. Kraken's own
-# default is horizontal-lr; R2 and R3b predictions were made with it (no `text_direction` in details).
+# Principal text direction for `segment -bl`, which sets kraken's line reading order. By default it follows
+# the base direction; `auto` passes no `-d`, leaving kraken's own default (horizontal-lr in 7.0.2), which
+# R2 and R3b predictions used (no `text_direction` in their details). Decision 0009.
 TEXT_DIRECTIONS = ("horizontal-rl", "horizontal-lr")
+DIRECTION_FOR_BASE = {"R": "horizontal-rl", "L": "horizontal-lr", "auto": None}
 MAX_MODEL_BYTES = 2_000_000_000
 VERSION = re.compile(r"kraken, version ([A-Za-z0-9.+_~-]+)")
 
 
 def kraken_recognize(raw: bytes, executable: Path, segmentation_model: Path,
                      recognition_model: Path, base_dir: str = "R",
-                     timeout: float = 600, text_direction: str = "horizontal-rl") -> tuple[str, dict]:
+                     timeout: float = 600, text_direction: str | None = "horizontal-rl") -> tuple[str, dict]:
     """Return raw text and engine provenance. Kraken reorders code points to logical order."""
     if base_dir not in BASE_DIRS:
         raise EngineError("Invalid base direction")
-    if text_direction not in TEXT_DIRECTIONS:
+    if text_direction is not None and text_direction not in TEXT_DIRECTIONS:
         raise EngineError("Invalid text direction")
     if not math.isfinite(timeout) or not 0 < timeout <= 3600:
         raise EngineError("Invalid timeout")
@@ -50,7 +52,8 @@ def kraken_recognize(raw: bytes, executable: Path, segmentation_model: Path,
         target = root / "result.txt"
         # Baseline segmentation, then recognition with reordering to Unicode logical order.
         run_process([str(executable), "-i", str(source), str(target),
-                     "segment", "-bl", "-d", text_direction, "-i", str(segmentation_model),
+                     "segment", "-bl", *(["-d", text_direction] if text_direction else []),
+                     "-i", str(segmentation_model),
                      "ocr", "-m", str(recognition_model), "--reorder", "--base-dir", base_dir],
                     timeout, name="Kraken")
         try:
@@ -65,9 +68,10 @@ class KrakenRecognizer:
     """Kraken as one recognize stage; its segmentation model is listed among the artifacts."""
 
     def __init__(self, executable: Path, segmentation_model: Path, recognition_model: Path,
-                 base_dir: str = "R", timeout: float = 600, text_direction: str = "horizontal-rl"):
+                 base_dir: str = "R", timeout: float = 600, text_direction: str | None = None):
         self.executable, self.timeout, self.base_dir = executable, timeout, base_dir
-        self.text_direction = text_direction
+        # An explicit direction overrides the one the base direction implies; null means kraken's default.
+        self.text_direction = text_direction or DIRECTION_FOR_BASE.get(base_dir)
         self.segmentation_model, self.recognition_model = segmentation_model, recognition_model
         self.info = StageInfo("recognize", "kraken", "unknown", deterministic=True,
                               license="Apache-2.0",

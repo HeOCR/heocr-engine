@@ -15,8 +15,12 @@ Decision 0008 kept that order for the first trained segmenter and left a change 
 
 ## Decision
 
-- `heocr-engine kraken` passes `-d horizontal-rl` by default. `--text-direction horizontal-lr` (or `"text_direction"` in a pipeline config) restores Kraken's default.
-- The direction is recorded in the stage `details` and `config_sha256`. Predictions without `text_direction` (R2a, R3b) used `horizontal-lr`.
+- `heocr-engine kraken` ties the segmentation direction to `--base-dir`:
+  - `R`, the default, passes `-d horizontal-rl`;
+  - `L` passes `-d horizontal-lr`;
+  - `auto` passes no `-d`, which keeps Kraken's own default.
+- `--text-direction` (or `"text_direction"` in a pipeline config) overrides it.
+- The direction is recorded in the stage `details` (`null` for Kraken's default) and `config_sha256`. Predictions without `text_direction` (R2a, R3b) used Kraken's default, `horizontal-lr`.
 - A segmentation training record's `segmentation.inference.text_direction` states `horizontal-rl`. Records written before this decision state `horizontal-lr`, which was correct for them.
 
 ## Consequences
