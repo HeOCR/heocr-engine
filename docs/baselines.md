@@ -317,16 +317,29 @@ Tesseract alone scores 0.338 / 0.553 (seed-101) and 0.353 / 0.535 (held-out).
 - **Tesseract lines:** as in R4a.
 - **(e):** the R3c data path's polygonizer, run on the gold baselines. It drops one seed-101 line, which scores as deleted.
 
-R3c with `blla -d horizontal-rl`, by template (`primary.v1` CER / WER):
+**By template, pipelines only (`primary.v1` CER / WER; best CER per row in bold):**
 
-| Template | Seed-101 | Held-out |
-|---|---|---|
-| `printed_letter` | 0.160 / 0.286 | 0.244 / 0.432 |
-| `printed_letter_heavy_scan` | 0.209 / 0.354 | 0.284 / 0.484 |
-| `handwritten_note` | 0.147 / 0.272 | 0.210 / 0.360 |
-| `handwritten_note_heavy_wear` | 0.143 / 0.273 | 0.207 / 0.356 |
+| Template | Tesseract alone | R3b + Tesseract lines | R3c + Tesseract lines | R3c + `blla -d horizontal-rl` |
+|---|---|---|---|---|
+| **Seed-101, S10c gold** | | | | |
+| `printed_letter` | **0.111** / 0.232 | 0.220 / 0.339 | 0.264 / 0.433 | 0.160 / 0.286 |
+| `printed_letter_heavy_scan` | **0.122** / 0.230 | 0.293 / 0.489 | 0.249 / 0.400 | 0.209 / 0.354 |
+| `handwritten_note` | 0.641 / 0.998 | 0.111 / 0.266 | **0.071** / 0.170 | 0.147 / 0.272 |
+| `handwritten_note_heavy_wear` | 0.658 / 0.994 | 0.181 / 0.412 | **0.089** / 0.218 | 0.143 / 0.273 |
+| overall | 0.338 / 0.553 | 0.211 / 0.383 | 0.183 / 0.323 | **0.168** / 0.300 |
+| **Held-out s6101** | | | | |
+| `printed_letter` | **0.102** / 0.189 | 0.168 / 0.317 | 0.268 / 0.464 | 0.244 / 0.432 |
+| `printed_letter_heavy_scan` | **0.138** / 0.218 | 0.212 / 0.383 | 0.280 / 0.455 | 0.284 / 0.484 |
+| `handwritten_note` | 0.687 / 0.976 | **0.095** / 0.186 | 0.133 / 0.249 | 0.210 / 0.360 |
+| `handwritten_note_heavy_wear` | 0.663 / 0.976 | 0.149 / 0.327 | **0.117** / 0.272 | 0.207 / 0.356 |
+| overall | 0.353 / 0.535 | **0.162** / 0.311 | 0.211 / 0.375 | 0.241 / 0.415 |
 
-Tesseract alone on the printed templates is 0.111 / 0.122 (seed-101) and 0.102 / 0.138 (held-out) CER.
+**Best pipeline:**
+- **Overall, by batch:** R3c + `blla -d horizontal-rl` on seed-101 (0.168), and R3b + Tesseract lines on held-out (0.162).
+- **By template:** no pipeline wins everywhere, and R3c + `blla` wins no single template.
+  - Tesseract alone wins all four printed rows.
+  - A Kraken recognizer on Tesseract's lines wins all four handwriting-style rows: R3c three times, R3b once (held-out `handwritten_note`).
+- **Why R3c + `blla` still leads seed-101 overall:** it is never far behind on any template, while every other pipeline loses one template family badly.
 
 **Paired accounting (hocrgen E2c6, R3c against R3b, the same lines; pages are items, `primary.v1`):**
 
@@ -403,9 +416,14 @@ On this batch the polygonizer drops 2 of 2,305 gold lines (geometry errors), whi
 
 - **R3c fixes the crop mismatch R4a found.** On Kraken's polygons around the true baselines, CER falls from 0.193 / 0.250 to 0.018 / 0.006, and every page improves. That is near R3b's own oracle level (0.013 / 0.008).
 - **End to end with `blla -d horizontal-rl`, R3c is better than R3b on all but one page** of both batches (159 of 160 pages; none is worse): 0.168 against 0.255 on seed-101 and 0.241 against 0.358 on held-out.
-  - It is now better than Tesseract alone overall on both batches (0.338 and 0.353).
-  - It is still clearly worse than Tesseract on the printed templates (for example 0.244 against 0.102 on held-out `printed_letter`).
-- **R3c is specialised to Kraken's polygons.** On hocrsyngen's own polygons (d) and on Tesseract's rectangles it is worse than R3b. On held-out, the best pipeline here is still R4a's R3b + Tesseract lines (0.162). Mixing crop styles in training (both polygon sources, or rectangles as augmentation) is the obvious next experiment.
+  - It is now better than Tesseract alone overall on both batches (0.338 and 0.353), but not per template.
+  - It is still clearly worse than Tesseract on every printed template, for example 0.244 against 0.102 on held-out `printed_letter`.
+  - See "Best pipeline" above for the per-batch and per-template winners.
+- **R3c is specialised to Kraken's polygons.**
+  - On hocrsyngen's own polygons (d) it is worse than R3b on both batches.
+  - On Tesseract's rectangles it is worse on held-out (0.211 against 0.162) and on the mixed-script batch, but better on seed-101 (0.183 against 0.211).
+  - The held-out paired counts show the split: 22 pages improved and 57 worsened.
+  - Mixing crop styles in training (both polygon sources, or rectangles as augmentation) is the obvious next experiment.
 - **The remaining `blla` gap is segmentation again.** Between `blla` lines (0.168 / 0.241) and (e) (0.018 / 0.006) lie reading order, line finding, and crops built around `blla`'s rather than the true baselines (matched-line CER 0.091 / 0.098 against 0.016 / 0.006).
 - **Mixed script: R3c cannot read Latin.** Even with every true baseline, it gets 79% of Latin letters wrong. Pure Hebrew lines read almost perfectly (0.004) and lines containing Latin have CER 0.190. Digits are fine (0.079). This is a training-text gap, not a geometry problem: the corpus has almost no Latin.
 - **Mixed script: reading order costs most end to end.** On `archive_card` and `ledger`, `blla`'s order is poor (τ 0.46 and 0.56). Putting R3c's `blla` lines into gold order alone takes CER from 0.465 to 0.230 (`ledger` 0.676 → 0.310, `archive_card` 0.386 → 0.115).
