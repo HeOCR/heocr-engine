@@ -468,3 +468,194 @@ On this batch the polygonizer drops 2 of 2,305 gold lines (geometry errors), whi
 | Line-file sets (mixed) | `blla -d horizontal-rl` `196354a8100c088a…`, Tesseract lines `82a35d2a88bc81e5…` |
 
 Limits: the R3b and R4a limits apply. One training run, one seed per batch, and no confidence intervals. The mixed-script batch shares the training generator's templates and fonts, and its 100 corpus lines are built from ten prefixes and ten endings. The script projection is a diagnostic, not a hocrgen profile. Predictions, line files and reports stay local.
+
+## R3d: recognizer trained on mixed Hebrew/Latin text (2026-11-03)
+
+R3c cannot read Latin (section above), because its training text is about 0.5% Latin. R3d keeps R3c's recipe (Kraken polygons at height 1800, settings, from scratch) and changes the training batch:
+- **Text:** the S10b Hebrew train corpus (9,359 lines) followed by the S13a mixed Hebrew/Latin train corpus (5,810 lines), 15,169 lines in all.
+- **Templates:** seven, the four benchmark templates plus `archive_card`, `archive_card_faded_scan` and `ledger`. R3b and R3c saw only the four benchmark templates.
+- **Size:** 2,400 pages, seed 7101.
+
+Neither evaluation batch below is trained on. The weights are not in this repository and are not published; their licence is `Needs verification` (decision 0007). Kinds and scoring are as in the R3c section.
+
+### Seed-101 (S10c gold) and held-out batches (`primary.v1` CER / WER, overall)
+
+| Lines | Kind | R3b seed-101 | R3c seed-101 | R3d seed-101 | R3b held-out | R3c held-out | R3d held-out |
+|---|---|---|---|---|---|---|---|
+| `blla -d horizontal-rl` | pipeline | 0.255 / 0.529 | 0.168 / 0.300 | **0.167 / 0.292** | 0.358 / 0.654 | 0.241 / 0.415 | **0.240 / 0.405** |
+| Tesseract `--psm 3` lines | pipeline | 0.211 / 0.383 | **0.183 / 0.323** | 0.194 / 0.356 | **0.162 / 0.311** | 0.211 / 0.375 | 0.196 / 0.362 |
+| (e) gold baselines, Kraken polygons at height 1800, gold order | diagnostic | 0.193 / 0.451 | 0.018 / 0.044 | **0.018 / 0.040** | 0.250 / 0.538 | 0.006 / 0.021 | **0.006 / 0.020** |
+| (d) gold lines with hocrsyngen's polygons, gold order | diagnostic | **0.013 / 0.036** | 0.041 / 0.129 | 0.028 / 0.096 | **0.008 / 0.023** | 0.045 / 0.148 | 0.024 / 0.106 |
+
+Tesseract alone scores 0.338 / 0.553 (seed-101) and 0.353 / 0.535 (held-out). R3d was not run on the R4c-e01 preview segmenter; the R3c + R4c-e01 rows above stay the best seed-101 and held-out pipelines.
+
+**By template, pipelines only (`primary.v1` CER / WER; best CER per row in bold):**
+
+| Template | Tesseract alone | R3b + Tesseract lines | R3c + Tesseract lines | R3d + Tesseract lines | R3c + `blla -d horizontal-rl` | R3d + `blla -d horizontal-rl` | R3c + R4c-e01 (preview) |
+|---|---|---|---|---|---|---|---|
+| **Seed-101, S10c gold** | | | | | | | |
+| `printed_letter` | 0.111 / 0.232 | 0.220 / 0.339 | 0.264 / 0.433 | 0.282 / 0.491 | 0.160 / 0.286 | 0.159 / 0.283 | **0.107** / 0.211 |
+| `printed_letter_heavy_scan` | 0.122 / 0.230 | 0.293 / 0.489 | 0.249 / 0.400 | 0.258 / 0.417 | 0.209 / 0.354 | 0.204 / 0.351 | **0.097** / 0.192 |
+| `handwritten_note` | 0.641 / 0.998 | 0.111 / 0.266 | **0.071** / 0.170 | 0.080 / 0.200 | 0.147 / 0.272 | 0.148 / 0.258 | 0.090 / 0.137 |
+| `handwritten_note_heavy_wear` | 0.658 / 0.994 | 0.181 / 0.412 | 0.089 / 0.218 | 0.096 / 0.241 | 0.143 / 0.273 | 0.144 / 0.256 | **0.085** / 0.128 |
+| overall | 0.338 / 0.553 | 0.211 / 0.383 | 0.183 / 0.323 | 0.194 / 0.356 | 0.168 / 0.300 | 0.167 / 0.292 | **0.096** / 0.172 |
+| **Held-out s6101** | | | | | | | |
+| `printed_letter` | **0.102** / 0.189 | 0.168 / 0.317 | 0.268 / 0.464 | 0.252 / 0.458 | 0.244 / 0.432 | 0.241 / 0.417 | 0.153 / 0.360 |
+| `printed_letter_heavy_scan` | **0.138** / 0.218 | 0.212 / 0.383 | 0.280 / 0.455 | 0.267 / 0.448 | 0.284 / 0.484 | 0.283 / 0.472 | 0.148 / 0.319 |
+| `handwritten_note` | 0.687 / 0.976 | **0.095** / 0.186 | 0.133 / 0.249 | 0.123 / 0.239 | 0.210 / 0.360 | 0.210 / 0.352 | 0.139 / 0.239 |
+| `handwritten_note_heavy_wear` | 0.663 / 0.976 | 0.149 / 0.327 | 0.117 / 0.272 | **0.097** / 0.241 | 0.207 / 0.356 | 0.209 / 0.351 | 0.128 / 0.232 |
+| overall | 0.353 / 0.535 | 0.162 / 0.311 | 0.211 / 0.375 | 0.196 / 0.362 | 0.241 / 0.415 | 0.240 / 0.405 | **0.143** / 0.295 |
+
+**Paired accounting (E2c6, R3d against R3c, the same lines; pages improved / unchanged / worsened, character edits R3c → R3d):**
+
+| Lines | Seed-101 | Held-out |
+|---|---|---|
+| `blla -d horizontal-rl` | 37 / 19 / 24, 2,429 → 2,406 | 26 / 29 / 25, 2,424 → 2,415 |
+| Tesseract lines | 23 / 8 / 49, 2,643 → 2,805 | 48 / 7 / 25, 2,129 → 1,976 |
+| (e) | 23 / 34 / 23, 264 → 259 | 17 / 52 / 11, 59 → 58 |
+| (d) | 48 / 15 / 17, 589 → 402 | 48 / 14 / 18, 455 → 243 |
+
+### Mixed-script batches
+
+Two batches mix Hebrew with Latin names and digits:
+- **hocrgen's mixed-script fixture**, the 100-page batch from the R3c section. Templates as above (`printed_letter`, `handwritten_note`, `archive_card`, `ledger`). None of its 100 text lines is in R3d's training text, and only 2 of its 12 Latin words are ("A" and "B"). It tests unseen Latin words, but `archive_card` and `ledger` are now training templates.
+- **eval-mixed-heldout**, 80 pages from hocrsyngen's packaged mixed-script eval corpus (`hebrew_mixed_lines_eval_v1.txt`), seed 8101, 20 each of the four benchmark templates. It is held out and never trained on. None of its 401 text lines is in R3d's training text, but 153 of its 218 Latin words (two letters or more) are. Its templates are the four that R3b and R3c also trained on, so it isolates the change of training text.
+
+Both are scored on synthetic gold only (decision 0004).
+
+**hocrgen fixture, `primary.v1` CER per family** (hocrgen `c8fb74e`, as in the R3c section):
+
+| Lines | Kind | Recognizer | `printed_letter` | `handwritten_note` | `archive_card` | `ledger` | overall CER / WER |
+|---|---|---|---|---|---|---|---|
+| Tesseract `heb+eng` alone (recipe baseline) | pipeline | Tesseract | 0.177 | 0.737 | 0.444 | 0.770 | 0.575 / 0.723 |
+| `blla -d horizontal-rl` | pipeline | R3b | 0.348 | 0.345 | 0.452 | 0.746 | 0.543 / 0.784 |
+| `blla -d horizontal-rl` | pipeline | R3c | 0.243 | 0.260 | 0.386 | 0.676 | 0.465 / 0.650 |
+| `blla -d horizontal-rl` | pipeline | R3d | **0.172** | 0.181 | **0.332** | **0.657** | **0.419 / 0.598** |
+| Tesseract `heb` lines | pipeline | R3b | 0.291 | 0.278 | 0.520 | 0.787 | 0.553 / 0.741 |
+| Tesseract `heb` lines | pipeline | R3c | 0.313 | 0.238 | 0.583 | 0.839 | 0.588 / 0.775 |
+| Tesseract `heb` lines | pipeline | R3d | 0.266 | **0.163** | 0.534 | 0.829 | 0.552 / 0.744 |
+| (e) at height 1800 | diagnostic | R3b | 0.323 | 0.277 | 0.322 | 0.481 | 0.385 / 0.648 |
+| (e) at height 1800 | diagnostic | R3c | 0.122 | 0.144 | 0.077 | 0.285 | 0.188 / 0.306 |
+| (e) at height 1800 | diagnostic | R3d | 0.059 | 0.057 | 0.028 | 0.259 | 0.140 / 0.260 |
+| (d) | diagnostic | R3b | 0.132 | 0.180 | 0.092 | 0.288 | 0.199 / 0.312 |
+| (d) | diagnostic | R3c | 0.149 | 0.160 | 0.114 | 0.328 | 0.222 / 0.457 |
+| (d) | diagnostic | R3d | 0.068 | 0.074 | 0.048 | 0.276 | 0.156 / 0.316 |
+
+Bold marks the best pipeline per column.
+
+Two gold conventions in this fixture charge every line-based system:
+- **`ledger` cells.** The gold joins a row's cells with ` | `, but a Kraken pipeline emits one line per cell. Each of the 1,000 separators costs 3 edits, so about 3,000 of R3d's 3,112 `ledger` (e) edits are this convention. Lines matched one to one have `ledger` CER 0.085 (with Latin) and 0.006 (pure Hebrew).
+- **Em dashes.** The gold has 325 em dashes (`—`). R3d's training annotations have none, so it writes `-`.
+
+Neither convention occurs in eval-mixed-heldout.
+
+**eval-mixed-heldout, `primary.v1` CER / WER per template** (hocrgen `2d3efb0`; `c8fb74e` gives an identical `scored` block on every R3d set):
+
+| Lines | Kind | Recognizer | `printed_letter` | `printed_letter_heavy_scan` | `handwritten_note` | `handwritten_note_heavy_wear` | overall |
+|---|---|---|---|---|---|---|---|
+| Tesseract `heb+eng` alone | pipeline | Tesseract | **0.171** / 0.278 | **0.152** / 0.236 | 0.775 / 0.963 | 0.794 / 0.983 | 0.425 / 0.562 |
+| `blla -d horizontal-rl` | pipeline | R3b | 0.429 / 0.687 | 0.482 / 0.795 | 0.376 / 0.621 | 0.430 / 0.710 | 0.433 / 0.709 |
+| `blla -d horizontal-rl` | pipeline | R3c | 0.331 / 0.524 | 0.298 / 0.473 | 0.264 / 0.384 | 0.288 / 0.448 | 0.298 / 0.463 |
+| `blla -d horizontal-rl` | pipeline | R3d | 0.258 / 0.457 | 0.232 / 0.410 | 0.187 / 0.311 | 0.230 / 0.380 | 0.229 / 0.396 |
+| Tesseract `heb` lines | pipeline | R3b | 0.254 / 0.419 | 0.277 / 0.417 | 0.208 / 0.311 | 0.158 / 0.297 | 0.231 / 0.369 |
+| Tesseract `heb` lines | pipeline | R3c | 0.322 / 0.507 | 0.313 / 0.459 | 0.190 / 0.325 | 0.179 / 0.318 | 0.262 / 0.414 |
+| Tesseract `heb` lines | pipeline | R3d | 0.269 / 0.487 | 0.250 / 0.435 | **0.117** / 0.308 | **0.099** / 0.228 | **0.196 / 0.379** |
+| (e) at height 1800 | diagnostic | R3b | 0.295 / 0.533 | 0.405 / 0.729 | 0.277 / 0.523 | 0.311 / 0.595 | 0.326 / 0.601 |
+| (e) at height 1800 | diagnostic | R3c | 0.085 / 0.100 | 0.079 / 0.097 | 0.099 / 0.127 | 0.089 / 0.125 | 0.087 / 0.110 |
+| (e) at height 1800 | diagnostic | R3d | 0.009 / 0.031 | 0.011 / 0.033 | 0.019 / 0.051 | 0.020 / 0.062 | 0.014 / 0.043 |
+| (d) | diagnostic | R3b | 0.096 / 0.102 | 0.075 / 0.086 | 0.115 / 0.125 | 0.111 / 0.140 | 0.097 / 0.110 |
+| (d) | diagnostic | R3c | 0.133 / 0.306 | 0.175 / 0.303 | 0.111 / 0.156 | 0.105 / 0.185 | 0.134 / 0.247 |
+| (d) | diagnostic | R3d | 0.037 / 0.144 | 0.062 / 0.214 | 0.029 / 0.098 | 0.033 / 0.092 | 0.042 / 0.143 |
+
+Bold marks the best pipeline per column. The polygonizer drops no eval-mixed-heldout line.
+
+**By script.** These are the projections from the R3c section: page CER on Latin letters, ASCII digits and Hebrew letters (reference counts in brackets), then raw line CER on lines matched one to one, split by whether the gold line has Latin (matched / gold lines for `blla`).
+
+| Batch | Lines | Recognizer | Latin letters | Digits | Hebrew letters | Lines with Latin | Pure Hebrew lines |
+|---|---|---|---|---|---|---|---|
+| hocrgen fixture (1,795 / 5,119 / 11,958) | Tesseract `heb+eng` alone | Tesseract | 0.892 | 0.668 | 0.381 | | |
+| | `blla -d horizontal-rl` | R3c | 0.798 | 0.590 | 0.203 | 0.233 (319 / 339) | 0.055 (1,808 / 1,966) |
+| | `blla -d horizontal-rl` | R3d | **0.060** | 0.541 | 0.176 | 0.107 (319 / 339) | 0.042 (1,808 / 1,966) |
+| | Tesseract `heb` lines | R3c | 1.052 | 0.678 | 0.374 | | |
+| | Tesseract `heb` lines | R3d | 1.019 | 0.702 | 0.319 | | |
+| | (e) | R3c | 0.787 | 0.079 | 0.033 | 0.190 | 0.004 |
+| | (e) | R3d | **0.045** | **0.014** | **0.008** | **0.065** | 0.006 |
+| | (d) | R3c | 0.833 | 0.163 | 0.053 | 0.204 | 0.101 |
+| | (d) | R3d | 0.133 | 0.048 | 0.018 | 0.077 | 0.046 |
+| eval-mixed-heldout (873 / 750 / 6,566) | Tesseract `heb+eng` alone | Tesseract | 1.378 | 0.636 | 0.448 | | |
+| | `blla -d horizontal-rl` | R3b | 0.934 | 0.675 | 0.424 | | |
+| | `blla -d horizontal-rl` | R3c | 0.794 | 0.411 | 0.247 | 0.332 (103 / 117) | 0.089 (368 / 525) |
+| | `blla -d horizontal-rl` | R3d | **0.094** | 0.165 | 0.232 | 0.099 (103 / 117) | 0.089 (368 / 525) |
+| | Tesseract `heb` lines | R3b | 0.872 | 0.560 | 0.184 | | |
+| | Tesseract `heb` lines | R3c | 0.944 | 0.545 | 0.200 | | |
+| | Tesseract `heb` lines | R3d | 0.456 | 0.349 | 0.171 | | |
+| | (e) | R3b | 0.928 | 0.629 | 0.337 | 0.442 | 0.296 |
+| | (e) | R3c | 0.774 | 0.311 | 0.029 | 0.270 | 0.005 |
+| | (e) | R3d | **0.039** | **0.033** | **0.002** | **0.033** | 0.005 |
+| | (d) | R3b | 0.794 | 0.400 | 0.052 | | |
+| | (d) | R3c | 0.810 | 0.329 | 0.073 | 0.276 | 0.077 |
+| | (d) | R3d | 0.123 | 0.109 | 0.020 | 0.052 | 0.040 |
+
+The same projection on the Hebrew-only batches (seed-101 has no Latin reference letters; held-out has 28):
+
+| Lines | Seed-101 digits (233) R3b / R3c / R3d | Seed-101 Hebrew letters (11,306) | Held-out digits (397) | Held-out Hebrew letters (7,619) |
+|---|---|---|---|---|
+| `blla -d horizontal-rl` | 0.712 / 0.352 / 0.292 | 0.247 / 0.144 / 0.144 | 0.539 / 0.234 / 0.247 | 0.366 / 0.224 / 0.225 |
+| Tesseract lines | 0.506 / 0.785 / 0.747 | 0.202 / 0.170 / 0.183 | 0.282 / 0.534 / 0.448 | 0.158 / 0.193 / 0.180 |
+| (e) | 0.850 / 0.052 / 0.052 | 0.200 / 0.015 / 0.015 | 0.554 / 0.033 / 0.035 | 0.273 / 0.004 / 0.004 |
+| (d) | 0.047 / 0.352 / 0.116 | 0.009 / 0.033 / 0.023 | 0.040 / 0.179 / 0.083 | 0.006 / 0.038 / 0.019 |
+
+On Tesseract lines, R3c and R3d write Latin letters that are not on the page: 159 and 237 on seed-101, which has none in its gold, against 1 and 5 on `blla` lines.
+
+**Paired accounting (E2c6, pages improved / unchanged / worsened, character edits baseline → candidate):**
+
+| Candidate against baseline | hocrgen fixture | eval-mixed-heldout |
+|---|---|---|
+| R3d against R3c, `blla -d horizontal-rl` | 100 / 0 / 0, 12,748 → 11,495 | 62 / 7 / 11, 3,093 → 2,379 |
+| R3d against R3c, Tesseract lines | 89 / 1 / 10, 16,129 → 15,161 | 64 / 3 / 13, 2,716 → 2,030 |
+| R3d against R3c, (e) | 100 / 0 / 0, 5,151 → 3,837 | 62 / 11 / 7, 907 → 143 |
+| R3d against R3c, (d) | 99 / 0 / 1, 6,091 → 4,282 | 71 / 0 / 9, 1,395 → 434 |
+| R3d + `blla -d horizontal-rl` against Tesseract alone | 78 / 0 / 22, 15,780 → 11,495 | 52 / 0 / 28, 4,414 → 2,379 |
+| R3d + Tesseract lines against Tesseract alone | 29 / 1 / 70, 15,780 → 15,161 | 48 / 0 / 32, 4,414 → 2,030 |
+
+### Best pipeline
+
+- **Seed-101 and held-out:** unchanged from R3c. R3c + R4c-e01 (preview) is best (0.096 and 0.143). Without the preview segmenter, R3d + `blla` is best on seed-101 (0.167, against R3c's 0.168) and R3b + Tesseract lines on held-out (0.162). By template, R3d wins only held-out `handwritten_note_heavy_wear` (R3d + Tesseract lines, 0.097).
+- **hocrgen fixture:** R3d + `blla -d horizontal-rl` (0.419) is best overall, and best on `printed_letter` (0.172 against Tesseract's 0.177), `archive_card` and `ledger`. R3d + Tesseract lines wins `handwritten_note` (0.163).
+- **eval-mixed-heldout:** R3d + Tesseract lines (0.196) is best overall and on both handwritten templates. Tesseract alone still wins both printed templates (0.171 and 0.152); R3d + `blla` is next on them (0.258 and 0.232).
+
+### Reading
+
+- **R3d reads Latin.**
+  - On (e), Latin-letter CER falls from 0.787 to 0.045 on the hocrgen fixture and from 0.774 to 0.039 on eval-mixed-heldout. Lines that contain Latin go from 0.190 to 0.065 and from 0.270 to 0.033.
+  - The fixture's Latin words are almost all absent from R3d's training text, so this is reading Latin script, not recalling training words.
+  - Digits improve too (0.079 → 0.014 and 0.311 → 0.033).
+- **No cost on Hebrew-only pages.** On seed-101 and held-out, R3d matches R3c within 0.001 CER on `blla` and (e), with page counts balanced either way.
+- **The mixed-script gain carries end to end.** With `blla`, R3d improves every fixture page over R3c (0.465 → 0.419) and 62 of 80 eval-mixed-heldout pages (0.298 → 0.229). R3d is now better than Tesseract alone on both mixed batches overall, but not on printed templates of eval-mixed-heldout.
+- **What is left is segmentation, and the fixture's conventions.**
+  - (e) is 0.014 on eval-mixed-heldout against 0.229 with `blla`.
+  - On the fixture, most of the (e) residual (0.140) is the ` | ` cell-separator convention. The `blla` residual is mostly reading order, as for R3c (the R3c section's gold-order row).
+- **Some of the fixture gain is the new templates.** R3d trained on `archive_card` and `ledger`, which R3c never saw, and its `archive_card` (e) CER falls from 0.077 to 0.028. eval-mixed-heldout has only the four shared templates, so its gain is the training text alone.
+- **Crop style is still split, but R3d narrows it.**
+  - On hocrsyngen's polygons (d), R3d halves R3c's Hebrew-only gap (0.041 → 0.028 and 0.045 → 0.024). It still loses to R3b there, but beats R3b on both mixed batches (0.042 against 0.097 on eval-mixed-heldout), where R3b's Latin errors dominate.
+  - On Tesseract's rectangles, R3d and R3c write Latin letters that are not on the page. Mixing crop styles in training (R3e) remains the open experiment.
+- **The next lever is the trained segmenter (R4d) with R3d.** R3d + R4c-e01 was not run.
+
+### Run identities
+
+| Part | Identity |
+|---|---|
+| heocr-engine | training `cade9c8`; diagnostics and conversion `aa67fa7` |
+| Training batch | hocrsyngen `db3f73c` (`s11b-ledger-fit-v1`), Pillow 13.0.0 with raqm. 2,400 pages, seed 7101, seven templates round robin. Corpus `e4384322e167f81252f28703206f180d1757e789c3ef7bd97484eef6978b1cf4` (S10b `hebrew_lines_train_v1.txt` `a3f2f0db…` then S13a `hebrew_mixed_lines_train_v1.txt` `203df9e8…`). Manifest `e8098844b7dfb7027913d7a04e4a5d35100ab551d41bb759ec92f0f685c2ec73`, line annotations `51cab2f331607035f8a697ca3ffdcbff40241a65821fb4634dd80412b4e59c43` |
+| Training | R3c's ketos settings and data path (`--line-polygons kraken --polygonizer-height 1800`), Kraken 7.0.2; split seed 0, validation fraction 0.05. Train 2,280 pages / 38,327 lines, validation 120 / 1,927; alphabet 107; the polygonizer drops 1 training line. mps, seed 42, not deterministic. Record `run_r3d_s7101.record.json` (validates) |
+| Training outcome | Early stopping after 9 epochs; best epoch 5 (0-based), val_accuracy 0.9962 on R3d's own mixed validation split, not comparable with R3c's 0.9976 |
+| Model | `best_0.9962.safetensors`, sha256 `374f9302eba092f67c06af0be2ef04c4ad528e4f60a11c2255a2bd3a75c0c889`, 16,151,296 bytes; licence `Needs verification`, unpublished |
+| Inference | as R3c: Kraken 7.0.2 on cpu, `blla` `77a638a83c9e5356…`, `-f page ocr --reorder --base-dir R`; Tesseract 5.5.3 |
+| hocrgen | `2d3efb0` for seed-101, held-out and eval-mixed-heldout CER; `c8fb74e` (main) for paired accounting and the hocrgen fixture |
+| eval-mixed-heldout | hocrsyngen `db3f73c`, seed 8101, packaged `hebrew_mixed_lines_eval_v1.txt` (`45a81fff…`). Manifest `aff27b75c78d12e07462cbe2596e89310e96a94bf851b39863a517ee1de79047`, line annotations `2e54cbbef47959b89d05ab1a265469f3ab5ec8ea32b5db732de2643fe38c6d4e` |
+| R3d prediction sets, seed-101 | `blla -d horizontal-rl` `f119f81e69c8ce5c…`, Tesseract lines `9e26b6a17bd27674…`, (e) `3a4dfba01df299f2…`, (d) `062f6283bfef4e72…` |
+| R3d prediction sets, held-out | `blla -d horizontal-rl` `51545434120733e1…`, Tesseract lines `410b1f2052fd356b…`, (e) `8da14cd1fb83ee8a…`, (d) `aa7b7ea926706849…` |
+| R3d prediction sets, hocrgen fixture | `blla -d horizontal-rl` `2229cd21dc07d036…`, Tesseract lines `1b92cd974a231c4d…`, (e) `885ba230e1df2eda…`, (d) `b883f46ab9165c61…` |
+| eval-mixed-heldout prediction sets | Tesseract `heb+eng` `6750031f46e0507b…`. `blla -d horizontal-rl`: R3b `d50f6cc4a4e76c8b…`, R3c `74f8a7f00887476a…`, R3d `678f920229a1e611…`. Tesseract lines: R3b `ae607e61c8e96a30…`, R3c `898eac7a70e9e371…`, R3d `a0b503dfc887dddc…`. (e): R3b `9563097d160759ca…`, R3c `e41c98d60114a885…`, R3d `344ae1a6e4eeb7f3…`. (d): R3b `4f1acd60f1fa9222…`, R3c `48b4573141a9a5d5…`, R3d `01626ebf141d78ad…` |
+
+Limits: the R3c limits apply. One training run, one seed per batch, and no confidence intervals. R3d changes both the training text and the template mix, so the hocrgen fixture's gain cannot be split between them. eval-mixed-heldout separates the text change, but it shares the training generator, fonts and 153 Latin words. Predictions, line files and reports stay local.
