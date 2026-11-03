@@ -10,10 +10,11 @@ R3b showed that segmentation, not recognition, limits HeOCR's end-to-end accurac
 
 | Notation | Summary | Status |
 |---|---|---|
-| R4a | Segmentation diagnostics: line precision and recall, splits and merges, and reading order against hocrsyngen line annotations; Tesseract-segmentation swap | in progress |
+| R4a | `diagnose-segmentation`: line precision and recall, splits and merges, and reading order against hocrsyngen line annotations; error decomposition of R3b + `blla` (order, line finding, crop geometry); segmenter swap (`blla -d horizontal-rl`, Tesseract lines, Kraken legacy boxes); results in `docs/baselines.md` | in review (PR #10) |
 | R4b | `prepare-kraken-data --task segmentation` (PAGE XML with typed regions), `train-kraken-seg` (`ketos segtrain` from scratch) and the segmentation fields of `heocr_engine_training_run.v1`; decision 0008 (from scratch, licence `Needs verification`, typed regions, heuristic reading order) | done (PR #9) |
-| R4b1 | Segmentation data uses the sidecar's region polygons (hocrsyngen S11a page `regions`) when every page has them (`region_geometry: "sidecar"`), validated against the lines; line bounding boxes stay the fallback; recognition XML ignores them | in review |
+| R4b1 | Segmentation data uses the sidecar's region polygons (hocrsyngen S11a page `regions`) when every page has them (`region_geometry: "sidecar"`), validated against the lines; line bounding boxes stay the fallback; recognition XML ignores them | done (PR #11) |
 | R4c | Train the first segmenter on the R3b training batch; score it with the R3b recognizer end to end on the seed-101 and held-out batches; results in `docs/baselines.md` | in progress |
+| S11a | hocrsyngen, cross-repo: region polygons in the line-annotations sidecar, an additive `hocrsyngen_line_annotations.v1` field, so segmenters can train and be checked on region geometry | done (hocrsyngen PR #76) |
 
 ## Boundaries
 
