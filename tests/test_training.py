@@ -16,8 +16,8 @@ from line_annotations_fixture import SAMPLES, build_batch, write_fake_ketos  # n
 
 from heocr_engine.cli import EngineError, main  # noqa: E402
 from heocr_engine.kraken import KrakenRecognizer  # noqa: E402
-from heocr_engine.training import (BASE_DIR, Hyperparameters, PAGE_NS, TRAINING_SCHEMA_ID,  # noqa: E402
-                                   assign_splits, load_annotated_pages, prepare_kraken_data,
+from heocr_engine.training import (BASE_DIR, Hyperparameters, PAGE_NS, POLYGONIZER_HEIGHT,  # noqa: E402
+                                   TRAINING_SCHEMA_ID, assign_splits, load_annotated_pages, prepare_kraken_data,
                                    safetensors_kraken_metadata, train_kraken, validate_training_run)
 
 HAS_KRAKEN = importlib.util.find_spec('kraken') is not None
@@ -165,6 +165,116 @@ class ConverterTests(TrainingTestCase):
             self.assertEqual({line.base_dir for line in container.lines}, {'R'})
 
 
+class FakePolygonizer:
+    """Stands in for kraken's calculate_polygonal_environment: a box around each baseline, shifted by the
+    baseline's index, reaching past the page so clamping shows; `fail` lines get None."""
+
+    def __init__(self, fail=()):
+        self.fail, self.calls = set(fail), []
+
+    def __call__(self, image, baselines, scale=None):
+        self.calls.append((image.mode, image.size, baselines, scale))
+        return [None if (bl[0][1], len(self.calls)) in self.fail else
+                [(bl[0][0] - 3, bl[0][1] - 20 - n), (bl[-1][0] + 400, bl[-1][1] - 20 - n),
+                 (bl[-1][0] + 400, bl[-1][1] + 4), (bl[0][0] - 3, bl[0][1] + 4)]
+                for n, bl in enumerate(baselines)]
+
+
+class LinePolygonTests(TrainingTestCase):
+    def lines_in(self, out):
+        result = {}
+        for path in (out / 'pages').glob('*.xml'):
+            for line in ET.parse(path).findall('.//p:TextLine', NS):
+                result[path.stem, line.get('id')] = [[int(v) for v in point.split(',')] for point in
+                                                    line.find('p:Coords', NS).get('points').split()]
+        return result
+
+    def test_sidecar_is_the_default_and_unchanged(self):
+        default = prepare_kraken_data(self.annotations, self.manifest, self.root / 'a')
+        explicit = prepare_kraken_data(self.annotations, self.manifest, self.root / 'b', line_polygons='sidecar')
+        self.assertEqual(default, explicit)
+        self.assertEqual(default['line_polygons'], 'sidecar')
+        self.assertNotIn('polygonizer', default)
+        for path in (self.root / 'a' / 'pages').glob('*.xml'):
+            self.assertEqual(path.read_bytes(), (self.root / 'b' / 'pages' / path.name).read_bytes())
+        dataset = json.loads((self.root / 'a' / 'dataset.json').read_text(encoding='utf-8'))
+        self.assertNotIn('lines_dropped_by_polygonizer', dataset['pages'][0])
+
+    def test_kraken_polygons_replace_sidecar_polygons_and_failures_are_counted(self):
+        # The second page's first line (baseline y=34 on the first call for it) fails to polygonize.
+        fake = FakePolygonizer(fail={(34, 2)})
+        out = self.root / 'data'
+        summary = prepare_kraken_data(self.annotations, self.manifest, out, validation_fraction=0.25,
+                                      line_polygons='kraken', polygonizer=fake)
+        pages = json.loads(self.annotations.read_text(encoding='utf-8'))['pages']
+        self.assertEqual(len(fake.calls), len(pages))
+        for (mode, size, baselines, scale), page in zip(fake.calls, sorted(pages, key=lambda p: p['sample_id'])):
+            self.assertEqual((mode, size, scale), ('L', (240, 160), (POLYGONIZER_HEIGHT, 0)))
+            self.assertEqual(baselines, [line['baseline'] for line in page['lines']])
+        written = self.lines_in(out)
+        self.assertEqual(len(written), sum(len(page['lines']) for page in pages) - 1)
+        first = sorted(pages, key=lambda p: p['sample_id'])[0]
+        # Box from the fake polygonizer, clamped to the 240x160 page.
+        self.assertEqual(written[first['page_sha256'], 'l0'], [[17, 14], [240, 14], [240, 38], [17, 38]])
+        self.assertNotIn((sorted(pages, key=lambda p: p['sample_id'])[1]['page_sha256'], 'l0'), written)
+        self.assertEqual(summary['line_polygons'], 'kraken')
+        self.assertEqual(summary['polygonizer']['dropped_lines'], 1)
+        self.assertEqual(summary['polygonizer']['height'], POLYGONIZER_HEIGHT)
+        self.assertEqual(summary['train']['lines_dropped_by_polygonizer']
+                         + summary['validation']['lines_dropped_by_polygonizer'], 1)
+        self.assertEqual(summary['train']['lines'] + summary['validation']['lines'], len(written))
+        dataset = json.loads((out / 'dataset.json').read_text(encoding='utf-8'))
+        self.assertEqual(sum(page['lines_dropped_by_polygonizer'] for page in dataset['pages']), 1)
+        self.assertNotIn(str(self.root), json.dumps(dataset, ensure_ascii=False))
+
+    def test_native_height_and_a_crashing_polygonizer(self):
+        fake = FakePolygonizer()
+        prepare_kraken_data(self.annotations, self.manifest, self.root / 'native', line_polygons='kraken',
+                            polygonizer=fake, polygonizer_height=0)
+        self.assertEqual({call[3] for call in fake.calls}, {None})
+
+        def crash_on_ledger(image, baselines, scale=None):
+            if len(baselines) == 3 and baselines[1][0][1] == 74 and len(crashed) == 0:
+                crashed.append(True)
+                raise ValueError('degenerate page')
+            return FakePolygonizer()(image, baselines, scale)
+        crashed = []
+        # A polygonizer exception drops that page's lines, counted, instead of failing the run.
+        summary = prepare_kraken_data(self.annotations, self.manifest, self.root / 'crash', validation_fraction=0.25,
+                                      line_polygons='kraken', polygonizer=crash_on_ledger)
+        self.assertEqual(crashed, [True])
+        self.assertEqual(summary['polygonizer']['dropped_lines'], 3)
+
+    def test_bad_settings_fail(self):
+        for options in ({'line_polygons': 'blla'}, {'line_polygons': 'kraken', 'task': 'segmentation'},
+                        {'line_polygons': 'kraken', 'polygonizer_height': 10},
+                        {'polygonizer_height': True}):
+            with self.subTest(options=options), self.assertRaises(EngineError):
+                prepare_kraken_data(self.annotations, self.manifest, self.root / 'x', **options)
+        blocked = dict.fromkeys(('kraken', 'kraken.lib', 'kraken.lib.segmentation'))
+        with patch.dict(sys.modules, blocked), self.assertRaisesRegex(EngineError, 'kraken installed'):
+            prepare_kraken_data(self.annotations, self.manifest, self.root / 'y', line_polygons='kraken')
+
+    @unittest.skipUnless(HAS_KRAKEN, 'kraken is not installed')
+    def test_real_polygonizer_matches_a_direct_call(self):
+        from kraken.lib.segmentation import calculate_polygonal_environment
+        from PIL import Image
+        out = self.root / 'data'
+        prepare_kraken_data(self.annotations, self.manifest, out, line_polygons='kraken')
+        written = self.lines_in(out)
+        for page in json.loads(self.annotations.read_text(encoding='utf-8'))['pages']:
+            image = Image.open(self.batch / 'assets' / page['sample_id'] / 'page_0001.png').convert('L')
+            direct = calculate_polygonal_environment(image, [line['baseline'] for line in page['lines']],
+                                                     scale=(POLYGONIZER_HEIGHT, 0))
+            for line, polygon in zip(page['lines'], direct):
+                key = (page['page_sha256'], f"l{line['line_index']}")
+                if polygon is None:
+                    self.assertNotIn(key, written)
+                else:
+                    self.assertEqual(written[key], [[min(max(int(v), 0), b) for v, b in zip(point, (240, 160))]
+                                                    for point in polygon])
+
+
 class BidiRoundTripTests(unittest.TestCase):
     """Training and inference must apply inverse reorderings for a perfect model to score zero CER."""
 
@@ -259,6 +369,21 @@ class TrainKrakenTests(TrainingTestCase):
         self.assertEqual(written['outcome']['stopped_by'], 'epoch_limit')
         with patch('sys.stderr', io.StringIO()):
             self.assertEqual(main(argv), 1)
+
+    def test_kraken_line_polygons_are_recorded(self):
+        with patch('heocr_engine.training.kraken_polygonizer', return_value=(FakePolygonizer(), '7.0.2')):
+            record = self.train(line_polygons='kraken')
+        self.assertEqual(validate_training_run(record), [])
+        self.assertEqual(record['data']['line_polygons'], 'kraken')
+        self.assertEqual(record['data']['polygonizer']['kraken_version'], '7.0.2')
+        self.assertEqual(record['data']['polygonizer']['dropped_lines'], 0)
+        for broken in ({'line_polygons': 'kraken', 'polygonizer': None}, {'line_polygons': 'other'},
+                       {'line_polygons': 'sidecar'}):
+            with self.subTest(broken=broken):
+                bad = {**record, 'data': {**record['data'], **broken}}
+                if broken.get('polygonizer') is None and 'polygonizer' in broken:
+                    bad['data'].pop('polygonizer')
+                self.assertTrue(validate_training_run(bad))
 
     def test_prepare_cli(self):
         with patch('sys.stdout', io.StringIO()) as stdout:

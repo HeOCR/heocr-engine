@@ -257,6 +257,17 @@ def _split_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--split-seed", type=int, default=0, help="Seed of the sample-level split (default 0)")
 
 
+def _line_polygon_args(parser: argparse.ArgumentParser) -> None:
+    from heocr_engine.training import LINE_POLYGONS, POLYGONIZER_HEIGHT
+
+    parser.add_argument("--line-polygons", choices=LINE_POLYGONS, default="sidecar",
+                        help="Recognition line polygons: the sidecar's (default), or rebuilt from the gold "
+                             "baselines by Kraken's polygonizer, as at inference (needs kraken installed)")
+    parser.add_argument("--polygonizer-height", type=int, default=POLYGONIZER_HEIGHT,
+                        help=f"Image height the polygonizer runs at (default {POLYGONIZER_HEIGHT}, blla's input "
+                             "height; 0 for the page's own resolution)")
+
+
 def _prepare_kraken_data_main(argv: list[str]) -> int:
     from heocr_engine.training import prepare_kraken_data
 
@@ -266,9 +277,11 @@ def _prepare_kraken_data_main(argv: list[str]) -> int:
     parser.add_argument("output", type=Path, help="New or empty output directory")
     parser.add_argument("--task", choices=["recognition", "segmentation"], default="recognition",
                         help="segmentation types each region with its hocrsyngen name (default recognition)")
+    _line_polygon_args(parser)
     args = parser.parse_args(argv)
     summary = prepare_kraken_data(args.annotations, args.manifest, args.output, args.validation_fraction,
-                                  args.split_seed, task=args.task)
+                                  args.split_seed, task=args.task, line_polygons=args.line_polygons,
+                                  polygonizer_height=args.polygonizer_height)
     json.dump(summary, sys.stdout, ensure_ascii=False, indent=2)
     sys.stdout.write("\n")
     return 0
@@ -308,6 +321,7 @@ def _train_kraken_main(argv: list[str]) -> int:
     parser.add_argument("--padding", type=int, default=defaults.padding)
     parser.add_argument("--augment", action="store_true")
     parser.add_argument("--timeout", type=float, default=172_800, help="Seconds per ketos step (default 48h)")
+    _line_polygon_args(parser)
     args = parser.parse_args(argv)
     if args.record.exists():
         raise EngineError("Record file already exists")
@@ -318,7 +332,8 @@ def _train_kraken_main(argv: list[str]) -> int:
                           corpora=tuple(args.corpus), device=args.device, seed=args.seed,
                           deterministic=args.deterministic, precision=args.precision, workers=args.workers,
                           threads=args.threads, validation_fraction=args.validation_fraction,
-                          split_seed=args.split_seed, hyperparameters=hyperparameters, timeout=args.timeout)
+                          split_seed=args.split_seed, hyperparameters=hyperparameters, timeout=args.timeout,
+                          line_polygons=args.line_polygons, polygonizer_height=args.polygonizer_height)
     write_prediction(record, args.record)
     return 0
 

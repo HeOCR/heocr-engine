@@ -36,6 +36,17 @@ The converter fails closed unless:
 - `train.txt`, `validation.txt`: absolute XML paths for ketos. These stay local;
 - `dataset.json`: the path-free split assignment, one row per page.
 
+**Line polygons** (`--line-polygons`, recognition only; recorded as `line_polygons` in `dataset.json` and the record's `data`):
+
+- `sidecar` (default): each `TextLine`'s `Coords` is the sidecar's own line polygon. R3b was trained this way, and its PAGE XML is unchanged.
+- `kraken`: each line polygon is rebuilt from the gold baseline by Kraken's polygonizer, `kraken.lib.segmentation.calculate_polygonal_environment`. It runs on the grayscale page image, with the page's other baselines as boundaries and `topline` false. This is the step that turns `blla` baselines into line polygons at inference. R4a found that R3b reads sidecar-shaped polygons almost perfectly and Kraken-made ones poorly (see `docs/baselines.md`, R4a).
+  - The polygonizer runs at `--polygonizer-height` (default 1800, `blla`'s input height, the scale Kraken polygonizes at during inference), and the polygons are scaled back. `0` runs it at the page's own resolution.
+  - Points are rounded and clamped to the page.
+  - A line the polygonizer returns no polygon for, or fewer than three distinct points, is **dropped**. If the polygonizer raises an exception on a page, all of that page's lines are dropped. Either way the run does not stop.
+  - Dropped lines are counted per page (`lines_dropped_by_polygonizer` in `dataset.json`), per split, and in total (`polygonizer.dropped_lines`).
+  - `polygonizer` also records `function`, `kraken_version`, `height`, `topline` and `boundaries`.
+  - Kraken must be installed (`pip install 'heocr-engine[kraken]'`); without it the conversion fails before writing anything.
+
 Splits are by **sample**, so every page of a sample is on the same side. Samples are ranked by `sha256("<split_seed>\0<sample_id>")`, and the first `round(n × validation_fraction)` go to validation (at least one, never all). The result is independent of input order. ketos's own random `-p` split is not used.
 
 ## Text order
@@ -51,7 +62,7 @@ Ground truth is in Unicode logical order. Kraken 7.0.2 trains on display (left-t
 | `trainer` | `name` (`ketos`), `version` (from `ketos --version`), `executable_sha256`, and `kraken_version` and `kraken_executable_sha256` when `--kraken` is given (otherwise `null`). |
 | `task` | `"recognition"` (a record without `task` is read as recognition), or `"segmentation"` (see [Segmentation runs](#segmentation-runs)). |
 | `init` | `"from_scratch"`. No weights are loaded (`-i`, `--load` and `--resume` are rejected). See decision 0007. |
-| `data` | `annotation_schema`, `annotations_sha256`, `generation_manifest_sha256`; `corpora[]` as `{sha256, bytes}` for each `--corpus` text file; `split` (`unit: "sample"`, `method: "sha256_rank"`, `split_seed`, `validation_fraction`, and `assignment_sha256`, the sha256 of the canonical JSON of the per-page rows in `dataset.json`); `train` and `validation` as `{samples, pages, lines, lines_outside_logical_order, occluded_lines, pages_by_template}`. |
+| `data` | `annotation_schema`, `annotations_sha256`, `generation_manifest_sha256`; `corpora[]` as `{sha256, bytes}` for each `--corpus` text file; `split` (`unit: "sample"`, `method: "sha256_rank"`, `split_seed`, `validation_fraction`, and `assignment_sha256`, the sha256 of the canonical JSON of the per-page rows in `dataset.json`); `train` and `validation` as `{samples, pages, lines, lines_outside_logical_order, occluded_lines, pages_by_template}`; for recognition, `line_polygons` (`sidecar` or `kraken`; absent in records made before it existed, meaning `sidecar`), and with `kraken` the `polygonizer` object and each split's `lines_dropped_by_polygonizer`. `lines` counts the lines written, after any drops. |
 | `text_order` | `ground_truth: "logical"`, `training_reorder: true`, `base_dir`, `inference_reorder: true`, `inference_base_dir`. |
 | `commands` | `compile_train`, `compile_validation` and `train` argument lists, with the ketos path replaced by `<ketos>` and the work directory by `<work>`. |
 | `hyperparameters` | Everything passed to `ketos train`: `spec` (VGSL; the default is ketos 7.0.2's own default, passed explicitly), `batch_size`, `learning_rate`, `optimizer`, `schedule`, `quit` (`early` or `fixed`), `epochs`, `min_epochs`, `lag`, `validation_frequency`, `padding`, `augment`. |
