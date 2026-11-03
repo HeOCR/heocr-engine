@@ -10,12 +10,15 @@ from __future__ import annotations
 
 from dataclasses import asdict, dataclass
 import hashlib
+import io
 import json
 import math
 from pathlib import Path, PurePosixPath
 import re
 import unicodedata
 import xml.etree.ElementTree as ET
+
+from PIL import Image
 
 from heocr_engine import __version__
 from heocr_engine.cli import EngineError, MAX_BYTES, digest, inspect_image, read_limited, run_process
@@ -38,6 +41,13 @@ REGION_TYPE = re.compile(r"[A-Za-z0-9_-]{1,64}\Z")
 # Segmentation regions are the sidecar's region polygons (hocrsyngen S11a) when every page has them, else
 # the bounding box of each region name's line polygons.
 REGION_GEOMETRIES = ("sidecar", "line_polygon_bbox")
+# Recognition line polygons: the sidecar's own, or rebuilt from each gold baseline by Kraken's polygonizer,
+# the step that turns detected baselines into line polygons at inference (R4a: R3b reads sidecar-shaped
+# polygons only). The polygonizer runs at the segmenter's input height, as `blla` does (1800 px); 0 runs
+# it at the page's own resolution.
+LINE_POLYGONS = ("sidecar", "kraken")
+POLYGONIZER = "kraken.lib.segmentation.calculate_polygonal_environment"
+POLYGONIZER_HEIGHT = 1800
 MAX_JSON_BYTES = 500_000_000
 MAX_MODEL_BYTES = 2_000_000_000
 MAX_LOG_BYTES = 2_000_000_000
@@ -281,19 +291,68 @@ def page_xml(page: dict, image_name: str, region_types: bool = False, sidecar_re
     return ET.tostring(root, encoding="utf-8", xml_declaration=True) + b"\n"
 
 
+def kraken_polygonizer():
+    """Kraken's polygonizer and Kraken's version; kraken is an optional dependency."""
+    try:
+        from importlib.metadata import version
+        from kraken.lib.segmentation import calculate_polygonal_environment
+    except ImportError as exc:
+        raise EngineError("Kraken line polygons need kraken installed (pip install 'heocr-engine[kraken]')") from exc
+    return calculate_polygonal_environment, version("kraken")
+
+
+def kraken_line_polygons(raw: bytes, page: dict, polygonize,
+                         height: int = POLYGONIZER_HEIGHT) -> tuple[list[dict], int]:
+    """The page's lines with polygons rebuilt from their baselines, and how many lines were dropped.
+
+    `polygonize` has calculate_polygonal_environment's signature. Each baseline is polygonized with the
+    page's other baselines as boundaries, on the grayscale image, at `height` (0: native resolution). A line
+    the polygonizer returns no polygon for, or fewer than three distinct points, is dropped.
+    """
+    if not page["lines"]:
+        return [], 0
+    with Image.open(io.BytesIO(raw)) as image:
+        gray = image.convert("L")
+    baselines = [[list(point) for point in line["baseline"]] for line in page["lines"]]
+    try:
+        polygons = polygonize(gray, baselines, scale=(height, 0) if height else None)
+    except Exception:  # noqa: BLE001 - a page the polygonizer cannot handle loses its lines, counted
+        polygons = [None] * len(baselines)
+    if not isinstance(polygons, list) or len(polygons) != len(baselines):
+        raise EngineError("Kraken's polygonizer returned the wrong number of polygons")
+    kept = []
+    for line, polygon in zip(page["lines"], polygons):
+        points = [] if polygon is None else [
+            (min(max(int(round(float(x))), 0), page["width"]), min(max(int(round(float(y))), 0), page["height"]))
+            for x, y in polygon]
+        if len(set(points)) >= 3:
+            kept.append({**line, "polygon": points})
+    return kept, len(page["lines"]) - len(kept)
+
+
 def _canonical_sha(value) -> str:
     return digest(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8"))
 
 
 def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validation_fraction: float = 0.1,
-                        split_seed: int = 0, task: str = "recognition") -> dict:
+                        split_seed: int = 0, task: str = "recognition", line_polygons: str = "sidecar",
+                        polygonizer_height: int = POLYGONIZER_HEIGHT, polygonizer=None) -> dict:
     """Write pages/<sha256>.{jpg,png,xml}, train.txt, validation.txt and dataset.json into `output`.
 
     The two list files hold absolute XML paths for ketos and stay local. dataset.json is path-free.
-    `task="segmentation"` types the regions and counts them per split.
+    `task="segmentation"` types the regions and counts them per split. `line_polygons="kraken"` (recognition
+    only) rebuilds line polygons with Kraken's polygonizer (`polygonizer`, by default Kraken's own).
     """
     if task not in TASKS:
         raise EngineError("Invalid training task")
+    if line_polygons not in LINE_POLYGONS or (task == "segmentation" and line_polygons != "sidecar"):
+        raise EngineError("Line polygons must be sidecar or kraken, and sidecar for segmentation")
+    if not (_is_int(polygonizer_height, 64, 20_000) or polygonizer_height == 0):
+        raise EngineError("Polygonizer height must be 0 or 64-20000 pixels")
+    rebuild = line_polygons == "kraken"
+    kraken_version = None
+    if rebuild and polygonizer is None:
+        polygonizer, kraken_version = kraken_polygonizer()
     segmentation = task == "segmentation"
     pages, annotations_sha, manifest_sha = load_annotated_pages(annotations, manifest)
     with_regions = sum(page["regions"] is not None for page in pages)
@@ -313,6 +372,10 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
         suffix = ".png" if raw.startswith(b"\x89PNG\r\n\x1a\n") else ".jpg"
         image = output / "pages" / (page["page_sha256"] + suffix)
         image.write_bytes(raw)
+        dropped = 0
+        if rebuild:
+            lines, dropped = kraken_line_polygons(raw, page, polygonizer, polygonizer_height)
+            page = {**page, "lines": lines}
         xml = page_xml(page, image.name, region_types=segmentation, sidecar_regions=sidecar)
         xml_path = image.with_suffix(".xml")
         xml_path.write_bytes(xml)
@@ -326,6 +389,7 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
                         "occluded_lines": sum(line["occluded"] for line in page["lines"]),
                         **({"regions": sorted(name for name, _, _ in page_regions(page, sidecar))}
                            if segmentation else {}),
+                        **({"lines_dropped_by_polygonizer": dropped} if rebuild else {}),
                         "page_xml_sha256": digest(xml)})
     for split, paths in lists.items():
         if not paths:
@@ -337,6 +401,12 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
                          "validation_fraction": validation_fraction, "assignment_sha256": _canonical_sha(entries)}}
     if segmentation:
         summary.update(task=task, region_geometry=REGION_GEOMETRIES[0 if sidecar else 1])
+    else:
+        summary["line_polygons"] = line_polygons
+    if rebuild:
+        summary["polygonizer"] = {"function": POLYGONIZER, "kraken_version": kraken_version,
+                                  "height": polygonizer_height, "topline": False, "boundaries": "other baselines",
+                                  "dropped_lines": sum(entry["lines_dropped_by_polygonizer"] for entry in entries)}
     for split in ("train", "validation"):
         chosen = [entry for entry in entries if entry["split"] == split]
         templates: dict[str, int] = {}
@@ -348,6 +418,9 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
                           "lines_outside_logical_order": sum(entry["lines_outside_logical_order"] for entry in chosen),
                           "occluded_lines": sum(entry["occluded_lines"] for entry in chosen),
                           "pages_by_template": dict(sorted(templates.items()))}
+        if rebuild:
+            summary[split]["lines_dropped_by_polygonizer"] = sum(entry["lines_dropped_by_polygonizer"]
+                                                                 for entry in chosen)
         if segmentation:
             regions: dict[str, int] = {}
             for entry in chosen:
@@ -522,6 +595,11 @@ def validate_training_run(record: dict) -> list[str]:
         if not isinstance(value, str) or not HEX64.fullmatch(value):
             problems.append(f"{name} must be 64 lowercase hex characters")
     if task == "recognition":
+        source = data.get("line_polygons", "sidecar")
+        polygonizer = data.get("polygonizer")
+        if source not in LINE_POLYGONS or (source == "kraken") != isinstance(polygonizer, dict) or (
+                source == "kraken" and not _is_int(polygonizer.get("dropped_lines"), 0, 100_000_000)):
+            problems.append("data.line_polygons must be sidecar, or kraken with a polygonizer and its dropped lines")
         order = record["text_order"]
         if (order.get("ground_truth") != "logical" or order.get("training_reorder") is not True
                 or order.get("base_dir") not in BASE_DIRS
@@ -551,7 +629,8 @@ def train_kraken(annotations: Path, manifest: Path, work: Path, ketos: Path, *, 
                  corpora: tuple[Path, ...] = (), device: str = "cpu", seed: int = 42,
                  deterministic: bool = False, precision: str = "32-true", workers: int = 0, threads: int = 1,
                  validation_fraction: float = 0.1, split_seed: int = 0,
-                 hyperparameters: Hyperparameters = Hyperparameters(), timeout: float = 172_800) -> dict:
+                 hyperparameters: Hyperparameters = Hyperparameters(), timeout: float = 172_800,
+                 line_polygons: str = "sidecar", polygonizer_height: int = POLYGONIZER_HEIGHT) -> dict:
     """Prepare data, compile it, train a recognizer from scratch with local ketos, and describe the run."""
     hyperparameters.check()
     if (not DEVICE.fullmatch(device) or precision not in PRECISIONS or not _is_int(seed, 0, 2**32 - 1)
@@ -572,7 +651,8 @@ def train_kraken(annotations: Path, manifest: Path, work: Path, ketos: Path, *, 
         raise EngineError("Work directory must be new or empty")
     work.mkdir(parents=True, exist_ok=True)
     work = work.resolve()
-    summary = prepare_kraken_data(annotations, manifest, work / "data", validation_fraction, split_seed)
+    summary = prepare_kraken_data(annotations, manifest, work / "data", validation_fraction, split_seed,
+                                  line_polygons=line_polygons, polygonizer_height=polygonizer_height)
     global_args = ["--workers", str(workers), "--threads", str(threads)]
     commands = {f"compile_{split}": [str(ketos), *global_args, "compile", "-f", "page",
                                      "-o", str(work / f"{split}.arrow"), "-F", str(work / "data" / f"{split}.txt")]
