@@ -221,9 +221,17 @@ def _kraken_main(argv: list[str]) -> int:
                                      description="Run an installed kraken CLI with local models on one image.")
     parser.add_argument("image", type=Path)
     parser.add_argument("output", type=Path)
-    parser.add_argument("--executable", type=Path, required=True, help="Path to the kraken command")
+    parser.add_argument("--api", choices=["cli", "python"], default="cli",
+                        help="cli (default): run the kraken command. python: run kraken in-process, which "
+                             "allows --reading-order-model and --geometry-output (needs kraken installed)")
+    parser.add_argument("--executable", type=Path, help="Path to the kraken command (--api cli)")
     parser.add_argument("--segmentation-model", type=Path, required=True)
     parser.add_argument("--recognition-model", type=Path, required=True)
+    parser.add_argument("--reading-order-model", type=Path,
+                        help="--api python: a `ketos rotrain` line reading-order model; the text follows its order")
+    parser.add_argument("--geometry-output", type=Path,
+                        help="--api python: write image-bound line geometry and predicted regions as JSON")
+    parser.add_argument("--device", default="cpu", help="--api python: cpu (default), mps or cuda")
     parser.add_argument("--base-dir", choices=BASE_DIRS, default="R",
                         help="Base text direction for reordering (default R)")
     parser.add_argument("--text-direction", choices=TEXT_DIRECTIONS,
@@ -231,9 +239,24 @@ def _kraken_main(argv: list[str]) -> int:
                              "R horizontal-rl, L horizontal-lr, auto kraken's own default)")
     parser.add_argument("--timeout", type=float, default=600)
     args = parser.parse_args(argv)
-    recognizer = KrakenRecognizer(args.executable, args.segmentation_model, args.recognition_model,
-                                  args.base_dir, args.timeout, args.text_direction)
+    if args.api == "cli":
+        if args.executable is None:
+            parser.error("--api cli needs --executable")
+        if args.reading_order_model or args.geometry_output or args.device != "cpu":
+            parser.error("--reading-order-model, --geometry-output and --device need --api python")
+        recognizer = KrakenRecognizer(args.executable, args.segmentation_model, args.recognition_model,
+                                      args.base_dir, args.timeout, args.text_direction)
+    else:
+        from heocr_engine.kraken_api import KrakenPythonRecognizer
+
+        recognizer = KrakenPythonRecognizer(args.segmentation_model, args.recognition_model,
+                                            args.reading_order_model, args.base_dir, args.text_direction,
+                                            args.device)
     write_prediction(run_pipeline(read_limited(args.image, MAX_BYTES), recognizer), args.output)
+    if args.api == "python" and args.geometry_output:
+        with args.geometry_output.open("x", encoding="utf-8") as stream:
+            json.dump(recognizer.last_geometry, stream, ensure_ascii=False, indent=2, allow_nan=False)
+            stream.write("\n")
     return 0
 
 
