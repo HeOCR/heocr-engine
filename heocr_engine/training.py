@@ -1,8 +1,10 @@
 """Kraken recognizer training from hocrsyngen line annotations (docs/training_run_contract.md).
 
 `prepare_kraken_data` turns `hocrsyngen_line_annotations.v1` plus page images into PAGE XML with
-baselines and polygons, the input of `ketos compile -f page`. `train_kraken` runs a local ketos from
-scratch and returns a path-free `heocr_engine_training_run.v1` record. Nothing is downloaded or published.
+baselines and polygons, the input of `ketos compile -f page` (recognition) or `ketos segtrain -f page`
+(segmentation, which also types each region). `train_kraken` runs a local ketos from scratch and returns a
+path-free `heocr_engine_training_run.v1` record; heocr_engine.segmentation_training does the same for a
+baseline segmenter. Nothing is downloaded or published.
 """
 from __future__ import annotations
 
@@ -29,6 +31,12 @@ BASE_DIR = "R"
 DEFAULT_SPEC = ("[1,120,0,1 Cr3,13,32 Do0.1,2 Mp2,2 Cr3,13,32 Do0.1,2 Mp2,2 Cr3,9,64 Do0.1,2 Mp2,2 "
                 "Cr3,9,64 Do0.1,2 S1(1x0)1,3 Lbx200 Do0.1,2 Lbx200 Do0.1,2 Lbx200 Do]")
 LICENCE_STATUS = "Needs verification"
+TASKS = ("recognition", "segmentation")
+# Region names become kraken region types through PAGE `custom="structure {type:…;}"`, which kraken
+# splits on braces, colons, semicolons and spaces.
+REGION_TYPE = re.compile(r"[A-Za-z0-9_-]{1,64}\Z")
+# Before hocrsyngen emits region polygons, a region is the bounding box of its lines' polygons.
+REGION_GEOMETRY = "line_polygon_bbox"
 MAX_JSON_BYTES = 500_000_000
 MAX_MODEL_BYTES = 2_000_000_000
 MAX_LOG_BYTES = 2_000_000_000
@@ -189,8 +197,24 @@ def _points_attr(points) -> str:
     return " ".join(f"{x},{y}" for x, y in points)
 
 
-def page_xml(page: dict, image_name: str) -> bytes:
-    """PAGE XML with one TextRegion per annotated region, lines in line_index order, right-to-left."""
+def page_regions(page: dict) -> list[tuple[str, list[tuple[int, int]], list[dict]]]:
+    """One (name, bounding box, lines) per annotated region name, in order of first line_index."""
+    regions: dict[str, list[dict]] = {}
+    for line in page["lines"]:
+        regions.setdefault(line["region"], []).append(line)
+    out = []
+    for name, lines in regions.items():
+        xs = [x for line in lines for x, _ in line["polygon"]]
+        ys = [y for line in lines for _, y in line["polygon"]]
+        out.append((name, [(min(xs), min(ys)), (max(xs), min(ys)), (max(xs), max(ys)), (min(xs), max(ys))], lines))
+    return out
+
+
+def page_xml(page: dict, image_name: str, region_types: bool = False) -> bytes:
+    """PAGE XML with one TextRegion per annotated region, lines in line_index order, right-to-left.
+
+    With `region_types`, each region carries its hocrsyngen name as a kraken region type.
+    """
     q = lambda tag: f"{{{PAGE_NS}}}{tag}"  # noqa: E731
     root = ET.Element(q("PcGts"))
     metadata = ET.SubElement(root, q("Metadata"))
@@ -199,15 +223,14 @@ def page_xml(page: dict, image_name: str) -> bytes:
     ET.SubElement(metadata, q("LastChange")).text = FIXED_TIME
     element = ET.SubElement(root, q("Page"), imageFilename=image_name, imageWidth=str(page["width"]),
                             imageHeight=str(page["height"]), readingDirection="right-to-left")
-    regions: dict[str, list[dict]] = {}
-    for line in page["lines"]:
-        regions.setdefault(line["region"], []).append(line)
-    for number, lines in enumerate(regions.values()):
-        xs = [x for line in lines for x, _ in line["polygon"]]
-        ys = [y for line in lines for _, y in line["polygon"]]
-        region = ET.SubElement(element, q("TextRegion"), id=f"r{number}", readingDirection="right-to-left")
-        ET.SubElement(region, q("Coords"), points=_points_attr(
-            [(min(xs), min(ys)), (max(xs), min(ys)), (max(xs), max(ys)), (min(xs), max(ys))]))
+    for number, (name, box, lines) in enumerate(page_regions(page)):
+        attributes = {"id": f"r{number}"}
+        if region_types:
+            if not REGION_TYPE.fullmatch(name):
+                raise EngineError("Region names must be 1-64 ASCII letters, digits, '_' or '-' to be region types")
+            attributes["custom"] = f"structure {{type:{name};}}"
+        region = ET.SubElement(element, q("TextRegion"), **attributes, readingDirection="right-to-left")
+        ET.SubElement(region, q("Coords"), points=_points_attr(box))
         for line in lines:
             text_line = ET.SubElement(region, q("TextLine"), id=f"l{line['line_index']}",
                                       readingDirection="right-to-left")
@@ -223,11 +246,15 @@ def _canonical_sha(value) -> str:
 
 
 def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validation_fraction: float = 0.1,
-                        split_seed: int = 0) -> dict:
+                        split_seed: int = 0, task: str = "recognition") -> dict:
     """Write pages/<sha256>.{jpg,png,xml}, train.txt, validation.txt and dataset.json into `output`.
 
     The two list files hold absolute XML paths for ketos and stay local. dataset.json is path-free.
+    `task="segmentation"` types the regions and counts them per split.
     """
+    if task not in TASKS:
+        raise EngineError("Invalid training task")
+    segmentation = task == "segmentation"
     pages, annotations_sha, manifest_sha = load_annotated_pages(annotations, manifest)
     splits = assign_splits({page["sample_id"] for page in pages}, validation_fraction, split_seed)
     if output.exists() and any(output.iterdir()):
@@ -241,7 +268,7 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
         suffix = ".png" if raw.startswith(b"\x89PNG\r\n\x1a\n") else ".jpg"
         image = output / "pages" / (page["page_sha256"] + suffix)
         image.write_bytes(raw)
-        xml = page_xml(page, image.name)
+        xml = page_xml(page, image.name, region_types=segmentation)
         xml_path = image.with_suffix(".xml")
         xml_path.write_bytes(xml)
         split = splits[page["sample_id"]]
@@ -252,6 +279,7 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
                         "split": split, "lines": len(page["lines"]),
                         "lines_outside_logical_order": sum(line["logical_line_index"] is None for line in page["lines"]),
                         "occluded_lines": sum(line["occluded"] for line in page["lines"]),
+                        **({"regions": sorted(name for name, _, _ in page_regions(page))} if segmentation else {}),
                         "page_xml_sha256": digest(xml)})
     for split, paths in lists.items():
         if not paths:
@@ -261,6 +289,8 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
                "generation_manifest_sha256": manifest_sha,
                "split": {"unit": "sample", "method": "sha256_rank", "split_seed": split_seed,
                          "validation_fraction": validation_fraction, "assignment_sha256": _canonical_sha(entries)}}
+    if segmentation:
+        summary.update(task=task, region_geometry=REGION_GEOMETRY)
     for split in ("train", "validation"):
         chosen = [entry for entry in entries if entry["split"] == split]
         templates: dict[str, int] = {}
@@ -272,6 +302,12 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
                           "lines_outside_logical_order": sum(entry["lines_outside_logical_order"] for entry in chosen),
                           "occluded_lines": sum(entry["occluded_lines"] for entry in chosen),
                           "pages_by_template": dict(sorted(templates.items()))}
+        if segmentation:
+            regions: dict[str, int] = {}
+            for entry in chosen:
+                for name in entry["regions"]:
+                    regions[name] = regions.get(name, 0) + 1
+            summary[split]["regions_by_type"] = dict(sorted(regions.items()))
     with (output / "dataset.json").open("x", encoding="utf-8") as stream:
         json.dump({**summary, "pages": entries}, stream, ensure_ascii=False, indent=2)
         stream.write("\n")
@@ -367,19 +403,20 @@ def _scan_log(path: Path) -> dict:
     return found
 
 
-def _stop_from_history(history: list[dict], hyperparameters: Hyperparameters) -> str | None:
+def _stop_from_history(history: list[dict], hyperparameters, metric: str = "val_accuracy") -> str | None:
     """Replay Lightning's EarlyStopping rule on the validation history.
 
-    ketos 7.0.2 builds EarlyStopping(monitor="val_accuracy", mode="max", patience=lag, stopping_threshold=1.0)
-    without verbose=True, so a real run logs no stop message. Accuracy cannot exceed the threshold, so only
-    patience can stop the run: the last `lag` runs did not beat the best before them.
+    ketos 7.0.2 builds EarlyStopping(monitor=metric, mode="max", patience=lag, stopping_threshold=1.0)
+    without verbose=True, so a real run logs no stop message. The metric (`val_accuracy` for recognition,
+    `val_mean_iu` for segmentation) cannot exceed the threshold, so only patience can stop the run: the last
+    `lag` runs did not beat the best before them.
     """
     if hyperparameters.quit != "early" or not history:
         return None
     best, wait = -math.inf, 0
     for row in history:
-        if row["val_accuracy"] > best:
-            best, wait = row["val_accuracy"], 0
+        if row[metric] > best:
+            best, wait = row[metric], 0
         else:
             wait += 1
     if wait >= hyperparameters.lag:
@@ -417,7 +454,12 @@ def validate_training_run(record: dict) -> list[str]:
     problems = []
     if not isinstance(record, dict) or record.get("schema_version") != TRAINING_SCHEMA_ID:
         return ["schema_version must be " + TRAINING_SCHEMA_ID]
-    for key in ("engine", "trainer", "init", "data", "text_order", "commands", "hyperparameters",
+    task = record.get("task", "recognition")
+    if task not in TASKS:
+        return ["task must be one of " + ", ".join(TASKS)]
+    # A recognizer records its bidi handling; a segmenter records its classes and inference reading order.
+    task_key = "text_order" if task == "recognition" else "segmentation"
+    for key in ("engine", "trainer", "init", "data", task_key, "commands", "hyperparameters",
                 "run", "outcome", "output", "model_licence"):
         if key not in record:
             problems.append(f"missing {key}")
@@ -433,15 +475,24 @@ def validate_training_run(record: dict) -> list[str]:
                           for i, c in enumerate(data.get("corpora", [])))):
         if not isinstance(value, str) or not HEX64.fullmatch(value):
             problems.append(f"{name} must be 64 lowercase hex characters")
-    order = record["text_order"]
-    if (order.get("ground_truth") != "logical" or order.get("training_reorder") is not True
-            or order.get("base_dir") not in BASE_DIRS or order.get("inference_base_dir") != order.get("base_dir")):
-        problems.append("text_order must reorder logical ground truth with the inference base direction")
+    if task == "recognition":
+        order = record["text_order"]
+        if (order.get("ground_truth") != "logical" or order.get("training_reorder") is not True
+                or order.get("base_dir") not in BASE_DIRS
+                or order.get("inference_base_dir") != order.get("base_dir")):
+            problems.append("text_order must reorder logical ground truth with the inference base direction")
+    else:
+        segmentation = record["segmentation"]
+        if (not isinstance(segmentation, dict) or segmentation.get("line_location") != "baseline"
+                or not isinstance(segmentation.get("class_mapping"), dict)
+                or not isinstance(segmentation.get("inference"), dict)
+                or not segmentation["inference"].get("reading_order")):
+            problems.append("segmentation must state the line location, class mapping and inference reading order")
     commands = record["commands"]
     if not isinstance(commands, dict) or not all(isinstance(cmd, list) and all(isinstance(a, str) for a in cmd)
                                                  for cmd in commands.values()):
         problems.append("commands must map names to argument lists")
-    elif any(arg in ("-i", "--load", "--resume") for arg in commands.get("train", [])):
+    elif any(arg in ("-i", "--load", "--resume", "--resize") for arg in commands.get("train", [])):
         problems.append("a from-scratch run must not load weights")
     if not isinstance(record["model_licence"], dict) or not record["model_licence"].get("status"):
         problems.append("model_licence.status is required")

@@ -1,6 +1,6 @@
 # Training-run contract: `heocr_engine_training_run.v1`
 
-One JSON object per recognizer training run, UTF-8, written without NaN or infinity by `heocr-engine train-kraken`. It records what a model was trained on and how, so that a score can be traced to a model hash and the model to its data. It makes no accuracy claim, and it contains no local paths.
+One JSON object per training run (a recognizer, or a baseline segmenter with `task: "segmentation"`), UTF-8, written without NaN or infinity by `heocr-engine train-kraken` or `heocr-engine train-kraken-seg`. It records what a model was trained on and how, so that a score can be traced to a model hash and the model to its data. It makes no accuracy claim, and it contains no local paths.
 
 ## Input: `hocrsyngen_line_annotations.v1`
 
@@ -49,7 +49,7 @@ Ground truth is in Unicode logical order. Kraken 7.0.2 trains on display (left-t
 | `schema_version` | `"heocr_engine_training_run.v1"`. |
 | `engine` | `{name: "heocr-engine", version}` that wrote the record. |
 | `trainer` | `name` (`ketos`), `version` (from `ketos --version`), `executable_sha256`, and `kraken_version` and `kraken_executable_sha256` when `--kraken` is given (otherwise `null`). |
-| `task` | `"recognition"`. |
+| `task` | `"recognition"` (a record without `task` is read as recognition), or `"segmentation"` (see [Segmentation runs](#segmentation-runs)). |
 | `init` | `"from_scratch"`. No weights are loaded (`-i`, `--load` and `--resume` are rejected). See decision 0007. |
 | `data` | `annotation_schema`, `annotations_sha256`, `generation_manifest_sha256`; `corpora[]` as `{sha256, bytes}` for each `--corpus` text file; `split` (`unit: "sample"`, `method: "sha256_rank"`, `split_seed`, `validation_fraction`, and `assignment_sha256`, the sha256 of the canonical JSON of the per-page rows in `dataset.json`); `train` and `validation` as `{samples, pages, lines, lines_outside_logical_order, occluded_lines, pages_by_template}`. |
 | `text_order` | `ground_truth: "logical"`, `training_reorder: true`, `base_dir`, `inference_reorder: true`, `inference_base_dir`. |
@@ -75,3 +75,42 @@ heocr-engine train-kraken batch/line_annotations.json batch/generation_manifest.
 - `--workers` defaults to 0. On macOS with kraken 7.0.2, keep it at 0: with data-loader workers, ketos fails at the first epoch because worker processes are spawned and cannot pickle a local object.
 - Any non-zero ketos exit fails the run and no record is written, including the Kraken 7.0.2 macOS exit-time crash (docs/baselines.md). The work directory is left for inspection.
 - The trained model is used for inference with `heocr-engine kraken … --recognition-model work/checkpoints/best_<score>.safetensors`; the prediction records its sha256 as `model:recognition`, which matches `output.model_sha256`.
+
+## Segmentation runs
+
+`heocr-engine train-kraken-seg ANNOTATIONS MANIFEST WORK RECORD --ketos …` trains a Kraken baseline segmenter (`blla`-style) from scratch with `ketos segtrain` (decision 0008). The input, its checks and the sample-level split are the same as for recognition.
+
+### Data
+
+`prepare-kraken-data --task segmentation` (also the first step of `train-kraken-seg`) writes the same PAGE XML as recognition, with one change: each `TextRegion` carries its hocrsyngen region name as a kraken region type, `custom="structure {type:<region>;}"`. Region names must be 1–64 ASCII letters, digits, `_` or `-`, or conversion fails. A region is the bounding box of its lines' polygons, one per region name per page (`region_geometry: "line_polygon_bbox"`), until the sidecar carries region polygons. Lines have no type, so kraken gives them all the `default` line type. Recognition output is unchanged: its PAGE XML has no region types.
+
+`dataset.json` and the record's `data` add `task: "segmentation"`, `region_geometry`, a per-page `regions` list, and `regions_by_type` (page count per region type) for each split. Training fails before ketos runs if the validation split has a region type that the train split lacks.
+
+### What ketos 7.0.2 segtrain needs
+
+- `-f page` with `-t train.txt -e validation.txt`, the list files from the converter. No `ketos compile` step: segtrain reads the PAGE XML and images directly.
+- **No `-bl`.** With click 8.2, ketos 7.0.2 stores an explicit `-bl` as the string `'False'` in the model's `topline` metadata. kraken's segmenter then fails at inference (`KeyError: 'False'`). Without the flag, ketos stores the boolean `false`, which is the same baseline (bottom) line location. `train-kraken-seg` checks that the written model records `topline: false` and fails closed otherwise. `-tl` (topline) is not used: hocrsyngen baselines are the typographic baseline.
+- **No `--resize`.** It only matters when loading a model whose classes differ from the data. A from-scratch run never loads one, and the validator rejects it.
+- **mps works** (`PYTORCH_ENABLE_MPS_FALLBACK=1` is set on `mps`, as for recognition, and recorded in `run.environment`). Segtrain uses one page per batch at 1,800 pixels high; a dry run took about 0.45 s per page and epoch on an Apple-silicon mps device, including validation.
+
+### Record fields for `task: "segmentation"`
+
+The record has the same fields as recognition, except that `text_order` is replaced by `segmentation`:
+
+| Field | Meaning |
+|---|---|
+| `segmentation` | `line_location: "baseline"`; `line_types: ["default"]`; `region_types` (the sorted train-split region types) and `region_type_source: "hocrsyngen region name"`; `region_geometry`; `class_mapping`, copied from the trained model's metadata (`aux` separators, `baselines`, `regions` with their output indices), which must match the training data exactly; `inference`, how `heocr-engine kraken` uses the model: `command`, `segmenter` (`kraken segment -bl`), `text_direction` (`horizontal-lr`, kraken's default, because no `-d` is passed), `reading_order` (`polygonal_reading_order`, kraken's heuristic) and `neural_reading_order: false` (segtrain trains no reading-order head). |
+| `commands` | `train` only: the `ketos … segtrain -f page …` argument list, with `<ketos>` and `<work>` placeholders. |
+| `hyperparameters` | Everything passed to `ketos segtrain`: `spec` (ketos 7.0.2's default segmentation network, passed explicitly), `learning_rate`, `optimizer`, `schedule`, `weight_decay`, `quit`, `epochs`, `min_epochs`, `lag`, `validation_frequency`, `line_width` (the baseline thickness in the training target), `baseline_tolerance` (ketos `--bl-tol`, pixels, for the baseline detection metric), `dice_weight`, `augment`. |
+| `outcome` | As for recognition, with the segmentation metrics. `validation_metric` is `val_mean_iu`: the mean intersection over union of the region and separator pixel classes, which ketos uses to keep checkpoints, to name `best_<score>.safetensors`, and for early stopping. `validation_history` rows hold `run`, `val_accuracy` (pixel accuracy), `val_mean_acc`, `val_mean_iu`, `val_freq_iu` (frequency-weighted IoU) and `baseline_precision`, `baseline_recall` and `baseline_f1` (ketos's baseline detection match within `baseline_tolerance`; `null` if not logged). `stopped_by` follows the same rule as recognition, replayed on `val_mean_iu`: ketos 7.0.2 builds `EarlyStopping(monitor="val_mean_iu", patience=lag)` without `verbose` here too. `ketos_listed_pages` (`train`, `validation`: pages ketos was asked to parse) and `ketos_parse_failures` (pages ketos could not parse) replace the line counts. |
+| `model_licence` | As for recognition, with `basis` decision 0008. |
+
+None of these metrics is a line-level segmentation or reading-order score, and none is a hocrgen score. Report segmenters end to end through hocrgen (`heocr-engine kraken --segmentation-model work/checkpoints/best_<score>.safetensors`), whose prediction records the model sha256 as `model:segmentation`.
+
+```sh
+heocr-engine train-kraken-seg batch/line_annotations.json batch/generation_manifest.json work/ record.json \
+  --ketos "$(command -v ketos)" --kraken "$(command -v kraken)" --corpus train_corpus.txt \
+  --device mps --workers 0 --seed 42 --quit early --lag 8 --min-epochs 10
+```
+
+`work/` receives `data/`, `checkpoints/` and `ketos.log`; keep it out of the repository.
