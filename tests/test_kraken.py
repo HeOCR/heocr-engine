@@ -61,6 +61,21 @@ class KrakenTests(unittest.TestCase):
         self.assertIn('--reorder', ocr)
         self.assertEqual(ocr[ocr.index('--base-dir') + 1], 'R')
 
+    def test_line_order_follows_the_base_direction(self):
+        cases = (({'base_dir': 'R'}, 'horizontal-rl'), ({'base_dir': 'L'}, 'horizontal-lr'),
+                 ({'base_dir': 'auto'}, None), ({'base_dir': 'R', 'text_direction': 'horizontal-lr'}, 'horizontal-lr'),
+                 ({'base_dir': 'auto', 'text_direction': 'horizontal-rl'}, 'horizontal-rl'))
+        hashes = set()
+        for changes, expected in cases:
+            with self.subTest(changes=changes), patch('heocr_engine.kraken.run_process', side_effect=self.fake_run):
+                stage = run_pipeline(self.image.read_bytes(), self.recognizer(**changes))['pipeline'][0]
+                segment = self.calls[-1][self.calls[-1].index('segment'):self.calls[-1].index('-i', 4)]
+                # auto passes no -d, so kraken keeps its own default (horizontal-lr in 7.0.2).
+                self.assertEqual(segment, ['segment', '-bl'] + (['-d', expected] if expected else []))
+                self.assertEqual(stage['details']['text_direction'], expected)
+                hashes.add((changes['base_dir'], expected, stage['config_sha256']))
+        self.assertEqual(len({h[2] for h in hashes}), len(hashes))
+
     def test_bad_settings_and_outputs_fail(self):
         with patch('heocr_engine.kraken.run_process', side_effect=self.fake_run) as runner:
             for changes in ({'base_dir': 'RTL'}, {'timeout': 0}, {'timeout': float('nan')},

@@ -16,7 +16,12 @@ heocr-engine kraken page.png prediction.json \
 ```
 
 - Install Kraken with the optional extra, `pip install 'heocr-engine[kraken]'` (tested with kraken 7.0.2), or point `--executable` at an existing install. The core package and CI do not need it. It runs `segment -bl` (baseline segmentation), then `ocr --reorder --base-dir R`, so the text comes out in Unicode logical order with a right-to-left base direction. Use `--base-dir auto` or `L` for other material.
-- **Line order:** segmentation runs with `-d horizontal-rl` by default (`--text-direction`, or `"text_direction"` in a pipeline config), so lines that share a row are read right to left. `--text-direction horizontal-lr` restores Kraken's own default. The direction is in the stage `details` and in its `config_sha256`. **R2a and R3b predictions predate this option and used `horizontal-lr`**; their stage details have no `text_direction`. In R4a, `horizontal-rl` lowered R3b + `blla` overall CER from 0.286 to 0.255 (seed-101) and from 0.405 to 0.358 (held-out).
+- **Line order:** the segmentation direction follows `--base-dir` (decision 0009):
+  - `R`, the default, runs `segment -bl -d horizontal-rl`, so lines that share a row are read right to left;
+  - `L` runs `-d horizontal-lr`;
+  - `auto` passes no `-d`, which leaves Kraken's own default (`horizontal-lr` in 7.0.2).
+
+  `--text-direction` (or `"text_direction"` in a pipeline config) overrides it. The direction is in the stage `details` (`null` for Kraken's default) and in its `config_sha256`. **R2a and R3b predictions predate this option and used `horizontal-lr`**; their stage details have no `text_direction`. In R4a, `horizontal-rl` lowered R3b + `blla` overall CER from 0.286 to 0.255 (seed-101) and from 0.405 to 0.358 (held-out).
 - The prediction has one `recognize` stage named `kraken`. Its artifacts are the executable, `model:segmentation` and `model:recognition` hashes.
 - `words` is empty: Kraken's plain-text output has no word geometry.
 - The default timeout is 600 seconds per call, up to a maximum of 3600, because CPU inference on a full page can be slow.
