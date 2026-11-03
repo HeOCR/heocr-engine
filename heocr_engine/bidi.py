@@ -3,7 +3,10 @@ from __future__ import annotations
 
 from collections import Counter
 from copy import deepcopy
+import hashlib
+import json
 import math
+from pathlib import Path
 import re
 
 from heocr_engine.validate import validate_prediction
@@ -42,8 +45,11 @@ def correct_prediction(prediction, geometry):
     output = deepcopy(prediction)
     report = {"status": "abstained", "reason": "missing_or_invalid_geometry", "changed_lines": 0}
     try:
-        if not isinstance(geometry, dict) or geometry.get("unit") != "pixel":
+        if (not isinstance(geometry, dict) or geometry.get("unit") != "pixel"
+                or geometry.get("input_sha256") != prediction["input"]["sha256"]):
             return output, report
+        geometry_bytes = json.dumps(geometry, ensure_ascii=False, sort_keys=True,
+                                    separators=(",", ":"), allow_nan=False).encode("utf-8")
         lines, tables = geometry["lines"], geometry["tables"]
         if not isinstance(lines, list) or not isinstance(tables, list):
             return output, report
@@ -105,7 +111,13 @@ def correct_prediction(prediction, geometry):
                 "deterministic": False, "requires_network": output.get("track") == "proprietary"}]
         output["schema_version"] = SCHEMA_ID
         output.setdefault("track", "open")
+        config = {"geometry_tolerance_px": 1}
+        config_bytes = json.dumps(config, sort_keys=True, separators=(",", ":")).encode("utf-8")
         output["pipeline"].append({"kind": "postcorrect", "name": "bidi-lines",
             "version": "1", "track": "open", "deterministic": True, "requires_network": False,
-            "license": "MIT", "details": {"changed_lines": len(changes), "geometry_tolerance_px": 1}})
+            "license": "MIT", "artifacts": [
+                {"role": "implementation", "sha256": hashlib.sha256(Path(__file__).read_bytes()).hexdigest()},
+                {"role": "geometry", "sha256": hashlib.sha256(geometry_bytes).hexdigest()}],
+            "config_sha256": hashlib.sha256(config_bytes).hexdigest(),
+            "details": {"changed_lines": len(changes), "geometry_tolerance_px": 1}})
     return output, report

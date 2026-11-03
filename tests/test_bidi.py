@@ -12,7 +12,7 @@ def prediction(text="שלום world סוף", track="open"):
 
 
 def geometry(text="שלום world סוף"):
-    return {"unit": "pixel", "tables": [], "lines": [{"text": text, "bbox": [0, 0, 80, 10],
+    return {"unit": "pixel", "input_sha256": "a" * 64, "tables": [], "lines": [{"text": text, "bbox": [0, 0, 80, 10],
         "words": [{"text": "שלום", "bbox": [0, 0, 10, 10]},
                   {"text": "world", "bbox": [20, 0, 10, 10]},
                   {"text": "סוף", "bbox": [40, 0, 10, 10]}]}]}
@@ -29,6 +29,22 @@ class BidiTest(unittest.TestCase):
         self.assertEqual(result["pipeline"][0]["track"], "proprietary")
         self.assertEqual(report["changed_lines"], 1)
         self.assertEqual(validate_prediction(result)[0], [])
+        stage = result["pipeline"][-1]
+        self.assertEqual({a["role"] for a in stage["artifacts"]}, {"implementation", "geometry"})
+        self.assertTrue(all(len(a["sha256"]) == 64 for a in stage["artifacts"]))
+        self.assertEqual(len(stage["config_sha256"]), 64)
+        altered = geometry()
+        altered["tables"].append({"bbox": [90, 90, 1, 1]})
+        self.assertNotEqual(stage["artifacts"][1]["sha256"],
+                            correct_prediction(original, altered)[0]["pipeline"][-1]["artifacts"][1]["sha256"])
+
+    def test_wrong_image_geometry_abstains(self):
+        p = prediction()
+        g = geometry()
+        g["input_sha256"] = "b" * 64
+        out, report = correct_prediction(p, g)
+        self.assertEqual(out, p)
+        self.assertEqual(report["reason"], "missing_or_invalid_geometry")
 
     def test_missing_or_invalid_geometry_abstains(self):
         for g in (None, {}, {"unit": "pixel", "lines": []},
