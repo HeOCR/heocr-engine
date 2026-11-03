@@ -321,9 +321,35 @@ def _train_kraken_main(argv: list[str]) -> int:
     return 0
 
 
+def _diagnose_segmentation_main(argv: list[str]) -> int:
+    from heocr_engine.segmentation import METHODS, diagnose_segmentation
+
+    parser = argparse.ArgumentParser(prog="heocr-engine diagnose-segmentation",
+                                     description="Compare predicted text lines with hocrsyngen line annotations "
+                                                 "(a diagnostic, not a hocrgen score).")
+    parser.add_argument("annotations", type=Path, help="hocrsyngen_line_annotations.v1 JSON")
+    parser.add_argument("manifest", type=Path, help="The generation_manifest.json the annotations name")
+    parser.add_argument("predictions", type=Path,
+                        help="Directory of <page_sha256>.xml files (PAGE XML or ALTO), one per annotated page")
+    parser.add_argument("--match", choices=METHODS, default="polygon",
+                        help="polygon IoU or baseline overlap (default polygon)")
+    parser.add_argument("--threshold", type=float, default=0.5, help="One-to-one match threshold (default 0.5)")
+    parser.add_argument("--lines", action="store_true", help="Include per-page, per-line assignments")
+    parser.add_argument("--output", type=Path, help="Report file to create (default: stdout)")
+    args = parser.parse_args(argv)
+    report = diagnose_segmentation(args.annotations, args.manifest, args.predictions, args.match,
+                                   args.threshold, args.lines)
+    if args.output:
+        write_prediction(report, args.output)
+    else:
+        json.dump(report, sys.stdout, ensure_ascii=False, indent=2)
+        sys.stdout.write("\n")
+    return 0
+
+
 COMMANDS = {"tesseract": _tesseract_main, "kraken": _kraken_main, "run": _run_main,
             "validate-predictions": _validate_main, "prepare-kraken-data": _prepare_kraken_data_main,
-            "train-kraken": _train_kraken_main}
+            "train-kraken": _train_kraken_main, "diagnose-segmentation": _diagnose_segmentation_main}
 
 
 def main(argv: list[str] | None = None) -> int:
