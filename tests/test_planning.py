@@ -4,6 +4,7 @@ from pathlib import Path
 
 from heocr_engine.contract import SCHEMA_ID, STAGE_KINDS, TRACKS
 from heocr_engine.training import ANNOTATIONS_SCHEMA, LICENCE_STATUS, TRAINING_SCHEMA_ID, Hyperparameters
+from heocr_engine.segmentation_training import SegmentationHyperparameters
 
 ROOT = Path(__file__).resolve().parent.parent
 
@@ -30,7 +31,8 @@ class PlanningTests(unittest.TestCase):
 
     def test_training_doc_matches_constants(self):
         doc = (ROOT / 'docs' / 'training_run_contract.md').read_text(encoding='utf-8')
-        for value in (TRAINING_SCHEMA_ID, ANNOTATIONS_SCHEMA, LICENCE_STATUS, *Hyperparameters.__dataclass_fields__):
+        for value in (TRAINING_SCHEMA_ID, ANNOTATIONS_SCHEMA, LICENCE_STATUS, *Hyperparameters.__dataclass_fields__,
+                      *SegmentationHyperparameters.__dataclass_fields__):
             with self.subTest(value=value):
                 self.assertIn(f'`{value}`' if value != LICENCE_STATUS else value, doc)
 

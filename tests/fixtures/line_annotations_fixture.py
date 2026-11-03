@@ -93,6 +93,34 @@ if 'compile' in args:
     lines = sum(Path(path).read_text(encoding='utf-8').count('<TextLine ') for path in listing)
     Path(args[args.index('-o') + 1]).write_text(json.dumps({{'lines': lines}}), encoding='utf-8')
     sys.exit(0)
+if 'segtrain' in args:
+    listed = {{name: Path(args[args.index(flag) + 1]).read_text(encoding='utf-8').splitlines()
+              for name, flag in (('training', '-t'), ('evaluation', '-e'))}}
+    for name, paths in listed.items():
+        print(f'[11/03/26 10:11:40] INFO     Parsing {{len(paths)}} XML files for {{name}} data     blla.py:84',
+              file=sys.stderr)
+    types = sorted({{t for path in listed['training']
+                    for t in re.findall(r'structure {{type:([^;]+);}}', Path(path).read_text(encoding='utf-8'))}})
+    checkpoints = Path(args[args.index('-o') + 1])
+    checkpoints.mkdir()
+    # Shaped like ketos 7.0.2 segtrain -v output and files; val_metric is val_mean_iu.
+    for epoch, iu in enumerate((0.25, 0.5, 0.5)):
+        print(f'[11/03/26 10:12:14] INFO     validation run: accuracy 0.98 mean_acc 0.98 mean_iu {{iu}} '
+              f'freq_iu 0.4      blla.py:357', file=sys.stderr)
+        print(f'                    INFO     validation bl detection: P {{iu:.4f}} R 0.1000 F1 0.2000  blla.py:370',
+              file=sys.stderr)
+        (checkpoints / f'checkpoint_{{epoch:02d}}-{{iu:.4f}}.ckpt').write_bytes(b'checkpoint')
+    if args[args.index('-q') + 1] == 'fixed':
+        print('`Trainer.fit` stopped: `max_epochs=3` reached.', file=sys.stderr)
+    mapping = {{'aux': {{'_start_separator': 0, '_end_separator': 1}}, 'baselines': {{'default': 2}},
+               'regions': {{t: 3 + i for i, t in enumerate(types)}}}}
+    # ketos 7.0.2 with an explicit -bl stores the string 'False'; FAKE_KETOS_TOPLINE mimics it.
+    topline = os.environ.get('FAKE_KETOS_TOPLINE', False)
+    meta = {{'8f': {{'_tasks': ['segmentation'], '_model': 'TorchVGSLModel', 'topline': topline,
+                   'class_mapping': mapping, 'metrics': [], 'accuracy': []}}}}
+    header = json.dumps({{'__metadata__': {{'kraken_meta': json.dumps(meta)}}}}).encode()
+    (checkpoints / 'best_0.5000.safetensors').write_bytes(len(header).to_bytes(8, 'little') + header + b'weights')
+    sys.exit(int(os.environ.get('FAKE_KETOS_EXIT', '0')))
 work = Path(args[-1]).parent
 train = json.loads(Path(args[-1]).read_text(encoding='utf-8'))['lines']
 validation = json.loads((work / 'validation.arrow').read_text(encoding='utf-8'))['lines']

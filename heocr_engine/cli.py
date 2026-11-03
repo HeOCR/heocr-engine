@@ -264,9 +264,11 @@ def _prepare_kraken_data_main(argv: list[str]) -> int:
                                      description="Convert line annotations and page images to PAGE XML for ketos.")
     _split_args(parser)
     parser.add_argument("output", type=Path, help="New or empty output directory")
+    parser.add_argument("--task", choices=["recognition", "segmentation"], default="recognition",
+                        help="segmentation types each region with its hocrsyngen name (default recognition)")
     args = parser.parse_args(argv)
     summary = prepare_kraken_data(args.annotations, args.manifest, args.output, args.validation_fraction,
-                                  args.split_seed)
+                                  args.split_seed, task=args.task)
     json.dump(summary, sys.stdout, ensure_ascii=False, indent=2)
     sys.stdout.write("\n")
     return 0
@@ -321,9 +323,55 @@ def _train_kraken_main(argv: list[str]) -> int:
     return 0
 
 
+def _train_kraken_seg_main(argv: list[str]) -> int:
+    from heocr_engine.segmentation_training import SegmentationHyperparameters, train_kraken_segmentation
+
+    defaults = SegmentationHyperparameters()
+    parser = argparse.ArgumentParser(prog="heocr-engine train-kraken-seg",
+                                     description="Train a Kraken baseline segmenter from scratch with local "
+                                                 "ketos segtrain and write a heocr_engine_training_run.v1 record.")
+    _split_args(parser)
+    parser.add_argument("work_dir", type=Path, help="New or empty directory for data, checkpoints and the log")
+    parser.add_argument("record", type=Path, help="Training-run record to create")
+    parser.add_argument("--ketos", type=Path, required=True, help="Path to the ketos command")
+    parser.add_argument("--kraken", type=Path, help="Path to the kraken command, to record its version")
+    parser.add_argument("--corpus", type=Path, action="append", default=[],
+                        help="Text corpus the pages were generated from, hashed into the record (repeatable)")
+    parser.add_argument("--device", default="cpu", help="ketos device: cpu, mps, cuda:N or auto")
+    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument("--deterministic", action="store_true")
+    parser.add_argument("--precision", default="32-true")
+    parser.add_argument("--workers", type=int, default=0, help="ketos data-loader workers (default 0)")
+    parser.add_argument("--threads", type=int, default=1)
+    parser.add_argument("--spec", default=defaults.spec, help="VGSL network spec (default: ketos 7.0.2 default)")
+    for name in ("learning_rate", "weight_decay", "validation_frequency", "baseline_tolerance", "dice_weight"):
+        parser.add_argument("--" + name.replace("_", "-"), type=float, default=getattr(defaults, name))
+    for name in ("epochs", "min_epochs", "lag", "line_width"):
+        parser.add_argument("--" + name.replace("_", "-"), type=int, default=getattr(defaults, name))
+    parser.add_argument("--optimizer", default=defaults.optimizer)
+    parser.add_argument("--schedule", default=defaults.schedule)
+    parser.add_argument("--quit", choices=["early", "fixed"], default=defaults.quit)
+    parser.add_argument("--augment", action="store_true")
+    parser.add_argument("--timeout", type=float, default=172_800, help="Seconds for ketos segtrain (default 48h)")
+    args = parser.parse_args(argv)
+    if args.record.exists():
+        raise EngineError("Record file already exists")
+    hyperparameters = SegmentationHyperparameters(
+        args.spec, args.learning_rate, args.optimizer, args.schedule, args.weight_decay, args.quit, args.epochs,
+        args.min_epochs, args.lag, args.validation_frequency, args.line_width, args.baseline_tolerance,
+        args.dice_weight, args.augment)
+    record = train_kraken_segmentation(
+        args.annotations, args.manifest, args.work_dir, args.ketos, kraken=args.kraken, corpora=tuple(args.corpus),
+        device=args.device, seed=args.seed, deterministic=args.deterministic, precision=args.precision,
+        workers=args.workers, threads=args.threads, validation_fraction=args.validation_fraction,
+        split_seed=args.split_seed, hyperparameters=hyperparameters, timeout=args.timeout)
+    write_prediction(record, args.record)
+    return 0
+
+
 COMMANDS = {"tesseract": _tesseract_main, "kraken": _kraken_main, "run": _run_main,
             "validate-predictions": _validate_main, "prepare-kraken-data": _prepare_kraken_data_main,
-            "train-kraken": _train_kraken_main}
+            "train-kraken": _train_kraken_main, "train-kraken-seg": _train_kraken_seg_main}
 
 
 def main(argv: list[str] | None = None) -> int:
