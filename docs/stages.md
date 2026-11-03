@@ -89,3 +89,34 @@ Reference it in a pipeline config as `{"type": "entry_point", "name": "vendor-le
 - Post-correctors may change `text` without realigning `words`. Treat words as recognizer output.
 - `segment` is reserved in the contract. Recognizers that segment internally (for example Kraken) report one `recognize` stage that lists its segmentation model among its artifacts.
 - To measure a preprocessing or post-correction idea, run the same recognizer with and without the stage and compare the two prediction sets in hocrgen.
+
+## Experimental physical-line bidi projection
+
+`heocr_engine.bidi.correct_prediction(prediction, geometry)` is a network-free,
+opt-in post-correction for a narrow mixed Hebrew/Latin line-order error. It
+returns `(projection, report)` and does not mutate its input. Save the original
+prediction separately; the projection retains its `track`, recognizer
+provenance and original `words`, and records a `postcorrect` stage when text
+changes. A proprietary source stays proprietary. This is not a Unicode bidi
+implementation, a reading-order model, or a claim of improved OCR accuracy.
+
+The caller supplies prediction-side geometry in input-image pixels, with top-left
+origin and `[x, y, width, height]` boxes. `geometry` has `unit: "pixel"`,
+`lines` (each with physical-line `text`, `bbox`, and `words` with `text` and
+`bbox`) and `tables` (objects with `bbox`). `tables: []` asserts that table
+coverage was actually checked and none were detected; omitted metadata is not
+an empty detection. Coordinates must be finite and in the input frame. A caller
+must not derive this metadata from evaluation references. Current built-in
+recognizers do not provide this complete contract. Missing or malformed geometry
+returns the unchanged prediction with an explicit abstention report.
+
+Only unique matches of one physical line are considered. The stage requires
+matching token multisets, Hebrew and Latin, disjoint horizontally ordered word
+boxes within one pixel of the line box, and no table intersection, digits,
+finite-list negation or adjacent Latin words. Overlapping candidate matches
+abstain. It does not establish that a line outside detected tables is safe, nor
+protect against negations outside the finite list. It joins changed tokens with
+single spaces. Measure it against a raw baseline, report changes and abstentions,
+keep synthetic and real results separate, and inspect semantic regressions.
+The one-pixel tolerance was chosen after a small development evaluation, not
+preregistered; development pages are not a holdout.
