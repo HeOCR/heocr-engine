@@ -82,9 +82,17 @@ heocr-engine train-kraken batch/line_annotations.json batch/generation_manifest.
 
 ### Data
 
-`prepare-kraken-data --task segmentation` (also the first step of `train-kraken-seg`) writes the same PAGE XML as recognition, with one change: each `TextRegion` carries its hocrsyngen region name as a kraken region type, `custom="structure {type:<region>;}"`. Region names must be 1–64 ASCII letters, digits, `_` or `-`, or conversion fails. A region is the bounding box of its lines' polygons, one per region name per page (`region_geometry: "line_polygon_bbox"`), until the sidecar carries region polygons. Lines have no type, so kraken gives them all the `default` line type. Recognition output is unchanged: its PAGE XML has no region types.
+`prepare-kraken-data --task segmentation` (also the first step of `train-kraken-seg`) writes the same PAGE XML as recognition, with one change: each `TextRegion` carries its hocrsyngen region name as a kraken region type, `custom="structure {type:<region>;}"`. Region names must be 1–64 ASCII letters, digits, `_` or `-`, or conversion fails. Lines have no type, so kraken gives them all the `default` line type.
 
-`dataset.json` and the record's `data` add `task: "segmentation"`, `region_geometry`, a per-page `regions` list, and `regions_by_type` (page count per region type) for each split. Training fails before ketos runs if the validation split has a region type that the train split lacks.
+Region geometry (`region_geometry`):
+
+- `sidecar` when every page has the optional `regions` list (hocrsyngen S11a): `[{region_index, type, polygon, reading_order_index, line_indices}]` in `region_index` order, with an optional `region_index` on each line. Regions are written in that order with their own polygons, so a page can have several regions of one type (the three printed-letter signature blocks). The converter fails closed unless `region_index` equals the list position, the polygon is at least 3 in-page integer points, `line_indices` is non-empty and strictly increasing, every line is in exactly one region whose `type` equals the line's `region`, a line's `region_index` (if given) names that region, and `reading_order_index` is `null` or an index. `reading_order_index` is checked but not used: kraken orders regions itself at inference.
+- `line_polygon_bbox` when no page has `regions`: a region is the bounding box of its lines' polygons, one per region name per page.
+- A sidecar with `regions` on some pages but not others is rejected for segmentation.
+
+Recognition output is unchanged and ignores `regions`: its PAGE XML has no region types and always uses line bounding boxes.
+
+`dataset.json` and the record's `data` add `task: "segmentation"`, `region_geometry`, a per-page `regions` list (region types, one entry per region), and `regions_by_type` (region count per type) for each split. Training fails before ketos runs if the validation split has a region type that the train split lacks.
 
 ### What ketos 7.0.2 segtrain needs
 
