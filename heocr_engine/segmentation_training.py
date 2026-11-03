@@ -22,10 +22,10 @@ from heocr_engine.training import (BEST, CHECKPOINT, DEVICE, KETOS_VERSION, LICE
 # ketos 7.0.2's default segmentation network, passed explicitly so the record is complete.
 DEFAULT_SEG_SPEC = ("[1,1800,0,3 Cr7,7,64,2,2 Gn32 Cr3,3,128,2,2 Gn32 Cr3,3,128 Gn32 Cr3,3,256 Gn32 "
                     "Cr3,3,256 Gn32 Lbx32 Lby32 Cr1,1,32 Gn32 Lby32 Lbx32]")
-# How `heocr-engine kraken` uses a segmenter: `kraken segment -bl -i MODEL` without `-d`, so kraken orders
-# lines with its heuristic polygonal_reading_order and the horizontal-lr column hint. segtrain trains no
+# How `heocr-engine kraken` uses a segmenter: `kraken segment -bl -d horizontal-rl -i MODEL`, so kraken orders
+# lines with its heuristic polygonal_reading_order and a right-to-left hint (decision 0009). segtrain trains no
 # reading-order head (that is `ketos rotrain`).
-INFERENCE = {"command": "heocr-engine kraken", "segmenter": "kraken segment -bl", "text_direction": "horizontal-lr",
+INFERENCE = {"command": "heocr-engine kraken", "segmenter": "kraken segment -bl", "text_direction": "horizontal-rl",
              "reading_order": "polygonal_reading_order", "neural_reading_order": False}
 SEG_LOG_PATTERNS = {
     "parsed": re.compile(r"Parsing (\d+) XML files for (training|evaluation) data"),

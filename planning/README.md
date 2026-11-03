@@ -29,3 +29,4 @@ Planned work uses `R<milestone><slice>`, for example `R1a`. `R` stands for the r
 | [0006](decisions/0006-model-licences.md) | Kraken baseline models are user-supplied and hashed; BiblIA_01 is CC-BY-SA-4.0, `blla` is Apache-2.0 |
 | [0007](decisions/0007-first-trained-recognizer.md) | The first trained recognizer starts from scratch (no BiblIA_01 weights); its licence is `Needs verification` with the maintainer; it is not published; segmentation stays `blla` |
 | [0008](decisions/0008-first-trained-segmenter.md) | The first trained segmenter starts from scratch (no `blla` weights); it learns baselines and regions typed by hocrsyngen region name; inference keeps kraken's heuristic reading order; licence `Needs verification`; not published |
+| [0009](decisions/0009-kraken-right-to-left-line-order.md) | `heocr-engine kraken` segments with `-d horizontal-rl` by default and records the direction; supersedes 0008's reading-order clause |
