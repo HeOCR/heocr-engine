@@ -111,7 +111,7 @@ def _scan_segmentation_log(path: Path) -> dict:
     return found
 
 
-def _segmentation_model(meta: dict, region_types: set[str]) -> dict:
+def _segmentation_model(meta: dict, region_types: set[str], line_types: set[str]) -> dict:
     """Check the weights hold one baseline segmenter for exactly the trained classes; return its mapping."""
     models = [model for model in meta.values() if isinstance(model, dict)
               and "segmentation" in model.get("_tasks", ())]
@@ -124,7 +124,7 @@ def _segmentation_model(meta: dict, region_types: set[str]) -> dict:
     # kraken maps topline True/False/None to top/bottom/centre and fails on anything else.
     if model.get("topline") is not False:
         raise EngineError("Segmentation model does not record a baseline (bottom) line location")
-    if set(mapping["baselines"]) != {"default"} or set(mapping["regions"]) != region_types:
+    if set(mapping["baselines"]) != line_types or set(mapping["regions"]) != region_types:
         raise EngineError("Segmentation model classes do not match the training data")
     return mapping
 
@@ -133,7 +133,7 @@ def train_kraken_segmentation(annotations: Path, manifest: Path, work: Path, ket
                               kraken: Path | None = None, corpora: tuple[Path, ...] = (), device: str = "cpu",
                               seed: int = 42, deterministic: bool = False, precision: str = "32-true",
                               workers: int = 0, threads: int = 1, validation_fraction: float = 0.1,
-                              split_seed: int = 0,
+                              split_seed: int = 0, line_types: dict[str, str] | None = None,
                               hyperparameters: SegmentationHyperparameters = SegmentationHyperparameters(),
                               timeout: float = 172_800) -> dict:
     """Prepare typed-region PAGE XML, train a baseline segmenter from scratch with local ketos, describe the run."""
@@ -157,10 +157,13 @@ def train_kraken_segmentation(annotations: Path, manifest: Path, work: Path, ket
     work.mkdir(parents=True, exist_ok=True)
     work = work.resolve()
     summary = prepare_kraken_data(annotations, manifest, work / "data", validation_fraction, split_seed,
-                                  task="segmentation")
+                                  task="segmentation", line_types=line_types)
     region_types = set(summary["train"]["regions_by_type"])
     if not set(summary["validation"]["regions_by_type"]) <= region_types:
         raise EngineError("The validation split has region types the train split lacks")
+    trained_line_types = set(summary["train"]["lines_by_type"])
+    if not set(summary["validation"]["lines_by_type"]) <= trained_line_types:
+        raise EngineError("The validation split has line types the train split lacks")
     commands = {"train": [str(ketos), "-v", "-d", device, "-s", str(seed),
                           "--deterministic" if deterministic else "--no-deterministic", "--precision", precision,
                           "--workers", str(workers), "--threads", str(threads), "segtrain", "-f", "page",
@@ -181,7 +184,7 @@ def train_kraken_segmentation(annotations: Path, manifest: Path, work: Path, ket
     if len(best) != 1:
         raise EngineError("ketos did not write exactly one best model")
     model = read_limited(best[0], MAX_MODEL_BYTES)
-    class_mapping = _segmentation_model(safetensors_kraken_metadata(best[0]), region_types)
+    class_mapping = _segmentation_model(safetensors_kraken_metadata(best[0]), region_types, trained_line_types)
     score_text = BEST.fullmatch(best[0].name)[1]
     # ketos keeps the 10 best checkpoints, named by epoch and val_mean_iu; the earliest at the best score.
     best_epochs = [int(match[1]) for path in (work / "checkpoints").glob("checkpoint_*.ckpt")
@@ -198,7 +201,8 @@ def train_kraken_segmentation(annotations: Path, manifest: Path, work: Path, ket
         "task": "segmentation",
         "init": "from_scratch",
         "data": {**summary, "corpora": corpus_records},
-        "segmentation": {"line_location": "baseline", "line_types": ["default"],
+        "segmentation": {"line_location": "baseline", "line_types": sorted(trained_line_types),
+                         "line_type_map": summary["line_type_map"],
                          "region_types": sorted(region_types), "region_type_source": "hocrsyngen region name",
                          "region_geometry": summary["region_geometry"], "class_mapping": class_mapping,
                          "inference": INFERENCE},

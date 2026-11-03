@@ -99,8 +99,16 @@ if 'segtrain' in args:
     for name, paths in listed.items():
         print(f'[11/03/26 10:11:40] INFO     Parsing {{len(paths)}} XML files for {{name}} data     blla.py:84',
               file=sys.stderr)
-    types = sorted({{t for path in listed['training']
-                    for t in re.findall(r'structure {{type:([^;]+);}}', Path(path).read_text(encoding='utf-8'))}})
+    import xml.etree.ElementTree as ET
+    found = {{'TextRegion': set(), 'TextLine': set()}}
+    for path in listed['training']:
+        for element in ET.parse(path).iter():
+            tag = element.tag.split('}}')[-1]
+            if tag in found:
+                match = re.fullmatch(r'structure {{type:([^;]+);}}', element.get('custom', ''))
+                found[tag].add(match[1] if match else 'default')
+    types = sorted(found['TextRegion'] - {{'default'}})
+    line_types = sorted(found['TextLine'])
     checkpoints = Path(args[args.index('-o') + 1])
     checkpoints.mkdir()
     # Shaped like ketos 7.0.2 segtrain -v output and files; val_metric is val_mean_iu.
@@ -112,8 +120,8 @@ if 'segtrain' in args:
         (checkpoints / f'checkpoint_{{epoch:02d}}-{{iu:.4f}}.ckpt').write_bytes(b'checkpoint')
     if args[args.index('-q') + 1] == 'fixed':
         print('`Trainer.fit` stopped: `max_epochs=3` reached.', file=sys.stderr)
-    mapping = {{'aux': {{'_start_separator': 0, '_end_separator': 1}}, 'baselines': {{'default': 2}},
-               'regions': {{t: 3 + i for i, t in enumerate(types)}}}}
+    mapping = {{'aux': {{'_start_separator': 0, '_end_separator': 1}}, 'baselines': {{t: 2 + i for i, t in enumerate(line_types)}},
+               'regions': {{t: 2 + len(line_types) + i for i, t in enumerate(types)}}}}
     # ketos 7.0.2 with an explicit -bl stores the string 'False'; FAKE_KETOS_TOPLINE mimics it.
     topline = os.environ.get('FAKE_KETOS_TOPLINE', False)
     meta = {{'8f': {{'_tasks': ['segmentation'], '_model': 'TorchVGSLModel', 'topline': topline,
