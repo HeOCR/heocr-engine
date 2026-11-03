@@ -62,6 +62,67 @@ class SegmentationDataTests(TrainingTestCase):
         with self.assertRaises(EngineError):
             prepare_kraken_data(self.annotations, self.manifest, self.root / 'third', task='layout')
 
+    def add_regions(self, document):
+        """Give every page S11a-style regions: one per region name, its line box padded by 2 px."""
+        for page in document['pages']:
+            names = list(dict.fromkeys(line['region'] for line in page['lines']))
+            page['regions'] = []
+            for number, name in enumerate(names):
+                members = [line for line in page['lines'] if line['region'] == name]
+                for line in members:
+                    line['region_index'] = number
+                xs = [x for line in members for x, _ in line['polygon']]
+                ys = [y for line in members for _, y in line['polygon']]
+                box = [[min(xs) - 2, min(ys) - 2], [max(xs) + 2, min(ys) - 2], [max(xs) + 2, max(ys) + 2],
+                       [min(xs) - 2, max(ys) + 2]]
+                page['regions'].append({'region_index': number, 'type': name, 'polygon': box,
+                                        'reading_order_index': number,
+                                        'line_indices': [line['line_index'] for line in members]})
+
+    def test_sidecar_region_polygons_are_used(self):
+        plain = self.root / 'plain'
+        prepare_kraken_data(self.annotations, self.manifest, plain)
+        self.rewrite(self.add_regions)
+        out = self.root / 'data'
+        summary = prepare_kraken_data(self.annotations, self.manifest, out, **SPLIT, task='segmentation')
+        self.assertEqual(summary['region_geometry'], 'sidecar')
+        source = {page['page_sha256']: page for page in json.loads(self.annotations.read_text())['pages']}
+        for xml_path in (out / 'pages').glob('*.xml'):
+            regions = ET.parse(xml_path).findall('.//p:TextRegion', NS)
+            self.assertEqual([[[int(v) for v in p.split(',')] for p in region.find('p:Coords', NS).get('points').split()]
+                              for region in regions],
+                             [region['polygon'] for region in source[xml_path.stem]['regions']])
+        # Recognition ignores the sidecar regions: its PAGE XML is unchanged.
+        recognition = self.root / 'recognition'
+        prepare_kraken_data(self.annotations, self.manifest, recognition)
+        for xml_path in (plain / 'pages').glob('*.xml'):
+            self.assertEqual((recognition / 'pages' / xml_path.name).read_bytes(), xml_path.read_bytes())
+
+    def test_inconsistent_sidecar_regions_fail_closed(self):
+        def broken(change):
+            def apply(document):
+                self.add_regions(document)
+                change(document['pages'][1])
+            return apply
+        changes = (lambda page: page['regions'][0]['line_indices'].append(page['regions'][1]['line_indices'][0]),
+                   lambda page: page['regions'][1].update(type='body'),
+                   lambda page: page['regions'][0]['line_indices'].pop(),
+                   lambda page: page['regions'][0].update(region_index=5),
+                   lambda page: page['regions'][0].update(polygon=[[0, 0], [9999, 0], [0, 10]]),
+                   lambda page: page['lines'][0].update(region_index=1),
+                   lambda page: page.update(regions=[]))
+        original = self.annotations.read_text(encoding='utf-8')
+        for number, change in enumerate(changes):
+            self.annotations.write_text(original, encoding='utf-8')
+            self.rewrite(broken(change))
+            with self.subTest(change=number), self.assertRaises(EngineError):
+                prepare_kraken_data(self.annotations, self.manifest, self.root / f'bad{number}', task='segmentation')
+        # Region polygons on some pages but not others is ambiguous for segmentation training.
+        self.annotations.write_text(original, encoding='utf-8')
+        self.rewrite(lambda document: (self.add_regions(document), document['pages'][0].pop('regions')))
+        with self.assertRaisesRegex(EngineError, 'every page or no page'):
+            prepare_kraken_data(self.annotations, self.manifest, self.root / 'mixed', task='segmentation')
+
     def test_prepare_cli_task(self):
         with patch('sys.stdout', io.StringIO()) as stdout:
             self.assertEqual(main(['prepare-kraken-data', str(self.annotations), str(self.manifest),

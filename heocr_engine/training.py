@@ -35,8 +35,9 @@ TASKS = ("recognition", "segmentation")
 # Region names become kraken region types through PAGE `custom="structure {type:…;}"`, which kraken
 # splits on braces, colons, semicolons and spaces.
 REGION_TYPE = re.compile(r"[A-Za-z0-9_-]{1,64}\Z")
-# Before hocrsyngen emits region polygons, a region is the bounding box of its lines' polygons.
-REGION_GEOMETRY = "line_polygon_bbox"
+# Segmentation regions are the sidecar's region polygons (hocrsyngen S11a) when every page has them, else
+# the bounding box of each region name's line polygons.
+REGION_GEOMETRIES = ("sidecar", "line_polygon_bbox")
 MAX_JSON_BYTES = 500_000_000
 MAX_MODEL_BYTES = 2_000_000_000
 MAX_LOG_BYTES = 2_000_000_000
@@ -103,7 +104,10 @@ def _line(line, width: int, height: int, logical_lines: int | None) -> dict:
     baseline = _points(line.get("baseline"), width, height, 2)
     if baseline[0][0] >= baseline[-1][0] or any(a[0] > b[0] for a, b in zip(baseline, baseline[1:])):
         raise EngineError("Baselines must run left to right")
-    return {"line_index": line["line_index"], "region": region, "text": text,
+    region_index = line.get("region_index")
+    if not (region_index is None or _is_int(region_index, 0, 1_000_000)):
+        raise EngineError("Invalid line region index")
+    return {"line_index": line["line_index"], "region": region, "region_index": region_index, "text": text,
             "polygon": _points(line.get("polygon"), width, height, 3), "baseline": baseline,
             "logical_line_index": logical, "logical_join": join, "occluded": occluded}
 
@@ -134,6 +138,35 @@ def _manifest_pages(manifest: dict, root: Path) -> dict[str, dict]:
                                           "path": path, "template_id": provenance.get("template_id"),
                                           "logical_lines": logical_lines}
     return pages
+
+
+def _regions(value, lines: list[dict], width: int, height: int) -> list[dict] | None:
+    """Validate an optional page `regions` list: every line in exactly one region of its own type."""
+    if value is None:
+        return None
+    if not isinstance(value, list) or not value:
+        raise EngineError("Invalid page regions")
+    by_index = {line["line_index"]: line for line in lines}
+    regions, seen = [], set()
+    for number, region in enumerate(value):
+        members = region.get("line_indices") if isinstance(region, dict) else None
+        order = region.get("reading_order_index") if isinstance(region, dict) else None
+        if (not isinstance(members, list) or region.get("region_index") != number
+                or not isinstance(region.get("type"), str) or not (order is None or _is_int(order, 0, len(value) - 1))
+                or not members or not all(_is_int(m, 0, 1_000_000) for m in members)
+                or any(a >= b for a, b in zip(members, members[1:]))):
+            raise EngineError("Invalid page regions")
+        polygon = _points(region.get("polygon"), width, height, 3)
+        for member in members:
+            line = by_index.get(member)
+            if (line is None or member in seen or line["region"] != region["type"]
+                    or line.get("region_index", number) != number):
+                raise EngineError("Page regions do not match their lines")
+            seen.add(member)
+        regions.append({"type": region["type"], "polygon": polygon, "line_indices": members})
+    if seen != set(by_index):
+        raise EngineError("Page regions do not match their lines")
+    return regions
 
 
 def load_annotated_pages(annotations: Path, manifest: Path) -> tuple[list[dict], str, str]:
@@ -176,7 +209,8 @@ def load_annotated_pages(annotations: Path, manifest: Path) -> tuple[list[dict],
             raise EngineError("Duplicate line index")
         pages.append({"sample_id": page["sample_id"], "page_id": page["page_id"], "page_sha256": sha,
                       "width": width, "height": height, "lines": lines, "path": asset["path"],
-                      "template_id": asset["template_id"]})
+                      "template_id": asset["template_id"],
+                      "regions": _regions(page.get("regions"), lines, width, height)})
     if len({page["page_sha256"] for page in pages}) != len(pages):
         raise EngineError("Duplicate page image")
     return sorted(pages, key=lambda p: (p["sample_id"], p["page_id"])), digest(annotations_raw), manifest_sha
@@ -197,8 +231,13 @@ def _points_attr(points) -> str:
     return " ".join(f"{x},{y}" for x, y in points)
 
 
-def page_regions(page: dict) -> list[tuple[str, list[tuple[int, int]], list[dict]]]:
-    """One (name, bounding box, lines) per annotated region name, in order of first line_index."""
+def page_regions(page: dict, sidecar: bool = False) -> list[tuple[str, list[tuple[int, int]], list[dict]]]:
+    """(type, polygon, lines) per region: the sidecar regions in region_index order with `sidecar`, else one
+    bounding box per annotated region name, in order of first line_index."""
+    if sidecar:
+        by_index = {line["line_index"]: line for line in page["lines"]}
+        return [(region["type"], region["polygon"], [by_index[i] for i in region["line_indices"]])
+                for region in page["regions"]]
     regions: dict[str, list[dict]] = {}
     for line in page["lines"]:
         regions.setdefault(line["region"], []).append(line)
@@ -210,10 +249,11 @@ def page_regions(page: dict) -> list[tuple[str, list[tuple[int, int]], list[dict
     return out
 
 
-def page_xml(page: dict, image_name: str, region_types: bool = False) -> bytes:
+def page_xml(page: dict, image_name: str, region_types: bool = False, sidecar_regions: bool = False) -> bytes:
     """PAGE XML with one TextRegion per annotated region, lines in line_index order, right-to-left.
 
-    With `region_types`, each region carries its hocrsyngen name as a kraken region type.
+    With `region_types`, each region carries its hocrsyngen name as a kraken region type; with
+    `sidecar_regions`, regions are the sidecar's region polygons instead of line bounding boxes.
     """
     q = lambda tag: f"{{{PAGE_NS}}}{tag}"  # noqa: E731
     root = ET.Element(q("PcGts"))
@@ -223,7 +263,7 @@ def page_xml(page: dict, image_name: str, region_types: bool = False) -> bytes:
     ET.SubElement(metadata, q("LastChange")).text = FIXED_TIME
     element = ET.SubElement(root, q("Page"), imageFilename=image_name, imageWidth=str(page["width"]),
                             imageHeight=str(page["height"]), readingDirection="right-to-left")
-    for number, (name, box, lines) in enumerate(page_regions(page)):
+    for number, (name, box, lines) in enumerate(page_regions(page, sidecar_regions)):
         attributes = {"id": f"r{number}"}
         if region_types:
             if not REGION_TYPE.fullmatch(name):
@@ -256,6 +296,11 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
         raise EngineError("Invalid training task")
     segmentation = task == "segmentation"
     pages, annotations_sha, manifest_sha = load_annotated_pages(annotations, manifest)
+    with_regions = sum(page["regions"] is not None for page in pages)
+    if segmentation and 0 < with_regions < len(pages):
+        raise EngineError("Either every page or no page must have region polygons")
+    # Recognition keeps line bounding boxes, so its PAGE XML does not depend on the sidecar's regions.
+    sidecar = segmentation and with_regions == len(pages)
     splits = assign_splits({page["sample_id"] for page in pages}, validation_fraction, split_seed)
     if output.exists() and any(output.iterdir()):
         raise EngineError("Output directory must be new or empty")
@@ -268,7 +313,7 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
         suffix = ".png" if raw.startswith(b"\x89PNG\r\n\x1a\n") else ".jpg"
         image = output / "pages" / (page["page_sha256"] + suffix)
         image.write_bytes(raw)
-        xml = page_xml(page, image.name, region_types=segmentation)
+        xml = page_xml(page, image.name, region_types=segmentation, sidecar_regions=sidecar)
         xml_path = image.with_suffix(".xml")
         xml_path.write_bytes(xml)
         split = splits[page["sample_id"]]
@@ -279,7 +324,8 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
                         "split": split, "lines": len(page["lines"]),
                         "lines_outside_logical_order": sum(line["logical_line_index"] is None for line in page["lines"]),
                         "occluded_lines": sum(line["occluded"] for line in page["lines"]),
-                        **({"regions": sorted(name for name, _, _ in page_regions(page))} if segmentation else {}),
+                        **({"regions": sorted(name for name, _, _ in page_regions(page, sidecar))}
+                           if segmentation else {}),
                         "page_xml_sha256": digest(xml)})
     for split, paths in lists.items():
         if not paths:
@@ -290,7 +336,7 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
                "split": {"unit": "sample", "method": "sha256_rank", "split_seed": split_seed,
                          "validation_fraction": validation_fraction, "assignment_sha256": _canonical_sha(entries)}}
     if segmentation:
-        summary.update(task=task, region_geometry=REGION_GEOMETRY)
+        summary.update(task=task, region_geometry=REGION_GEOMETRIES[0 if sidecar else 1])
     for split in ("train", "validation"):
         chosen = [entry for entry in entries if entry["split"] == split]
         templates: dict[str, int] = {}
