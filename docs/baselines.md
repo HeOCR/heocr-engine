@@ -295,3 +295,137 @@ With baseline matching (`--match baseline`), F1 goes from 0.842 to 0.949 on seed
 | Line-file sets (`set_sha256`) | `46cf7f09…` (seed-101), `9635e25a…` (held-out) |
 | Batches | as R4a |
 
+
+## R3c: recognizer retrained on Kraken-made line polygons (2026-11-03)
+
+R4a found that R3b reads only line polygons shaped like hocrsyngen's own and fails on the polygons Kraken builds at inference (step (e) above). R3c is R3b's recipe with one change: training lines get polygons rebuilt from the gold baselines by Kraken's own polygonizer at the inference height (`train-kraken --line-polygons kraken --polygonizer-height 1800`, PR #13). Data, split and settings are R3b's. The weights are not in this repository and are not published; their licence is `Needs verification` (decision 0007).
+
+Kinds are as in R4a: *diagnostic* rows use gold line geometry or gold order and bound what a fix could gain; *pipeline* rows are real pipelines. Scores are hocrgen `evaluate-references` `primary.v1` on synthetic gold only (decision 0004).
+
+### Seed-101 (S10c gold) and held-out batches (`primary.v1` CER / WER, overall)
+
+| Lines | Kind | R3b seed-101 | R3c seed-101 | R3b held-out | R3c held-out |
+|---|---|---|---|---|---|
+| `blla -d horizontal-rl` | pipeline | 0.255 / 0.529 | **0.168 / 0.300** | 0.358 / 0.654 | **0.241 / 0.415** |
+| Tesseract `--psm 3` lines | pipeline | 0.211 / 0.383 | 0.183 / 0.323 | **0.162 / 0.311** | 0.211 / 0.375 |
+| (e) gold baselines, Kraken polygons at height 1800, gold order | diagnostic | 0.193 / 0.451 | 0.018 / 0.044 | 0.250 / 0.538 | 0.006 / 0.021 |
+| (d) gold lines with hocrsyngen's polygons, gold order | diagnostic | 0.013 / 0.036 | 0.041 / 0.129 | 0.008 / 0.023 | 0.045 / 0.148 |
+
+Tesseract alone scores 0.338 / 0.553 (seed-101) and 0.353 / 0.535 (held-out).
+
+- **`blla -d horizontal-rl`:** `kraken segment -bl -d horizontal-rl` lines are recognized with `-f page ocr --reorder --base-dir R`. Re-recognizing saved `blla` PAGE output this way matches `segment … ocr` end to end on 2,325 of 2,329 lines (the mixed-script batch below, R3b).
+- **Tesseract lines:** as in R4a.
+- **(e):** the R3c data path's polygonizer, run on the gold baselines. It drops one seed-101 line, which scores as deleted.
+
+R3c with `blla -d horizontal-rl`, by template (`primary.v1` CER / WER):
+
+| Template | Seed-101 | Held-out |
+|---|---|---|
+| `printed_letter` | 0.160 / 0.286 | 0.244 / 0.432 |
+| `printed_letter_heavy_scan` | 0.209 / 0.354 | 0.284 / 0.484 |
+| `handwritten_note` | 0.147 / 0.272 | 0.210 / 0.360 |
+| `handwritten_note_heavy_wear` | 0.143 / 0.273 | 0.207 / 0.356 |
+
+Tesseract alone on the printed templates is 0.111 / 0.122 (seed-101) and 0.102 / 0.138 (held-out) CER.
+
+**Paired accounting (hocrgen E2c6, R3c against R3b, the same lines; pages are items, `primary.v1`):**
+
+| Lines | Batch | Pages improved / unchanged / worsened | Character edits R3b → R3c (removed on improved pages, added on worsened) | Word edits R3b → R3c |
+|---|---|---|---|---|
+| `blla -d horizontal-rl` | seed-101 | 80 / 0 / 0 | 3,679 → 2,429 (−1,250, +0) | 1,337 → 758 |
+| `blla -d horizontal-rl` | held-out | 79 / 1 / 0 | 3,603 → 2,424 (−1,179, +0) | 1,221 → 774 |
+| Tesseract lines | seed-101 | 48 / 4 / 28 | 3,042 → 2,643 (−764, +365) | 968 → 816 |
+| Tesseract lines | held-out | 22 / 1 / 57 | 1,630 → 2,129 (−203, +702) | 581 → 699 |
+| (e) | seed-101 | 80 / 0 / 0 | 2,782 → 264 (−2,518, +0) | 1,139 → 111 |
+| (e) | held-out | 80 / 0 / 0 | 2,514 → 59 (−2,455, +0) | 1,004 → 40 |
+| (d) | seed-101 | 5 / 6 / 69 | 184 → 589 (−7, +412) | 92 → 325 |
+| (d) | held-out | 8 / 13 / 59 | 80 → 455 (−18, +393) | 43 → 276 |
+
+The counts are per-page differences in edit distance, not aligned individual errors. They come from hocrgen `main` (`c8fb74e`, E2c6). Its `scored` block is identical to `2d3efb0`'s on all 25 earlier R3/R4a sets, so the CER above is the same under either version.
+
+**Matched lines (raw NFC line CER on lines matched one-to-one, polygon IoU ≥ 0.5):**
+
+| Lines | Recognizer | Seed-101 predicted crops / (e) crops | Held-out predicted crops / (e) crops |
+|---|---|---|---|
+| `blla -d horizontal-rl` (512 / 467 lines) | R3b | 0.211 / 0.189 | 0.267 / 0.266 |
+| `blla -d horizontal-rl` | R3c | 0.091 / 0.016 | 0.098 / 0.006 |
+| Tesseract lines (440 / 468 lines) | R3b | 0.109 / 0.160 | 0.081 / 0.231 |
+| Tesseract lines | R3c | 0.107 / 0.016 | 0.152 / 0.005 |
+
+### Mixed-script batch (hocrgen evaluation fixture)
+
+The project's target documents mix Hebrew with Latin and digits, but the training text is about 0.5% Latin (382 of 9,359 corpus lines). This batch is hocrgen's [mixed-script synthetic recipe](https://github.com/HeOCR/hocrgen/blob/main/docs/evaluation-fixtures/bidi-synthetic-recipe.md):
+- 100 pages, 25 each of `printed_letter`, `handwritten_note`, `archive_card` and `ledger`, with text that mixes Hebrew with Latin names and digits;
+- a seed and text holdout only, since templates and fonts are the training generator's;
+- an evaluation fixture: nothing is trained on it.
+
+It reproduces exactly from the recipe:
+- manifest and line-annotation sha256 equal the recorded ones, and all 100 image hashes match;
+- the Tesseract binary and models match the recipe;
+- re-running Tesseract `heb+eng` gives the recorded 15,780 / 27,443 character edits, with every family identical.
+
+`primary.v1` CER per family (hocrgen `c8fb74e`, whose source is the recipe's `9aff7d4`):
+
+| Lines | Kind | Recognizer | `printed_letter` | `handwritten_note` | `archive_card` | `ledger` | overall CER / WER |
+|---|---|---|---|---|---|---|---|
+| Tesseract `heb+eng` alone (recipe baseline) | pipeline | Tesseract | 0.177 | 0.737 | 0.444 | 0.770 | 0.575 / 0.723 |
+| `blla -d horizontal-rl` | pipeline | R3b | 0.348 | 0.345 | 0.452 | 0.746 | 0.543 / 0.784 |
+| `blla -d horizontal-rl` | pipeline | R3c | 0.243 | 0.260 | 0.386 | 0.676 | **0.465 / 0.650** |
+| Tesseract `heb` lines | pipeline | R3b | 0.291 | 0.278 | 0.520 | 0.787 | 0.553 / 0.741 |
+| Tesseract `heb` lines | pipeline | R3c | 0.313 | 0.238 | 0.583 | 0.839 | 0.588 / 0.775 |
+| `blla` lines in gold order | diagnostic | R3c | 0.194 | 0.206 | 0.115 | 0.310 | 0.230 / 0.443 |
+| (e) at height 1800 | diagnostic | R3b | 0.323 | 0.277 | 0.322 | 0.481 | 0.385 / 0.648 |
+| (e) at height 1800 | diagnostic | R3c | 0.122 | 0.144 | 0.077 | 0.285 | 0.188 / 0.306 |
+
+On this batch the polygonizer drops 2 of 2,305 gold lines (geometry errors), which score as deleted.
+
+**By script.** The left three columns project each page's reference and prediction onto one character class (Latin letters, ASCII digits or Hebrew letters) and score the edit distance of the projections. This measures whether a class was read, not where it was placed, and a rate can pass 1 when a system adds characters of that class. The right two columns give raw line CER on matched lines, split by whether the gold line contains Latin.
+
+| Lines | Recognizer | Latin letters (1,795) | Digits (5,119) | Hebrew letters (11,958) | Lines with Latin | Pure Hebrew lines |
+|---|---|---|---|---|---|---|
+| Tesseract `heb+eng` alone | Tesseract | 0.892 | 0.668 | 0.381 | | |
+| `blla -d horizontal-rl` | R3b | 0.910 | 0.640 | 0.421 | 0.340 (319 / 339) | 0.287 (1,808 / 1,966) |
+| `blla -d horizontal-rl` | R3c | 0.798 | 0.590 | 0.203 | 0.233 (319 / 339) | 0.055 (1,808 / 1,966) |
+| (e) | R3b | 0.919 | 0.351 | 0.354 | 0.334 | 0.317 |
+| (e) | R3c | **0.787** | 0.079 | 0.033 | **0.190** | **0.004** |
+
+**Line geometry (`diagnose-segmentation`, polygon IoU ≥ 0.5, 2,305 gold lines):**
+- **`blla -d horizontal-rl`:** P / R / F1 0.913 / 0.923 / 0.918, Kendall τ 0.565, adjacent pairs kept 0.449. τ by family: `archive_card` 0.464, `ledger` 0.562, `printed_letter` 0.816, `handwritten_note` 0.916.
+- **Tesseract `heb` lines:** 0.737 / 0.604 / 0.664. It merges ledger cells: 412 predicted lines cover 841 gold lines.
+
+**Paired accounting (E2c6, pages):**
+- R3c against R3b, `blla -d horizontal-rl`: 99 pages improved, 1 unchanged, 0 worsened (14,915 → 12,748 character edits).
+- R3c against R3b, (e): 100 / 0 / 0 (10,576 → 5,151).
+- R3c against R3b, Tesseract lines: 26 / 2 / 72 (15,188 → 16,129).
+- R3c + `blla -d horizontal-rl` against Tesseract alone: 71 pages improved, 0 unchanged, 29 worsened (15,780 → 12,748; −3,675 on improved pages, +643 on worsened).
+
+### Reading
+
+- **R3c fixes the crop mismatch R4a found.** On Kraken's polygons around the true baselines, CER falls from 0.193 / 0.250 to 0.018 / 0.006, and every page improves. That is near R3b's own oracle level (0.013 / 0.008).
+- **End to end with `blla -d horizontal-rl`, R3c is better than R3b on all but one page** of both batches (159 of 160 pages; none is worse): 0.168 against 0.255 on seed-101 and 0.241 against 0.358 on held-out.
+  - It is now better than Tesseract alone overall on both batches (0.338 and 0.353).
+  - It is still clearly worse than Tesseract on the printed templates (for example 0.244 against 0.102 on held-out `printed_letter`).
+- **R3c is specialised to Kraken's polygons.** On hocrsyngen's own polygons (d) and on Tesseract's rectangles it is worse than R3b. On held-out, the best pipeline here is still R4a's R3b + Tesseract lines (0.162). Mixing crop styles in training (both polygon sources, or rectangles as augmentation) is the obvious next experiment.
+- **The remaining `blla` gap is segmentation again.** Between `blla` lines (0.168 / 0.241) and (e) (0.018 / 0.006) lie reading order, line finding, and crops built around `blla`'s rather than the true baselines (matched-line CER 0.091 / 0.098 against 0.016 / 0.006).
+- **Mixed script: R3c cannot read Latin.** Even with every true baseline, it gets 79% of Latin letters wrong. Pure Hebrew lines read almost perfectly (0.004) and lines containing Latin have CER 0.190. Digits are fine (0.079). This is a training-text gap, not a geometry problem: the corpus has almost no Latin.
+- **Mixed script: reading order costs most end to end.** On `archive_card` and `ledger`, `blla`'s order is poor (τ 0.46 and 0.56). Putting R3c's `blla` lines into gold order alone takes CER from 0.465 to 0.230 (`ledger` 0.676 → 0.310, `archive_card` 0.386 → 0.115).
+- **Tesseract lines do not help** the mixed-script batch: Tesseract joins ledger cells into rows.
+
+### Run identities
+
+| Part | Identity |
+|---|---|
+| heocr-engine | training `cade9c8` (R3c data path, PR #13); diagnostics and conversion `aa67fa7` |
+| Training | R3b's batch (`train_batch_s5101`), split and ketos settings (table above), plus `--line-polygons kraken --polygonizer-height 1800`. `data.polygonizer`: `kraken.lib.segmentation.calculate_polygonal_environment`, Kraken 7.0.2, height 1800, `topline` false, boundaries "other baselines", 0 lines dropped. Train 1,710 pages / 27,487 lines, validation 90 / 1,553. mps, seed 42, not deterministic |
+| Training outcome | Early stopping after 10 epochs; best epoch 6 (0-based), val_accuracy 0.9976 (kraken-internal, display order). History 0.9689, 0.9911, 0.9949, 0.9955, 0.9958, 0.9967, 0.9976, 0.9973, 0.9969, 0.9970 |
+| Model | `best_0.9976.safetensors`, sha256 `db4807d1503bfec0295ee9dad501c2ac1d2192077644ac3a6e045a7cf6400afd`, 16,138,352 bytes; licence `Needs verification`, unpublished |
+| Inference | Kraken 7.0.2 on cpu, `blla` `77a638a83c9e5356…`; Tesseract 5.5.3 as in R4a (`heb` lines; `heb+eng` for the recipe baseline, `eng` `7d4322bd2a774972…`) |
+| hocrgen | `2d3efb0` for the seed-101 and held-out CER; `c8fb74e` (main, E2c6; source identical to `9aff7d4`) for paired accounting and the mixed-script batch |
+| Seed-101 and held-out | as R4a |
+| Mixed-script batch | hocrsyngen `bc4394c` (S11b), Python 3.12.11, Pillow 12.2.0, raqm 0.10.3, FreeType 2.14.3. Recipe seed 26110302, corpus `b325673476bce8c1…`. Manifest `5979ada50f085e91e6f2d43f9286daea3c4fe4acb0718bf5dfb1962b31b4cdbe`, line annotations `5a6ba66ca8cba5a1a6071b95a0a7774e698f2c713dc304a48ed3b1f3e0994d3f` |
+| R3c prediction sets, seed-101 | `blla -d horizontal-rl` `075aceecce972bd1…`, Tesseract lines `d4a3e1c7ed973b93…`, (e) `6c837d721d2b95a4…`, (d) `9015d0804c3667f5…` |
+| R3c prediction sets, held-out | `blla -d horizontal-rl` `a6eea35ce7eafe71…`, Tesseract lines `05fa40836f3cf6ff…`, (e) `78ee1e8c01115109…`, (d) `3ab26518d3d673ae…` |
+| Mixed-script prediction sets | Tesseract `heb+eng` `56186fa22774f2a8…`; R3b: `blla` `fd9fd89609818622…`, Tesseract lines `6a1ec8f99efbcf1e…`, (e) `c1f352f3384bab7b…`; R3c: `blla` `7fef60e5e3c1d597…`, Tesseract lines `9a3d673e5aa07d83…`, `blla` in gold order `1974773866da03b4…`, (e) `46e28acf7485a5d7…` |
+| Line-file sets (mixed) | `blla -d horizontal-rl` `196354a8100c088a…`, Tesseract lines `82a35d2a88bc81e5…` |
+
+Limits: the R3b and R4a limits apply. One training run, one seed per batch, and no confidence intervals. The mixed-script batch shares the training generator's templates and fonts, and its 100 corpus lines are built from ten prefixes and ten endings. The script projection is a diagnostic, not a hocrgen profile. Predictions, line files and reports stay local.
