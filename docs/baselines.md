@@ -306,40 +306,46 @@ Kinds are as in R4a: *diagnostic* rows use gold line geometry or gold order and 
 
 | Lines | Kind | R3b seed-101 | R3c seed-101 | R3b held-out | R3c held-out |
 |---|---|---|---|---|---|
-| `blla -d horizontal-rl` | pipeline | 0.255 / 0.529 | **0.168 / 0.300** | 0.358 / 0.654 | **0.241 / 0.415** |
-| Tesseract `--psm 3` lines | pipeline | 0.211 / 0.383 | 0.183 / 0.323 | **0.162 / 0.311** | 0.211 / 0.375 |
+| `blla -d horizontal-rl` | pipeline | 0.255 / 0.529 | 0.168 / 0.300 | 0.358 / 0.654 | 0.241 / 0.415 |
+| `blla`, official `heocr-engine kraken` (default `-d horizontal-rl`) | pipeline | | 0.168 / 0.300 | | 0.241 / 0.415 |
+| R4c-e01 segmenter `-d horizontal-rl` (preview) | pipeline, preview | 0.176 / 0.405 | **0.096 / 0.172** | 0.236 / 0.513 | **0.143 / 0.295** |
+| Tesseract `--psm 3` lines | pipeline | 0.211 / 0.383 | 0.183 / 0.323 | 0.162 / 0.311 | 0.211 / 0.375 |
 | (e) gold baselines, Kraken polygons at height 1800, gold order | diagnostic | 0.193 / 0.451 | 0.018 / 0.044 | 0.250 / 0.538 | 0.006 / 0.021 |
 | (d) gold lines with hocrsyngen's polygons, gold order | diagnostic | 0.013 / 0.036 | 0.041 / 0.129 | 0.008 / 0.023 | 0.045 / 0.148 |
 
 Tesseract alone scores 0.338 / 0.553 (seed-101) and 0.353 / 0.535 (held-out).
 
 - **`blla -d horizontal-rl`:** `kraken segment -bl -d horizontal-rl` lines are recognized with `-f page ocr --reorder --base-dir R`. Re-recognizing saved `blla` PAGE output this way matches `segment … ocr` end to end on 2,325 of 2,329 lines (the mixed-script batch below, R3b).
+- **Official `heocr-engine kraken`:** the same `blla` pipeline through the engine's runtime (`--base-dir R`, which defaults to `-d horizontal-rl`; decision 0009). Each prediction record names its own segmenter and recognizer. It agrees with the `-f page` row page by page: 2,430 against 2,429 character edits on seed-101 and 2,424 against 2,424 on held-out (E2c6: 0 / 79 / 1 and 1 / 78 / 1 pages improved / unchanged / worsened).
+- **R4c-e01 (preview):** the epoch-1 checkpoint of the paused R4c segmenter run (section above, `3bd77f587eb3abf6…`), through `heocr-engine kraken --segmentation-model`. It is a partially trained model, so these rows preview what a trained segmenter can do and are not an R4 result.
 - **Tesseract lines:** as in R4a.
 - **(e):** the R3c data path's polygonizer, run on the gold baselines. It drops one seed-101 line, which scores as deleted.
 
 **By template, pipelines only (`primary.v1` CER / WER; best CER per row in bold):**
 
-| Template | Tesseract alone | R3b + Tesseract lines | R3c + Tesseract lines | R3c + `blla -d horizontal-rl` |
-|---|---|---|---|---|
-| **Seed-101, S10c gold** | | | | |
-| `printed_letter` | **0.111** / 0.232 | 0.220 / 0.339 | 0.264 / 0.433 | 0.160 / 0.286 |
-| `printed_letter_heavy_scan` | **0.122** / 0.230 | 0.293 / 0.489 | 0.249 / 0.400 | 0.209 / 0.354 |
-| `handwritten_note` | 0.641 / 0.998 | 0.111 / 0.266 | **0.071** / 0.170 | 0.147 / 0.272 |
-| `handwritten_note_heavy_wear` | 0.658 / 0.994 | 0.181 / 0.412 | **0.089** / 0.218 | 0.143 / 0.273 |
-| overall | 0.338 / 0.553 | 0.211 / 0.383 | 0.183 / 0.323 | **0.168** / 0.300 |
-| **Held-out s6101** | | | | |
-| `printed_letter` | **0.102** / 0.189 | 0.168 / 0.317 | 0.268 / 0.464 | 0.244 / 0.432 |
-| `printed_letter_heavy_scan` | **0.138** / 0.218 | 0.212 / 0.383 | 0.280 / 0.455 | 0.284 / 0.484 |
-| `handwritten_note` | 0.687 / 0.976 | **0.095** / 0.186 | 0.133 / 0.249 | 0.210 / 0.360 |
-| `handwritten_note_heavy_wear` | 0.663 / 0.976 | 0.149 / 0.327 | **0.117** / 0.272 | 0.207 / 0.356 |
-| overall | 0.353 / 0.535 | **0.162** / 0.311 | 0.211 / 0.375 | 0.241 / 0.415 |
+| Template | Tesseract alone | R3b + Tesseract lines | R3c + Tesseract lines | R3c + `blla -d horizontal-rl` | R3c + R4c-e01 (preview) |
+|---|---|---|---|---|---|
+| **Seed-101, S10c gold** | | | | | |
+| `printed_letter` | 0.111 / 0.232 | 0.220 / 0.339 | 0.264 / 0.433 | 0.160 / 0.286 | **0.107** / 0.211 |
+| `printed_letter_heavy_scan` | 0.122 / 0.230 | 0.293 / 0.489 | 0.249 / 0.400 | 0.209 / 0.354 | **0.097** / 0.192 |
+| `handwritten_note` | 0.641 / 0.998 | 0.111 / 0.266 | **0.071** / 0.170 | 0.147 / 0.272 | 0.090 / 0.137 |
+| `handwritten_note_heavy_wear` | 0.658 / 0.994 | 0.181 / 0.412 | 0.089 / 0.218 | 0.143 / 0.273 | **0.085** / 0.128 |
+| overall | 0.338 / 0.553 | 0.211 / 0.383 | 0.183 / 0.323 | 0.168 / 0.300 | **0.096** / 0.172 |
+| **Held-out s6101** | | | | | |
+| `printed_letter` | **0.102** / 0.189 | 0.168 / 0.317 | 0.268 / 0.464 | 0.244 / 0.432 | 0.153 / 0.360 |
+| `printed_letter_heavy_scan` | **0.138** / 0.218 | 0.212 / 0.383 | 0.280 / 0.455 | 0.284 / 0.484 | 0.148 / 0.319 |
+| `handwritten_note` | 0.687 / 0.976 | **0.095** / 0.186 | 0.133 / 0.249 | 0.210 / 0.360 | 0.139 / 0.239 |
+| `handwritten_note_heavy_wear` | 0.663 / 0.976 | 0.149 / 0.327 | **0.117** / 0.272 | 0.207 / 0.356 | 0.128 / 0.232 |
+| overall | 0.353 / 0.535 | 0.162 / 0.311 | 0.211 / 0.375 | 0.241 / 0.415 | **0.143** / 0.295 |
 
 **Best pipeline:**
-- **Overall, by batch:** R3c + `blla -d horizontal-rl` on seed-101 (0.168), and R3b + Tesseract lines on held-out (0.162).
-- **By template:** no pipeline wins everywhere, and R3c + `blla` wins no single template.
-  - Tesseract alone wins all four printed rows.
-  - A Kraken recognizer on Tesseract's lines wins all four handwriting-style rows: R3c three times, R3b once (held-out `handwritten_note`).
-- **Why R3c + `blla` still leads seed-101 overall:** it is never far behind on any template, while every other pipeline loses one template family badly.
+- **Overall, by batch:** R3c + the R4c-e01 preview segmenter is best on both batches, 0.096 (seed-101) and 0.143 (held-out). Without the preview segmenter, the best is R3c + `blla -d horizontal-rl` on seed-101 (0.168) and R3b + Tesseract lines on held-out (0.162).
+- **By template:** no pipeline wins everywhere.
+  - Tesseract alone wins both printed templates on held-out.
+  - R3c + R4c-e01 wins both printed templates on seed-101 (0.107 against 0.111, and 0.097 against 0.122) and seed-101 `handwritten_note_heavy_wear`.
+  - A Kraken recognizer on Tesseract's lines wins the other three handwriting-style rows: R3c twice and R3b once (held-out `handwritten_note`).
+  - R3c + `blla` wins no single template.
+- **Why the overall winners win:** R3c + R4c-e01, and on seed-101 R3c + `blla`, are never far behind on any template. Every other pipeline loses one template family badly.
 
 **Paired accounting (hocrgen E2c6, R3c against R3b, the same lines; pages are items, `primary.v1`):**
 
@@ -353,6 +359,15 @@ Tesseract alone scores 0.338 / 0.553 (seed-101) and 0.353 / 0.535 (held-out).
 | (e) | held-out | 80 / 0 / 0 | 2,514 → 59 (−2,455, +0) | 1,004 → 40 |
 | (d) | seed-101 | 5 / 6 / 69 | 184 → 589 (−7, +412) | 92 → 325 |
 | (d) | held-out | 8 / 13 / 59 | 80 → 455 (−18, +393) | 43 → 276 |
+
+Segmenter swaps and comparisons with Tesseract alone (E2c6, pages improved / unchanged / worsened, character edits baseline → candidate):
+
+| Candidate against baseline | Seed-101 | Held-out |
+|---|---|---|
+| R3c against R3b, both on R4c-e01 lines | 75 / 0 / 5, 2,536 → 1,385 | 75 / 0 / 5, 2,373 → 1,444 |
+| R4c-e01 against `blla -d horizontal-rl`, both R3c | 71 / 4 / 5, 2,430 → 1,385 | 74 / 2 / 4, 2,424 → 1,444 |
+| R3c + `blla -d horizontal-rl` against Tesseract alone | 43 / 1 / 36, 4,877 → 2,430 | 44 / 0 / 36, 3,558 → 2,424 |
+| R3c + R4c-e01 against Tesseract alone | 61 / 3 / 16, 4,877 → 1,385 | 52 / 2 / 26, 3,558 → 1,444 |
 
 The counts are per-page differences in edit distance, not aligned individual errors. They come from hocrgen `main` (`c8fb74e`, E2c6). Its `scored` block is identical to `2d3efb0`'s on all 25 earlier R3/R4a sets, so the CER above is the same under either version.
 
@@ -424,6 +439,10 @@ On this batch the polygonizer drops 2 of 2,305 gold lines (geometry errors), whi
   - On Tesseract's rectangles it is worse on held-out (0.211 against 0.162) and on the mixed-script batch, but better on seed-101 (0.183 against 0.211).
   - The held-out paired counts show the split: 22 pages improved and 57 worsened.
   - Mixing crop styles in training (both polygon sources, or rectangles as augmentation) is the obvious next experiment.
+- **A trained segmenter is now the larger lever, and the two fixes compound.**
+  - R4c-e01, only two epochs into a paused run, takes R3c from 0.168 to 0.096 and from 0.241 to 0.143. It improves 71 and 74 of 80 pages and worsens 5 and 4.
+  - With R3b, the same segmenter gets only to 0.176 and 0.236: R3b still cannot read Kraken's polygons, whatever the baselines.
+  - Finishing R4c (or R4d) and re-scoring it with R3c (or R3d) is the obvious next step.
 - **The remaining `blla` gap is segmentation again.** Between `blla` lines (0.168 / 0.241) and (e) (0.018 / 0.006) lie reading order, line finding, and crops built around `blla`'s rather than the true baselines (matched-line CER 0.091 / 0.098 against 0.016 / 0.006).
 - **Mixed script: R3c cannot read Latin.** Even with every true baseline, it gets 79% of Latin letters wrong. Pure Hebrew lines read almost perfectly (0.004) and lines containing Latin have CER 0.190. Digits are fine (0.079). This is a training-text gap, not a geometry problem: the corpus has almost no Latin.
 - **Mixed script: reading order costs most end to end.** On `archive_card` and `ledger`, `blla`'s order is poor (τ 0.46 and 0.56). Putting R3c's `blla` lines into gold order alone takes CER from 0.465 to 0.230 (`ledger` 0.676 → 0.310, `archive_card` 0.386 → 0.115).
@@ -433,7 +452,7 @@ On this batch the polygonizer drops 2 of 2,305 gold lines (geometry errors), whi
 
 | Part | Identity |
 |---|---|
-| heocr-engine | training `cade9c8` (R3c data path, PR #13); diagnostics and conversion `aa67fa7` |
+| heocr-engine | training and the official `heocr-engine kraken` rows `cade9c8` (R3c data path, PR #13); diagnostics and conversion `aa67fa7` |
 | Training | R3b's batch (`train_batch_s5101`), split and ketos settings (table above), plus `--line-polygons kraken --polygonizer-height 1800`. `data.polygonizer`: `kraken.lib.segmentation.calculate_polygonal_environment`, Kraken 7.0.2, height 1800, `topline` false, boundaries "other baselines", 0 lines dropped. Train 1,710 pages / 27,487 lines, validation 90 / 1,553. mps, seed 42, not deterministic |
 | Training outcome | Early stopping after 10 epochs; best epoch 6 (0-based), val_accuracy 0.9976 (kraken-internal, display order). History 0.9689, 0.9911, 0.9949, 0.9955, 0.9958, 0.9967, 0.9976, 0.9973, 0.9969, 0.9970 |
 | Model | `best_0.9976.safetensors`, sha256 `db4807d1503bfec0295ee9dad501c2ac1d2192077644ac3a6e045a7cf6400afd`, 16,138,352 bytes; licence `Needs verification`, unpublished |
@@ -441,6 +460,8 @@ On this batch the polygonizer drops 2 of 2,305 gold lines (geometry errors), whi
 | hocrgen | `2d3efb0` for the seed-101 and held-out CER; `c8fb74e` (main, E2c6; source identical to `9aff7d4`) for paired accounting and the mixed-script batch |
 | Seed-101 and held-out | as R4a |
 | Mixed-script batch | hocrsyngen `bc4394c` (S11b), Python 3.12.11, Pillow 12.2.0, raqm 0.10.3, FreeType 2.14.3. Recipe seed 26110302, corpus `b325673476bce8c1…`. Manifest `5979ada50f085e91e6f2d43f9286daea3c4fe4acb0718bf5dfb1962b31b4cdbe`, line annotations `5a6ba66ca8cba5a1a6071b95a0a7774e698f2c713dc304a48ed3b1f3e0994d3f` |
+| Official `heocr-engine kraken` sets (records name their own models) | Seed-101: R3c + `blla` `2af3d834d311a6d0…`, R3c + R4c-e01 `c7a4851e6bb14042…`, R3b + R4c-e01 `0516c8a19e08fa0d…`. Held-out: `5d63089e848fe5a4…`, `789179a7d8788327…`, `9b6aecedf28b09c9…` |
+| R4c-e01 segmenter (preview) | `checkpoint_01-0.7613.ckpt` converted to safetensors `3bd77f587eb3abf6…` (R4c section above); licence `Needs verification`, unpublished |
 | R3c prediction sets, seed-101 | `blla -d horizontal-rl` `075aceecce972bd1…`, Tesseract lines `d4a3e1c7ed973b93…`, (e) `6c837d721d2b95a4…`, (d) `9015d0804c3667f5…` |
 | R3c prediction sets, held-out | `blla -d horizontal-rl` `a6eea35ce7eafe71…`, Tesseract lines `05fa40836f3cf6ff…`, (e) `78ee1e8c01115109…`, (d) `3ab26518d3d673ae…` |
 | Mixed-script prediction sets | Tesseract `heb+eng` `56186fa22774f2a8…`; R3b: `blla` `fd9fd89609818622…`, Tesseract lines `6a1ec8f99efbcf1e…`, (e) `c1f352f3384bab7b…`; R3c: `blla` `7fef60e5e3c1d597…`, Tesseract lines `9a3d673e5aa07d83…`, `blla` in gold order `1974773866da03b4…`, (e) `46e28acf7485a5d7…` |
