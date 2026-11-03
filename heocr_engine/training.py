@@ -38,6 +38,8 @@ TASKS = ("recognition", "segmentation")
 # Region names become kraken region types through PAGE `custom="structure {type:…;}"`, which kraken
 # splits on braces, colons, semicolons and spaces.
 REGION_TYPE = re.compile(r"[A-Za-z0-9_-]{1,64}\Z")
+# kraken's line type for TextLines without a type of their own.
+DEFAULT_LINE_TYPE = "default"
 # Segmentation regions are the sidecar's region polygons (hocrsyngen S11a) when every page has them, else
 # the bounding box of each region name's line polygons.
 REGION_GEOMETRIES = ("sidecar", "line_polygon_bbox")
@@ -259,11 +261,13 @@ def page_regions(page: dict, sidecar: bool = False) -> list[tuple[str, list[tupl
     return out
 
 
-def page_xml(page: dict, image_name: str, region_types: bool = False, sidecar_regions: bool = False) -> bytes:
+def page_xml(page: dict, image_name: str, region_types: bool = False, sidecar_regions: bool = False,
+             line_types: dict[str, str] | None = None) -> bytes:
     """PAGE XML with one TextRegion per annotated region, lines in line_index order, right-to-left.
 
     With `region_types`, each region carries its hocrsyngen name as a kraken region type; with
-    `sidecar_regions`, regions are the sidecar's region polygons instead of line bounding boxes.
+    `sidecar_regions`, regions are the sidecar's region polygons instead of line bounding boxes. `line_types`
+    maps a region name to the kraken line type of its lines; other lines keep kraken's `default` type.
     """
     q = lambda tag: f"{{{PAGE_NS}}}{tag}"  # noqa: E731
     root = ET.Element(q("PcGts"))
@@ -282,8 +286,10 @@ def page_xml(page: dict, image_name: str, region_types: bool = False, sidecar_re
         region = ET.SubElement(element, q("TextRegion"), **attributes, readingDirection="right-to-left")
         ET.SubElement(region, q("Coords"), points=_points_attr(box))
         for line in lines:
-            text_line = ET.SubElement(region, q("TextLine"), id=f"l{line['line_index']}",
-                                      readingDirection="right-to-left")
+            line_attributes = {"id": f"l{line['line_index']}"}
+            if line_types and line["region"] in line_types:
+                line_attributes["custom"] = f"structure {{type:{line_types[line['region']]};}}"
+            text_line = ET.SubElement(region, q("TextLine"), **line_attributes, readingDirection="right-to-left")
             ET.SubElement(text_line, q("Coords"), points=_points_attr(line["polygon"]))
             ET.SubElement(text_line, q("Baseline"), points=_points_attr(line["baseline"]))
             ET.SubElement(ET.SubElement(text_line, q("TextEquiv")), q("Unicode")).text = line["text"]
@@ -336,12 +342,15 @@ def _canonical_sha(value) -> str:
 
 def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validation_fraction: float = 0.1,
                         split_seed: int = 0, task: str = "recognition", line_polygons: str = "sidecar",
-                        polygonizer_height: int = POLYGONIZER_HEIGHT, polygonizer=None) -> dict:
+                        polygonizer_height: int = POLYGONIZER_HEIGHT, polygonizer=None,
+                        line_types: dict[str, str] | None = None) -> dict:
     """Write pages/<sha256>.{jpg,png,xml}, train.txt, validation.txt and dataset.json into `output`.
 
     The two list files hold absolute XML paths for ketos and stay local. dataset.json is path-free.
     `task="segmentation"` types the regions and counts them per split. `line_polygons="kraken"` (recognition
     only) rebuilds line polygons with Kraken's polygonizer (`polygonizer`, by default Kraken's own).
+    `line_types` (segmentation only) maps region names to kraken line types, such as {"stamp_area": "stamp"};
+    lines of other regions keep the `default` type.
     """
     if task not in TASKS:
         raise EngineError("Invalid training task")
@@ -349,6 +358,11 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
         raise EngineError("Line polygons must be sidecar or kraken, and sidecar for segmentation")
     if not (_is_int(polygonizer_height, 64, 20_000) or polygonizer_height == 0):
         raise EngineError("Polygonizer height must be 0 or 64-20000 pixels")
+    line_types = dict(sorted((line_types or {}).items()))
+    if line_types and (task != "segmentation" or not all(
+            REGION_TYPE.fullmatch(key) and REGION_TYPE.fullmatch(value) and value != DEFAULT_LINE_TYPE
+            for key, value in line_types.items())):
+        raise EngineError("Line types are for segmentation and map region names to non-default type names")
     rebuild = line_polygons == "kraken"
     kraken_version = None
     if rebuild and polygonizer is None:
@@ -376,7 +390,7 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
         if rebuild:
             lines, dropped = kraken_line_polygons(raw, page, polygonizer, polygonizer_height)
             page = {**page, "lines": lines}
-        xml = page_xml(page, image.name, region_types=segmentation, sidecar_regions=sidecar)
+        xml = page_xml(page, image.name, region_types=segmentation, sidecar_regions=sidecar, line_types=line_types)
         xml_path = image.with_suffix(".xml")
         xml_path.write_bytes(xml)
         split = splits[page["sample_id"]]
@@ -387,7 +401,9 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
                         "split": split, "lines": len(page["lines"]),
                         "lines_outside_logical_order": sum(line["logical_line_index"] is None for line in page["lines"]),
                         "occluded_lines": sum(line["occluded"] for line in page["lines"]),
-                        **({"regions": sorted(name for name, _, _ in page_regions(page, sidecar))}
+                        **({"regions": sorted(name for name, _, _ in page_regions(page, sidecar)),
+                            "line_types": sorted(line_types.get(line["region"], DEFAULT_LINE_TYPE)
+                                                 for line in page["lines"])}
                            if segmentation else {}),
                         **({"lines_dropped_by_polygonizer": dropped} if rebuild else {}),
                         "page_xml_sha256": digest(xml)})
@@ -400,7 +416,7 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
                "split": {"unit": "sample", "method": "sha256_rank", "split_seed": split_seed,
                          "validation_fraction": validation_fraction, "assignment_sha256": _canonical_sha(entries)}}
     if segmentation:
-        summary.update(task=task, region_geometry=REGION_GEOMETRIES[0 if sidecar else 1])
+        summary.update(task=task, region_geometry=REGION_GEOMETRIES[0 if sidecar else 1], line_type_map=line_types)
     else:
         summary["line_polygons"] = line_polygons
     if rebuild:
@@ -427,6 +443,11 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
                 for name in entry["regions"]:
                     regions[name] = regions.get(name, 0) + 1
             summary[split]["regions_by_type"] = dict(sorted(regions.items()))
+            types: dict[str, int] = {}
+            for entry in chosen:
+                for name in entry["line_types"]:
+                    types[name] = types.get(name, 0) + 1
+            summary[split]["lines_by_type"] = dict(sorted(types.items()))
     with (output / "dataset.json").open("x", encoding="utf-8") as stream:
         json.dump({**summary, "pages": entries}, stream, ensure_ascii=False, indent=2)
         stream.write("\n")

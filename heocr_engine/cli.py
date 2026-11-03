@@ -271,6 +271,26 @@ def _line_polygon_args(parser: argparse.ArgumentParser) -> None:
                              "height; 0 for the page's own resolution)")
 
 
+def _line_type(value: str) -> tuple[str, str]:
+    region, sep, line_type = value.partition("=")
+    if not sep or not region or not line_type:
+        raise argparse.ArgumentTypeError("expected REGION=TYPE, for example stamp_area=stamp")
+    return region, line_type
+
+
+def _line_type_args(parser: argparse.ArgumentParser) -> None:
+    parser.add_argument("--line-type", type=_line_type, action="append", default=[], metavar="REGION=TYPE",
+                        help="Segmentation: give the lines of a region this kraken line type, for example "
+                             "stamp_area=stamp (repeatable; other lines stay 'default')")
+
+
+def _line_type_map(pairs: list[tuple[str, str]]) -> dict[str, str]:
+    mapping = dict(pairs)
+    if len(mapping) != len(pairs):
+        raise EngineError("Each region may have only one --line-type")
+    return mapping
+
+
 def _prepare_kraken_data_main(argv: list[str]) -> int:
     from heocr_engine.training import prepare_kraken_data
 
@@ -281,10 +301,12 @@ def _prepare_kraken_data_main(argv: list[str]) -> int:
     parser.add_argument("--task", choices=["recognition", "segmentation"], default="recognition",
                         help="segmentation types each region with its hocrsyngen name (default recognition)")
     _line_polygon_args(parser)
+    _line_type_args(parser)
     args = parser.parse_args(argv)
     summary = prepare_kraken_data(args.annotations, args.manifest, args.output, args.validation_fraction,
                                   args.split_seed, task=args.task, line_polygons=args.line_polygons,
-                                  polygonizer_height=args.polygonizer_height)
+                                  polygonizer_height=args.polygonizer_height,
+                                  line_types=_line_type_map(args.line_type))
     json.dump(summary, sys.stdout, ensure_ascii=False, indent=2)
     sys.stdout.write("\n")
     return 0
@@ -370,6 +392,7 @@ def _train_kraken_seg_main(argv: list[str]) -> int:
     parser.add_argument("--schedule", default=defaults.schedule)
     parser.add_argument("--quit", choices=["early", "fixed"], default=defaults.quit)
     parser.add_argument("--augment", action="store_true")
+    _line_type_args(parser)
     parser.add_argument("--timeout", type=float, default=172_800, help="Seconds for ketos segtrain (default 48h)")
     args = parser.parse_args(argv)
     if args.record.exists():
@@ -382,7 +405,8 @@ def _train_kraken_seg_main(argv: list[str]) -> int:
         args.annotations, args.manifest, args.work_dir, args.ketos, kraken=args.kraken, corpora=tuple(args.corpus),
         device=args.device, seed=args.seed, deterministic=args.deterministic, precision=args.precision,
         workers=args.workers, threads=args.threads, validation_fraction=args.validation_fraction,
-        split_seed=args.split_seed, hyperparameters=hyperparameters, timeout=args.timeout)
+        split_seed=args.split_seed, line_types=_line_type_map(args.line_type), hyperparameters=hyperparameters,
+        timeout=args.timeout)
     write_prediction(record, args.record)
     return 0
 
