@@ -254,3 +254,38 @@ The R3b + `blla` column is this run's re-run of R3b's pipeline, with PAGE XML ou
 | Line-file sets (`diagnose-segmentation` `set_sha256`) | `blla` `89aabd48…` / `d3f9fb81…`; `-d horizontal-rl` `83bc6671…` / `a05a34f2…`; Tesseract lines `346f4156…` / `314e7bd0…`; legacy `5462f064…` / `45f0a3df…` (seed-101 / held-out) |
 
 Limits: the R3b limits apply. In addition, one seed per batch, synthetic pages only, and no confidence intervals. The legacy baseline and the anchor and position rules in (b) and (c) are heuristics. Predictions, line files and reports stay local.
+
+## R4c (partial): first trained segmenter, line geometry only (2026-11-03)
+
+R4c trained HeOCR's first baseline segmenter (`heocr-engine train-kraken-seg`, decision 0008) and was **stopped by the team lead after 2 of a planned 15–25 epochs**. R4a showed that a better segmenter alone is capped near 0.22–0.28 CER with R3b (step (e) above), so the training slot went to the recognizer retrain first. No training-run record was written, because the run did not finish. These numbers describe a partially trained model and are not an R4 result. There is no hocrgen text score here; the table is line geometry only.
+
+### Line geometry (`diagnose-segmentation`, polygon IoU ≥ 0.5)
+
+Both rows use `kraken segment -bl -d horizontal-rl`, and only the segmentation model differs. The `blla` rows are R4a's `-d horizontal-rl` line files, rescored with the same tool code (identical to R4a's reports).
+
+| Segmenter | Batch | P / R / F1 | Split gold lines | Merging predicted lines (gold lines merged) | Missed | Spurious | Kendall τ | Adjacent pairs kept | Pages fully in order |
+|---|---|---|---|---|---|---|---|---|---|
+| `blla -d horizontal-rl` | seed-101 | 0.733 / 0.800 / 0.765 | 78 | 16 (32) | 27 | 1 | 0.838 | 0.866 | 26 / 80 |
+| R4c epoch 1 `-d horizontal-rl` | seed-101 | 0.926 / 0.897 / 0.911 | 14 | 27 (54) | 5 | 0 | 0.860 | 0.862 | 13 / 80 |
+| `blla -d horizontal-rl` | held-out | 0.624 / 0.726 / 0.671 | 96 | 4 (8) | 28 | 0 | 0.811 | 0.858 | 31 / 80 |
+| R4c epoch 1 `-d horizontal-rl` | held-out | 0.912 / 0.886 / 0.899 | 5 | 5 (10) | 20 | 2 | 0.872 | 0.863 | 14 / 80 |
+
+With baseline matching (`--match baseline`), F1 goes from 0.842 to 0.949 on seed-101 and from 0.773 to 0.951 on held-out.
+
+- **Line finding:** after only two epochs, the trained segmenter finds lines much better than `blla`. Splits almost disappear (78 → 14 and 96 → 5 gold lines). On the handwriting-style templates, held-out polygon F1 is 0.979 and 0.934, against 0.767 and 0.691 for `blla`.
+- **Merges are stamps:** on seed-101, 27 of the 40 stamp lines are merged with the body line they overlap. Training regions were line bounding boxes. The sidecar's region polygons (R4b1) and a longer run are the obvious next steps.
+- **Order:** Kendall τ is slightly better, but fewer pages are perfectly in order. This is not diagnosed yet.
+- **Limits:** a partial model (epoch 1, `val_mean_iu` 0.761), one seed, synthetic pages only, and the same generator and fonts as the training batch.
+
+### Run identities
+
+| Part | Identity |
+|---|---|
+| heocr-engine | training `2add9ed` (R4b); diagnostic `2d8c58c` |
+| Training data | `train_batch_s5101` (hocrsyngen `bbcaf0e`): annotations `5d1155cf…`, manifest `29dffcca…`. Split as R3b (by sample, split seed 0, validation fraction 0.05): 1,710 / 90 pages. Regions are `line_polygon_bbox` |
+| Training | ketos 7.0.2 `segtrain` from scratch, default network, lr 0.0002, AdamW, constant schedule, no augmentation, `quit early` with lag 8 and min-epochs 10, mps, seed 42. About 24 min/epoch on a shared machine. Stopped during epoch 3 |
+| Validation (ketos) | epoch 0: `val_mean_iu` 0.620, baseline F1 0.982; epoch 1: 0.761, baseline F1 0.956 |
+| Model | `checkpoint_01-0.7613.ckpt` (sha256 `4b217c7e09913c2d…`) through `ketos convert` gives `3bd77f587eb3abf6…` (safetensors, `topline` false). Licence `Needs verification`, not published (decision 0008) |
+| Line-file sets (`set_sha256`) | `46cf7f09…` (seed-101), `9635e25a…` (held-out) |
+| Batches | as R4a |
+
