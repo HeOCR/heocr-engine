@@ -4,6 +4,7 @@ import hashlib
 import json
 import shutil
 from pathlib import Path
+from integrity import FONTS, sha
 
 
 def corpora():
@@ -19,6 +20,8 @@ def main():
     parser.add_argument('--alef-font', type=Path, required=True)
     parser.add_argument('--noto-font', type=Path, required=True)
     args = parser.parse_args()
+    if sha(args.alef_font) != FONTS['alef'] or sha(args.noto_font) != FONTS['noto']:
+        raise ValueError("font bytes differ from frozen experiment")
     root = args.output.resolve()
     root.mkdir(parents=True, exist_ok=False)
     inputs = root / 'inputs'

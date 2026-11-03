@@ -42,8 +42,12 @@ local directory outside this repository. No tool downloads a model, and no priva
 needed. This deliberately uses hocrsyngen's private generation helper to test a
 locally supplied Noto font: its Noto manifest is an experimental font override,
 not a canonical hocrsyngen-governed batch. The preparation sidecars and image
-hashes identify the actual local inputs. Check corpus, font, image and label
-hashes before training; keep test text and font fixed before model selection.
+hashes identify the actual local inputs. The harness requires the recorded font
+bytes, base-model hash and complete generator-tree hash, and fails if frozen
+line or PAGE artifacts, labels, split lists or membership differ. It requires
+Kraken/ketos 7.0.2 and records executable hashes; another rendering stack may
+fail strict byte reproduction instead of producing a comparable score. Keep
+test text and font fixed before model selection.
 The trainer uses CPU, four threads, two fixed epochs, 900 seconds and 1 GiB of
 checkpoint output as limits; only validation determines the saved best model.
 PAGE XML is necessary because the installed ketos 7.0.2 `train -f path` claims
@@ -66,5 +70,6 @@ weights, predictions or sensitive payloads are included here.
 
 Model fitting is not bitwise deterministic across environments. CPU model,
 Pillow/font rendering and exact dependencies can change assets, checkpoints and
-scores. Stop on missing/failed output and retain the full denominator; do not
+scores. Stop on missing/failed output and retain the full denominator; paired aggregate
+scores are suppressed unless both arms complete. Do not
 silently substitute a different font, selection or model.

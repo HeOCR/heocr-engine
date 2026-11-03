@@ -2,11 +2,15 @@ from pathlib import Path
 import argparse,hashlib,json,sys
 from collections import Counter
 from PIL import Image
+from integrity import GENERATOR_SHA, generator_hash, verify_fonts, verify
 parser=argparse.ArgumentParser()
 parser.add_argument('--output',type=Path,required=True)
 parser.add_argument('--generator-src',type=Path,required=True)
 args=parser.parse_args()
 p=args.output.resolve()
+verify_fonts(p)
+if generator_hash(args.generator_src.resolve()) != GENERATOR_SHA:
+ raise ValueError("generator tree hash differs from frozen experiment")
 sys.path.insert(0,str(args.generator_src.resolve()))
 from hocrsyngen.generator import _generate_manifest_and_documents,write_manifest
 from hocrsyngen.line_annotations import write_line_annotations
@@ -30,4 +34,4 @@ for split,count,seed,font in specs:
    if scale!=1.0:crop=crop.resize((round(crop.width*scale),round(crop.height*scale)),Image.Resampling.LANCZOS)
    f=target/f'{doc.sample_id}-{i:03}.png';crop.save(f);f.with_suffix('.gt.txt').write_text(line.text,encoding='utf8');rows.append({'image':str(f.relative_to(p)),'label':str(f.with_suffix('.gt.txt').relative_to(p)),'image_sha256':hashlib.sha256(f.read_bytes()).hexdigest(),'label_sha256':hashlib.sha256(f.with_suffix('.gt.txt').read_bytes()).hexdigest(),'scale':scale,'page':doc.sample_id})
  (p/f'{split}.lst').write_text(''.join(str((p/r['image']).resolve())+'\n' for r in rows));all_rows[split]=rows;stats[split]={'pages':count,'lines':len(rows),'rejected':dict(rejected),'scales':dict(Counter(str(r['scale']) for r in rows))}
-(p/'line-freeze.json').write_text(json.dumps({'splits':all_rows,'statistics':stats},ensure_ascii=False,indent=2)+'\n');print(json.dumps(stats,indent=2))
+(p/'line-freeze.json').write_text(json.dumps({'splits':all_rows,'statistics':stats},ensure_ascii=False,indent=2)+'\n');(p/'line-freeze.sha256').write_text(hashlib.sha256((p/'line-freeze.json').read_bytes()).hexdigest()+'\n');verify(p);print(json.dumps(stats,indent=2))
