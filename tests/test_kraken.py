@@ -52,17 +52,19 @@ class KrakenTests(unittest.TestCase):
         self.assertEqual((stage['name'], stage['version'], stage['license']), ('kraken', '7.0.2', 'Apache-2.0'))
         self.assertEqual([item['role'] for item in stage['artifacts']],
                          ['executable', 'model:segmentation', 'model:recognition'])
-        self.assertEqual(stage['details'], {'base_dir': 'R', 'reorder': True})
+        self.assertEqual(stage['details'], {'base_dir': 'R', 'reorder': True, 'text_direction': 'horizontal-rl'})
         self.assertEqual(validate_prediction(first)[0], [])
         self.assertNotIn(str(self.root), json.dumps(first, ensure_ascii=False))
         ocr = self.calls[-1]
-        self.assertEqual(ocr[ocr.index('segment'):ocr.index('segment') + 2], ['segment', '-bl'])
+        # Right-to-left line order by default; kraken's own default is horizontal-lr.
+        self.assertEqual(ocr[ocr.index('segment'):ocr.index('segment') + 4], ['segment', '-bl', '-d', 'horizontal-rl'])
         self.assertIn('--reorder', ocr)
         self.assertEqual(ocr[ocr.index('--base-dir') + 1], 'R')
 
     def test_bad_settings_and_outputs_fail(self):
         with patch('heocr_engine.kraken.run_process', side_effect=self.fake_run) as runner:
-            for changes in ({'base_dir': 'RTL'}, {'timeout': 0}, {'timeout': float('nan')}):
+            for changes in ({'base_dir': 'RTL'}, {'timeout': 0}, {'timeout': float('nan')},
+                            {'text_direction': 'rl'}):
                 with self.subTest(changes=changes), self.assertRaises(EngineError):
                     run_pipeline(self.image.read_bytes(), self.recognizer(**changes))
             runner.assert_not_called()
@@ -101,9 +103,14 @@ else:
         with patch('heocr_engine.kraken.run_process', side_effect=self.fake_run):
             self.assertEqual(main(['kraken', str(self.image), str(output), '--executable', str(self.exe),
                                    '--segmentation-model', str(self.seg),
-                                   '--recognition-model', str(self.rec), '--base-dir', 'auto']), 0)
+                                   '--recognition-model', str(self.rec), '--base-dir', 'auto',
+                                   '--text-direction', 'horizontal-lr']), 0)
             written = json.loads(output.read_text(encoding='utf-8'))
             self.assertEqual(written['pipeline'][0]['details']['base_dir'], 'auto')
+            # The override reaches kraken and the record, and changes the stage config hash.
+            self.assertEqual(written['pipeline'][0]['details']['text_direction'], 'horizontal-lr')
+            self.assertIn('horizontal-lr', self.calls[-1])
+            self.assertNotEqual(written['pipeline'][0]['config_sha256'], self.recognizer().info.config_sha256)
             config = self.root / 'pipeline.json'
             config.write_text(json.dumps({'stages': [{'type': 'kraken', 'executable': 'kraken',
                                                       'segmentation_model': 'seg.mlmodel',

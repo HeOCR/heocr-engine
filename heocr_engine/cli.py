@@ -214,7 +214,7 @@ def _run_main(argv: list[str]) -> int:
 
 
 def _kraken_main(argv: list[str]) -> int:
-    from heocr_engine.kraken import BASE_DIRS, KrakenRecognizer
+    from heocr_engine.kraken import BASE_DIRS, TEXT_DIRECTIONS, KrakenRecognizer
     from heocr_engine.stages import run_pipeline
 
     parser = argparse.ArgumentParser(prog="heocr-engine kraken",
@@ -226,10 +226,13 @@ def _kraken_main(argv: list[str]) -> int:
     parser.add_argument("--recognition-model", type=Path, required=True)
     parser.add_argument("--base-dir", choices=BASE_DIRS, default="R",
                         help="Base text direction for reordering (default R)")
+    parser.add_argument("--text-direction", choices=TEXT_DIRECTIONS, default="horizontal-rl",
+                        help="Principal text direction for segmentation line order (default horizontal-rl; "
+                             "kraken's own default, used before this option existed, is horizontal-lr)")
     parser.add_argument("--timeout", type=float, default=600)
     args = parser.parse_args(argv)
     recognizer = KrakenRecognizer(args.executable, args.segmentation_model, args.recognition_model,
-                                  args.base_dir, args.timeout)
+                                  args.base_dir, args.timeout, args.text_direction)
     write_prediction(run_pipeline(read_limited(args.image, MAX_BYTES), recognizer), args.output)
     return 0
 
