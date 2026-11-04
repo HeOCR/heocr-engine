@@ -1302,3 +1302,263 @@ Limits:
 - **The fixture's 6-line card is still untested on clean data.** eval-layout-heldout's cards average 3.9 body lines (3 to 5), close to the training cards. The fixture's remaining A1 card error (`מקור` before the last body line) has no clean check yet.
 - The gold-line rows and the gold-order rows use gold and are not pipelines.
 - Predictions, line files and reports stay local.
+
+## R3f: recognizer trained with typographic punctuation (2026-11-04)
+
+Naming: "R3e" is already used, both on main for the crop-mix experiment and by PR #21. This run is therefore R3f. Its local task folder and run name keep the working label `r3e-typo` / `run_r3e_s7201`.
+
+R3d's training text has no typographic punctuation (hocrsyngen#87): no `—`, `–`, `׳`, `״`, curly quotes or `…`. R3f keeps R3d's recipe exactly: from scratch, Kraken polygons at height 1800, and the same settings and early stopping. Only the training batch changes:
+- **Text:** S10b Hebrew train (9,359 lines), then S13a mixed Hebrew/Latin train (5,810 lines), then S13b typographic train (4,822 lines; hocrsyngen #88). 19,991 lines in all.
+- **Batch:** hocrsyngen `88ba5e6`, the same seven templates round robin, 3,000 pages, seed 7201.
+- **Alphabet:** 117 characters, R3d's 107 plus `׳ ״ – — ‘ ’ “ ” „ …`. None of R3d's characters is lost.
+
+None of the batches below is trained on: seed-101, held-out, the hocrgen fixture, eval-mixed-heldout, eval-layout-heldout and eval-typo-heldout. No page of R3f's training batch matches any of them by page sha256. The weights are not in this repository and are not published. Their licence is `Needs verification` (decision 0007).
+
+**Decision (maintainer's lead, 2026-11-04):**
+- R3d stays the default and reported recognizer. R3f is recorded as a typographic-punctuation candidate and is not promoted.
+- It is not promoted because eval-mixed-heldout regresses (0.016 → 0.021, with a paired interval that excludes zero), and so do hocrsyngen's polygons (d) and Tesseract lines.
+- A second R3f seed, s7202, is pending. It will tell whether those regressions come from the recipe or from run-to-run variation.
+
+### Training
+
+- **Stopping:** early stopping after 10 epochs. The best epoch is 6 (0-based), with val_accuracy 0.9960 on R3f's own validation split. It is not comparable with R3d's 0.9962.
+- **Split:** train 2,850 pages / 47,633 lines, validation 150 pages / 2,706 lines; every template is in both.
+- **Lines:** the polygonizer drops none. 1,893 of the 50,339 gold lines carry a new mark.
+
+### Seed-101 (S10c gold) and held-out batches (`primary.v1` CER / WER, overall)
+
+These are R3d's four line sources, unchanged; only the recognizer changes. Intervals are 95% paired page bootstrap intervals (2,000 resamples) on the change in pooled CER. Paired accounting is E2c6: pages improved / unchanged / worsened, then character edits R3d → R3f.
+
+| Lines | Kind | R3d seed-101 | R3f seed-101 | R3d held-out | R3f held-out |
+|---|---|---|---|---|---|
+| `blla -d horizontal-rl` | pipeline | 0.167 / 0.292 | 0.169 / 0.294 | 0.240 / 0.405 | 0.241 / 0.408 |
+| Tesseract `--psm 3` lines | pipeline | **0.194 / 0.356** | 0.216 / 0.409 | **0.196 / 0.362** | 0.248 / 0.469 |
+| (e) gold baselines, Kraken polygons at height 1800, gold order | diagnostic | 0.018 / 0.040 | 0.018 / 0.047 | 0.006 / 0.020 | 0.006 / 0.025 |
+| (d) gold lines with hocrsyngen's polygons, gold order | diagnostic | **0.028 / 0.096** | 0.054 / 0.151 | **0.024 / 0.106** | 0.064 / 0.167 |
+
+| Lines | Seed-101: R3f against R3d | Held-out: R3f against R3d |
+|---|---|---|
+| `blla -d horizontal-rl` | 24 / 19 / 37, 2,406 → 2,434 [0.000, +0.004] | 26 / 22 / 32, 2,415 → 2,427 [−0.002, +0.004] |
+| Tesseract lines | 15 / 5 / 60, 2,805 → 3,113 [+0.015, +0.028] | 9 / 5 / 66, 1,976 → 2,498 [+0.039, +0.066] |
+| (e) | 20 / 31 / 29, 259 → 260 [−0.002, +0.002] | 11 / 44 / 25, 58 → 65 [−0.002, +0.003] |
+| (d) | 22 / 15 / 43, 402 → 775 [+0.015, +0.039] | 17 / 19 / 44, 243 → 648 [+0.025, +0.058] |
+
+**Where (d) loses: one template.** The other three templates stay within 0.013 of R3d. On `printed_letter_heavy_scan`:
+- seed-101 goes 0.043 / 0.157 → 0.128 / 0.316;
+- held-out goes 0.038 / 0.178 → 0.165 / 0.345.
+
+On those crops R3f writes Latin letters and stray brackets that are not on the page. It also reads the stamp word `אישור` as nonsense such as `צניגצנ`. Tesseract lines lose on all four templates (held-out `printed_letter` 0.252 → 0.312).
+
+### Best pipeline on all four batches: R4d + A1 (`primary.v1` CER / WER)
+
+This is the R4e pipeline: the `kraken-python` stage on cpu, the R4d segmenter, and A1 with `--reading-order-classes region`. Only the recognizer changes. The R3d rows are those of the R4e section.
+
+| Batch | R4d + R3d + A1 | R4d + R3f + A1 | R3f against R3d (pages, character edits) | 95% interval |
+|---|---|---|---|---|
+| seed-101 | 0.019 / 0.055 | 0.018 / 0.055 | 32 / 27 / 21, 274 → 262 | [−0.003, +0.001] |
+| held-out | **0.009 / 0.032** | 0.010 / 0.034 | 17 / 41 / 22, 92 → 97 | [−0.002, +0.003] |
+| hocrgen fixture (development set) | 0.146 / 0.269 | **0.130 / 0.218** | 88 / 3 / 9, 4,020 → 3,571 | [−0.020, −0.013] |
+| eval-mixed-heldout | **0.016 / 0.050** | 0.021 / 0.068 | 16 / 32 / 32, 170 → 221 | [+0.001, +0.010] |
+
+**By template:**
+- **eval-mixed-heldout:**
+  - `handwritten_note_heavy_wear` 0.025 → 0.041;
+  - `handwritten_note` 0.020 → 0.025;
+  - `printed_letter` 0.013 → 0.017;
+  - `printed_letter_heavy_scan` 0.012 → 0.010.
+- **hocrgen fixture:**
+  - `archive_card` 0.052 → 0.034;
+  - `handwritten_note` 0.061 → 0.033;
+  - `printed_letter` 0.062 → 0.031;
+  - `ledger` 0.260 → 0.255.
+
+**The fixture gain is mostly the em dash.**
+- The fixture's gold has 325 em dashes `—`, in 27,443 reference characters. R3d's alphabet has no `—`, so each of them costs R3d at least one edit, about 0.012 CER. R3f writes 317 em dashes.
+- The other nine new marks do not occur in any of these four batches, which test them only for false insertions. eval-typo-heldout (below) is the test of the new marks.
+- The fixture is also a development set: R4e tuned reading order on it. It is not a clean check.
+
+### eval-typo-heldout: typographic punctuation, R3d baseline and R3f (2026-11-04)
+
+R3d's training text has no typographic punctuation (hocrsyngen#87). eval-typo-heldout is a fresh batch made to measure that gap. R3f is R3d's recipe retrained on text that adds the S13b typographic corpus.
+
+**The batch:**
+- hocrsyngen main `88ba5e6` (`s11b-ledger-fit-v1`), seed 9201 (unused elsewhere).
+- 80 pages, 20 each of the four benchmark templates.
+- Text from the packaged S13b eval corpus, `hebrew_typographic_lines_eval_v1.txt`. None of its lines is in the S13b train corpus, R3d's training text or R3f's training text.
+- The gold has 308 of the new marks (table below). Both fonts have glyphs for all of them.
+- It was never trained on and nothing is tuned on it. The R3d baseline was scored once before R3f finished training. R3f was scored once, with its model fixed beforehand.
+- Scored on synthetic gold only (decision 0004), hocrgen `c8fb74e`.
+
+**Pipelines:**
+- R4d + R3d + A1: the pipeline before R3f, on heocr-engine `660e5a4` with `--api python`, cpu and `--reading-order-classes region`.
+- R4d + R3f + A1: the same pipeline and settings with R3f as the recognizer, on heocr-engine `c5f8034`. It has the same code as `660e5a4`; the commits between them change only docs.
+- Tesseract `heb+eng` alone.
+
+**`primary.v1` CER / WER per template:**
+
+| Lines | `printed_letter` | `printed_letter_heavy_scan` | `handwritten_note` | `handwritten_note_heavy_wear` | overall |
+|---|---|---|---|---|---|
+| Tesseract `heb+eng` alone | 0.140 / 0.294 | 0.143 / 0.310 | 0.807 / 1.007 | 0.811 / 1.000 | 0.414 / 0.590 |
+| R4d + R3d + A1 | 0.032 / 0.129 | 0.042 / 0.158 | 0.040 / 0.180 | 0.052 / 0.214 | 0.041 / 0.166 |
+| **R4d + R3f + A1** | **0.008 / 0.037** | **0.005 / 0.027** | **0.009 / 0.046** | **0.019 / 0.077** | **0.010 / 0.044** |
+
+**Overall CER / WER by profile:**
+
+| Lines | `raw.v1` | `primary.v1` | `consonantal.v1` | `punct_folded.v1` (report only) |
+|---|---|---|---|---|
+| Tesseract `heb+eng` alone | 0.448 / 0.596 | 0.414 / 0.590 | 0.414 / 0.590 | 0.391 / 0.525 |
+| R4d + R3d + A1 | 0.041 / 0.166 | 0.041 / 0.166 | 0.041 / 0.166 | 0.007 / 0.028 |
+| **R4d + R3f + A1** | **0.010 / 0.044** | **0.010 / 0.044** | **0.010 / 0.044** | **0.006 / 0.024** |
+
+`punct_folded.v1` replaces dashes with a space and deletes other punctuation.
+- R3d's gap between `primary.v1` and folded was 0.034 CER: 356 of its 422 character edits were punctuation.
+- R3f's gap is 0.004 (0.0095 against 0.0055). R3f's folded score is also slightly better than R3d's (0.0055 against 0.0068).
+
+**Paired accounting (E2c6, pages improved / unchanged / worsened, character edits baseline → candidate):**
+
+| Template | R3f against R3d (both R4d + A1) |
+|---|---|
+| `printed_letter` | 18 / 1 / 1, 98 → 23 |
+| `printed_letter_heavy_scan` | 20 / 0 / 0, 131 → 17 |
+| `handwritten_note` | 19 / 1 / 0, 88 → 20 |
+| `handwritten_note_heavy_wear` | 18 / 2 / 0, 105 → 39 |
+| **all 80 pages** | **75 / 4 / 1, 422 → 99** (word edits 326 → 86) |
+
+R4d + R3f + A1 against Tesseract alone: 80 / 0 / 0, 4,305 → 99.
+
+**Per-character rows** (gold marks after `primary.v1` normalization; page-level optimal Levenshtein alignment; "kept" means aligned to the same character; substitutes ranked by count):
+
+| Mark | Code point | Gold | Tesseract kept | R3d kept | R3d main substitutes | **R3f kept** | R3f main substitutes |
+|---|---|---|---|---|---|---|---|
+| em dash `—` | U+2014 | 52 | 9 | 0 | `-` 52 | **51** | one Hebrew letter |
+| en dash `–` | U+2013 | 26 | 0 | 0 | `-` 26 | **22** | `—` 4 |
+| geresh `׳` | U+05F3 | 58 | 0 | 0 | `'` 55, `"` 3 | **40** | `'` 17 (1 deleted) |
+| gershayim `״` | U+05F4 | 81 | 0 | 0 | `"` 78 | **79** | `"` 1, one Hebrew letter |
+| left double quote `“` | U+201C | 30 | 1 | 0 | `"` 27 | **30** | — |
+| right double quote `”` | U+201D | 37 | 0 | 0 | `"` 33 | **33** | `"` 2, `ף` 1, `׳` 1 |
+| low double quote `„` | U+201E | 7 | 0 | 0 | `,` 3 (3 deleted) | **5** | one Hebrew letter (1 deleted) |
+| left single quote `‘` | U+2018 | 5 | 0 | 0 | `"` 3 | **2** | `“` 2, one Hebrew letter |
+| right single quote `’` | U+2019 | 5 | 0 | 0 | `'` 5 | **0** | `'` 5 |
+| ellipsis `…` | U+2026 | 7 | 0 | 0 | `.` 6 | **6** | (1 deleted) |
+| all new marks | | 308 | 10 | 0 | | **268** (87%) | |
+| ASCII `"` (control) | U+0022 | 14 | 11 | 14 | | 14 | |
+
+**Characters the pipelines add where the gold has none:**
+
+| Character | Tesseract | R3d | R3f |
+|---|---|---|---|
+| hyphen-minus `-` | 81 | 106 | **0** |
+| apostrophe `'` | 60 | 62 | **22** |
+| quotation mark `"` | 136 | 147 | **3** |
+
+R3d tended to write an em dash as `--`. R3f writes it as `—`.
+
+**By script (page CER; reference characters: 335 digits, 7,559 Hebrew letters, no Latin letters):**
+
+| Lines | Digits | Hebrew letters |
+|---|---|---|
+| Tesseract `heb+eng` alone | 1.343 | 0.427 |
+| R4d + R3d + A1 | 0.101 (34 edits) | 0.004 (29) |
+| R4d + R3f + A1 | **0.048** (16) | 0.004 (33) |
+
+### R3f on eval-layout-heldout (2026-11-04)
+
+This reruns the eval-layout-heldout clean check (above) with R3f instead of R3d. The pages, segmenter, A1 and settings are the same. This batch has no typographic marks: its gold uses ASCII `-`, `'` and `"`.
+
+**`primary.v1` CER / WER per template:**
+
+| Lines | `archive_card` | `archive_card_faded_scan` | `ledger` | `printed_letter` | `printed_letter_heavy_scan` | `handwritten_note` | `handwritten_note_heavy_wear` | overall |
+|---|---|---|---|---|---|---|---|---|
+| Tesseract `heb+eng` alone | 0.409 / 0.598 | 0.410 / 0.613 | 0.762 / 0.853 | 0.103 / 0.170 | 0.161 / 0.261 | 0.791 / 1.000 | 0.749 / 0.976 | 0.564 / 0.725 |
+| R4d + R3d + A1 | **0.005 / 0.023** | **0.007 / 0.019** | **0.258 / 0.348** | 0.007 / 0.025 | **0.013 / 0.035** | 0.037 / 0.090 | **0.035 / 0.117** | **0.122 / 0.202** |
+| R4d + R3f + A1 | 0.005 / 0.028 | 0.013 / 0.021 | 0.260 / 0.354 | **0.006 / 0.021** | 0.019 / 0.062 | **0.028 / 0.090** | 0.046 / 0.122 | 0.124 / 0.208 |
+
+`raw.v1` and `consonantal.v1` give the same overall as `primary.v1` for both. On this batch `punct_folded.v1` is higher for both (R3d 0.127 / 0.193, R3f 0.129 / 0.198), because it also folds the ledger's ` | ` separators and the gold's ASCII hyphens.
+
+**Paired accounting, R3f against R3d (both R4d + A1; pages improved / unchanged / worsened, character edits):**
+
+| Template | R3f against R3d |
+|---|---|
+| `archive_card` | 4 / 10 / 6, 16 → 17 |
+| `archive_card_faded_scan` | 2 / 15 / 3, 22 → 44 |
+| `ledger` | 0 / 8 / 12, 2,418 → 2,438 |
+| `printed_letter` | 2 / 5 / 3, 11 → 9 |
+| `printed_letter_heavy_scan` | 1 / 5 / 4, 18 → 27 |
+| `handwritten_note` | 4 / 3 / 3, 40 → 30 |
+| `handwritten_note_heavy_wear` | 2 / 3 / 5, 37 → 49 |
+| **all 100 pages** | **15 / 49 / 36, 2,562 → 2,614** (word edits 898 → 924) |
+
+R4d + R3f + A1 against Tesseract alone: 100 / 0 / 0, 11,885 → 2,614.
+
+**Where R3f's 52 extra edits are.** Edits are counted by the class of the gold character (substitutions and deletions) or of the predicted character (insertions):
+
+| Class | R3d edits | R3f edits | Change |
+|---|---|---|---|
+| Latin letters | 63 | 83 | +20 |
+| Punctuation (mostly the ledger ` \| `) | 814 | 827 | +13 |
+| Spaces and line breaks (mostly the ledger ` \| `) | 1,617 | 1,624 | +7 |
+| Digits | 45 | 51 | +6 |
+| Hebrew letters | 23 | 29 | +6 |
+
+- **By script** (page CER; 932 Latin letters, 4,704 digits, 9,036 Hebrew letters in the reference): Latin 0.048 → 0.075, digits 0.008 → 0.009, Hebrew 0.002 → 0.003.
+- **ASCII marks** (R3d kept every one):
+  - hyphen 335 → 328 kept (7 deleted);
+  - apostrophe 37 → 33 kept (one becomes `׳`);
+  - quotation mark 33 → 28 kept (three become `״`, one `”`).
+- R3f also adds 6 typographic marks where the gold has none: `״` 3, `׳` 1, `“` 1, `”` 1.
+- **`ledger` with one cell per line** (raw NFC edits on the 20 pages, hocrgen#98): R3d 20, R3f 42. As is: 2,418 against 2,438.
+
+### Reading (R3f)
+
+- **R3f closes the typographic gap.**
+  - On eval-typo-heldout, `primary.v1` goes from 0.041 / 0.166 to 0.010 / 0.044, and 75 of 80 pages improve (422 → 99 character edits).
+  - R3f keeps 268 of the 308 new marks, where R3d kept none. It no longer adds stray ASCII hyphens or quotation marks (106 and 147 for R3d, 0 and 3 for R3f).
+  - What remains:
+    - geresh read as an apostrophe (17 of 58);
+    - the right single quote, always read as an apostrophe (5 of 5);
+    - en dashes read as em dashes (4 of 26).
+- **On gold-like line crops, R3f matches R3d elsewhere.**
+  - With Kraken polygons at height 1800 (e), the training geometry, seed-101 and held-out are unchanged.
+  - With R4d + A1, seed-101 and held-out are unchanged too; both intervals include zero.
+  - Hebrew-letter CER on eval-typo-heldout is unchanged at 0.004.
+- **On batches without the new marks, R3f loses a little.**
+  - eval-mixed-heldout: 0.016 → 0.021, mostly `handwritten_note_heavy_wear`.
+  - eval-layout-heldout: 0.122 → 0.124. Part of that is ASCII `"` and `'` in the gold read as `״` and `׳`, and part is Latin letters (CER 0.048 → 0.075).
+  - The fixture's gain (0.146 → 0.130) is mostly the em dash, and the fixture is a development set.
+- **R3f is less robust than R3d to line crops unlike its training geometry.**
+  - hocrsyngen's polygons (d) about double R3d's CER, almost all on `printed_letter_heavy_scan`.
+  - Tesseract's rectangles are worse on every template.
+  - R3d had narrowed this crop-style split over R3c (R3d section). R3f widens it again.
+  - One guess, untested: the larger character set and the Latin text give the recognizer more wrong outputs to fall into on degraded crops.
+- **Recipe or seed?** Each recognizer is one training run, with `--no-deterministic` on `mps`. The second R3f seed (s7202) is the check. It reuses the identical recipe and corpus on a fresh batch seed.
+- **R3f stays far ahead of Tesseract** on eval-typo-heldout and eval-layout-heldout: 80 / 0 / 0 and 100 / 0 / 0 pages.
+
+### Run identities (R3f)
+
+| Part | Identity |
+|---|---|
+| Training batch | hocrsyngen `88ba5e6` (`s11b-ledger-fit-v1`), Pillow 13.0.0 with raqm. 3,000 pages, seed 7201, seven templates round robin (428–429 pages each). Corpus `7c2a62b83d3be29ab796c30b3e3272576c1f7e9c4302f7003fc6829f97984573` (S10b `hebrew_lines_train_v1.txt` `a3f2f0db…`, then S13a `hebrew_mixed_lines_train_v1.txt` `203df9e8…`, then S13b `hebrew_typographic_lines_train_v1.txt` `5c385b41…`). Manifest `e7406e20a6144f9128068dc5c6245947cd598f31bbb8ea71f89e05e9d6243f12`, line annotations `30cba05a8a7c5579e500069b850c44e29491612de1cf2ddb9e6ed19e2bd050a3`. Validates; quality check passes |
+| Training | heocr-engine `660e5a4` `train-kraken`, R3d's settings: `--line-polygons kraken --polygonizer-height 1800`, Kraken 7.0.2, batch size 16, lr 0.001, augment, `quit early` lag 3, min-epochs 5; split by sample, seed 0, validation fraction 0.05. mps, seed 42, not deterministic. Record `run_r3e_s7201.record.json` (validates) |
+| Model | `best_0.9960.safetensors`, sha256 `52a208659f06f771ce4aebb09fa3a6b737fc82c92e084165e4fca9c419107dfd`, 16,167,536 bytes; licence `Needs verification`, unpublished |
+| Seed-101 and held-out rows | heocr-engine `660e5a4`; inference as R3d (Kraken 7.0.2 on cpu, `-f page ocr --reorder --base-dir R`, the same line inputs); hocrgen `2d3efb0`. Bootstrap: 2,000 page resamples, seed 0 |
+| R4d + A1 rows | heocr-engine `660e5a4`, `kraken-python` stage on cpu, `--reading-order-classes region`; R4d `d32cd1a8…`, A1 `69aa1946…`. hocrgen `2d3efb0` for seed-101 and held-out, `c8fb74e` for the fixture and eval-mixed-heldout, as for the R3d rows. The polygonizer reports "failed on line 0" 4 times over the four batches; this is segmenter geometry, not the recognizer |
+| R3f prediction sets, seed-101 | `blla -d horizontal-rl` `b32544412aeeec48…`, Tesseract lines `1ec22b4683d4370e…`, (e) `26df97ef380f6f75…`, (d) `8ebe342c0bdeacc4…`, R4d + A1 `7d925b17cf9d41a9…` |
+| R3f prediction sets, held-out | `blla -d horizontal-rl` `b6891c0b2ed1808b…`, Tesseract lines `7bfcf2e479cf3b76…`, (e) `16f05c6b980013fc…`, (d) `932d30b3856f85d8…`, R4d + A1 `720593811345b998…` |
+| R3f prediction sets, mixed batches (R4d + A1) | hocrgen fixture `be7a485c161cc0c7…`, eval-mixed-heldout `8ba6d250d35c1696…` |
+| eval-typo-heldout | `tasks/eval-typo-heldout/eval-typo-heldout`: hocrsyngen `88ba5e6` (`s11b-ledger-fit-v1`), Pillow 13.0.0 with raqm, seed 9201, 80 pages. Packaged `hebrew_typographic_lines_eval_v1.txt` (`3364283592492d8827ae94b8899ce44cecedf1281b4fbeb69f9d76b3e9a09a3c`). Manifest `23019cf554472fb11432d96c4c5972caad8ff087fc8c99b961361d4f7205221c`, line annotations `7c493887c3def96e24b8e507a685b0ddbedf689b8d4353027389b2e148f628da`. Validates. Quality check: 640 lines, 4 occluded, no truncation |
+| eval-layout-heldout | as in its section above (manifest `facbe571069308c8f842d4f30d0cd946c2494061bfa1018c900a556b551e2259`) |
+| heocr-engine (R4a's batches) | R3d rows: `660e5a4`. R3f rows: `c5f8034` (main; the same code as `660e5a4`). Both use the `kraken-python` stage on cpu, from their own detached worktree |
+| Models (R4a's batches) | R4d `d32cd1a8efe7354445ccfea76551cc9943ca05792c332b5865f9bec985fe7bf7`; R3d `374f9302eba092f67c06af0be2ef04c4ad528e4f60a11c2255a2bd3a75c0c889`; R3f `52a208659f06f771ce4aebb09fa3a6b737fc82c92e084165e4fca9c419107dfd` (`best_0.9960.safetensors`, record `run_r3e_s7201.record.json`, validated before scoring); A1 `69aa1946583bb68ddf13ef20860582f4aa982a46b2f79e38bd7d9ae20535fb56` (`--reading-order-classes region`) |
+| Tesseract | 5.5.3, `heb+eng`, `--psm 3` |
+| hocrgen | `c8fb74e` (main): `primary.v1`, `raw.v1`, `consonantal.v1`, `punct_folded.v1` |
+| Per-character and per-class rows | R4a's `mark_table.py` and `edit_class.py` (local): `primary.v1` normalization, `rapidfuzz` 3.14.6 `Levenshtein.editops` per page |
+| Prediction sets (R4a's batches) | eval-typo-heldout: Tesseract `aa9fe9127d127265…`, R3d `922c8a9fed7f17db…`, R3f `848bb222f8b5833d…`. eval-layout-heldout: R3d `beca6e735a13326c…`, R3f `22ac660f18381a0e…` |
+| Run (R4a's batches) | every set complete (80 and 100 pages), no failures. On eval-layout-heldout the polygonizer reports "failed on line 0" once, as it did for R3d. One kraken job of R4a's at a time, next to R4b's scorer |
+
+Limits:
+- One training run per recognizer, and one seed per batch. The paired intervals cover page sampling only, not training-run variation, which is what the s7202 seed is for. R4a's eval-typo-heldout and eval-layout-heldout rows have no intervals.
+- The per-character rows depend on a page-level alignment: a substitute is whatever the optimal alignment pairs with the gold mark.
+- Every batch shares the generator and fonts with R3f's training batch. eval-typo-heldout shares none of its text lines.
+- Gold that uses ASCII `"` and `'` (seed-101, held-out, eval-mixed-heldout, eval-layout-heldout) counts a typographically correct `״` or `׳` as an error.
+- The hocrgen fixture is a development set for reading order, and its gain here is mostly one character (`—`).
+- Predictions, line files and reports stay local.
