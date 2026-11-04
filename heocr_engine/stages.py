@@ -274,7 +274,7 @@ def build_stage(spec: dict, base: Path):
         return KrakenPythonRecognizer(local(spec["segmentation_model"]), local(spec["recognition_model"]),
                                       local(reading_order) if reading_order else None,
                                       spec.get("base_dir", "R"), spec.get("text_direction"),
-                                      spec.get("device", "cpu"))
+                                      spec.get("device", "cpu"), spec.get("reading_order_classes", "segmenter"))
     if kind == "subprocess":
         manifest = json.loads(read_limited(local(spec["manifest"]), 1_000_000).decode("utf-8"))
         command = list(spec["command"])

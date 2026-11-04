@@ -38,6 +38,17 @@ heocr-engine kraken page.png prediction.json \
   - **Why the order is recomputed here:** Kraken 7.0.2 does not deliver a usable learned order. `kraken … ocr` writes plain text in the heuristic order even when a reading-order model is attached. The deprecated `blla.segment` stores the learned order in `line_orders` as indices into its line list *before* the heuristic sort, next to the sorted lines, so reading the returned lines by those indices gives the heuristic order back. `tests/test_kraken_api.py` (`KrakenLineOrdersBugTests`) proves this against Kraken's own code. The stage keeps the pre-sort list Kraken hands its heuristic order function, runs the reading-order model on that list, and maps the result onto the returned lines by line id. It fails closed unless the result is a permutation. Not reported upstream yet; that needs the maintainer's go-ahead.
   - The stage is named `kraken-python`. Its artifacts are `library:kraken-record` (sha256 of the installed Kraken distribution's `RECORD` file list), `model:segmentation`, `model:recognition` and, with a learned order, `model:reading-order`. `details` has `api: "python"`, `neural_reading_order` (true with a reading-order model), `line_order` (`learned` or `heuristic`), `reading_order_model_sha256`, `lines`, `lines_moved_by_learned_order` and `region_counts` per predicted region type.
   - `--geometry-output` writes `heocr_engine_kraken_geometry.v1`: the input sha256, `unit: "pixel"`, and per line its order, heuristic order, Kraken line type, region ids, baseline, polygon, `[x, y, width, height]` box and text, plus the predicted typed regions (for example `table_cells`) with polygons and boxes. Points are clamped to the image, and `clipped` marks any that were moved. Predicted regions are the segmenter's own detections, not generator gold. This is not the `heocr_engine.bidi` geometry contract (no word boxes); an adapter to it is future work.
+  - `--reading-order-classes region` (R4e, opt-in; pipeline key `reading_order_classes`) changes what the reading-order model sees as each line's class. The default, `segmenter`, is the segmenter's line types, and its config digest is unchanged. In region mode each line is tagged with a predicted region type, and the reading-order model's own class mapping is used:
+    1. `stamp_area` if the segmenter typed the line `stamp`, because a stamp also lies in the body region under it;
+    2. otherwise the type of the first region Kraken lists for the line;
+    3. otherwise `default`.
+
+    Kraken's line features are position plus class, so a model that only sees line types cannot learn a label column beside body text (R4e). The model must be trained on region-typed lines (`prepare-kraken-data --task segmentation --line-type REGION=REGION` for each region). The stage fails closed:
+    - if the model's classes are line types or empty;
+    - if they include a region type the segmenter never predicts;
+    - if the segmenter types `stamp` lines and the model has no `stamp_area` class.
+
+    `details` adds `reading_order_classes` and `reading_order_class_counts`.
   - `diagnose-segmentation` reads these geometry files directly when they are named `<page_sha256>.json`, and scores the learned order without a PAGE conversion.
   - The stage fails closed unless Kraken returns exactly one recognition record per segmented line.
   - `--device` is `cpu` (default), `mps` or `cuda`. In a pipeline config: `{"type": "kraken-python", "segmentation_model": "…", "recognition_model": "…", "reading_order_model": "…", "base_dir": "R"}`.
