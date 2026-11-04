@@ -17,7 +17,8 @@ R3b showed that segmentation, not recognition, limits HeOCR's end-to-end accurac
 | S11a | hocrsyngen, cross-repo: region polygons in the line-annotations sidecar, an additive `hocrsyngen_line_annotations.v1` field, so segmenters can train and be checked on region geometry | done (hocrsyngen PR #76) |
 | R4d1 | Segmentation line types from regions (`--line-type REGION=TYPE`, for example `stamp_area=stamp`), so that stamp baselines that overlap body lines get their own output channel; the map and per-split counts are recorded; recognition XML is unchanged | done (PR #16) |
 | R4d2 | Opt-in `--api python` Kraken stage: in-process segmentation and recognition, a learned line reading order (`ketos rotrain` model) applied correctly despite Kraken 7.0.2's `line_orders` issue, and line geometry output | done (PR #19) |
-| R4d | Train the segmenter to completion on sidecar regions with the `stamp` line type, train a line reading-order model on the same pages, and score R4d + R3d end to end (seed-101, held-out, both mixed-script batches) with heuristic and learned order; results in `docs/baselines.md` | in review |
+| R4d | Train the segmenter to completion on sidecar regions with the `stamp` line type, train a line reading-order model on the same pages, and score R4d + R3d end to end (seed-101, held-out, both mixed-script batches) with heuristic and learned order; results in `docs/baselines.md` | done (PR #22) |
+| R4e | Reading order beyond line types: RO-v2 (more layouts, line-typed) is a negative result; opt-in region-typed reading-order classes in the `kraken-python` stage (`reading_order_classes: "region"`); end-to-end scores to follow | in review |
 
 ## Boundaries
 

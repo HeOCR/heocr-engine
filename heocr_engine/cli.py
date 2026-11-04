@@ -229,6 +229,9 @@ def _kraken_main(argv: list[str]) -> int:
     parser.add_argument("--recognition-model", type=Path, required=True)
     parser.add_argument("--reading-order-model", type=Path,
                         help="--api python: a `ketos rotrain` line reading-order model; the text follows its order")
+    parser.add_argument("--reading-order-classes", choices=["segmenter", "region"], default="segmenter",
+                        help="--api python: the line classes the reading-order model sees: the segmenter's line "
+                             "types (default) or predicted region types (a model trained on region-typed lines)")
     parser.add_argument("--geometry-output", type=Path,
                         help="--api python: write image-bound line geometry and predicted regions as JSON")
     parser.add_argument("--device", default="cpu", help="--api python: cpu (default), mps or cuda")
@@ -242,8 +245,10 @@ def _kraken_main(argv: list[str]) -> int:
     if args.api == "cli":
         if args.executable is None:
             parser.error("--api cli needs --executable")
-        if args.reading_order_model or args.geometry_output or args.device != "cpu":
-            parser.error("--reading-order-model, --geometry-output and --device need --api python")
+        if args.reading_order_model or args.geometry_output or args.device != "cpu" \
+                or args.reading_order_classes != "segmenter":
+            parser.error("--reading-order-model, --reading-order-classes, --geometry-output and --device "
+                         "need --api python")
         recognizer = KrakenRecognizer(args.executable, args.segmentation_model, args.recognition_model,
                                       args.base_dir, args.timeout, args.text_direction)
     else:
@@ -251,7 +256,7 @@ def _kraken_main(argv: list[str]) -> int:
 
         recognizer = KrakenPythonRecognizer(args.segmentation_model, args.recognition_model,
                                             args.reading_order_model, args.base_dir, args.text_direction,
-                                            args.device)
+                                            args.device, args.reading_order_classes)
     write_prediction(run_pipeline(read_limited(args.image, MAX_BYTES), recognizer), args.output)
     if args.api == "python" and args.geometry_output:
         with args.geometry_output.open("x", encoding="utf-8") as stream:

@@ -9,9 +9,16 @@ heuristic order even when a reading-order model is attached, and the deprecated 
 the learned order as indices into its pre-sort line list next to the heuristically re-sorted lines
 (tests/test_kraken_api.py proves it). So the order is recomputed here from the pre-sort list and mapped
 onto the returned lines by line id. No model is bundled or downloaded.
+
+By default the reading-order model sees the segmenter's line types (its `baselines` class mapping). With
+`reading_order_classes="region"` (R4e, opt-in) each line is instead tagged with a predicted region type and the
+reading-order model's own class mapping is used: Kraken's line features carry only position and line type, so a
+line-typed model cannot learn layouts such as a label column beside body text.
 """
 from __future__ import annotations
 
+from collections import Counter
+import copy
 from importlib import metadata
 import io
 import math
@@ -23,6 +30,10 @@ from heocr_engine.stages import Page, RecognitionResult, StageInfo, config_diges
 
 GEOMETRY_SCHEMA = "heocr_engine_kraken_geometry.v1"
 DEVICES = ("cpu", "mps", "cuda")
+READING_ORDER_CLASSES = ("segmenter", "region")
+# Region mode: a line the segmenter typed `stamp` (trained with --line-type stamp_area=stamp) is a stamp_area
+# line even though it also lies in the body region under it.
+STAMP_LINE_TYPE, STAMP_REGION = "stamp", "stamp_area"
 
 
 def _kraken():
@@ -84,6 +95,27 @@ def _type(tags) -> str:
     return value if isinstance(value, str) and value else "default"
 
 
+def region_line_classes(lines, regions) -> list[str]:
+    """Reading-order class of each line in region mode: `stamp_area` for a line typed `stamp`, else the type of
+    the first region Kraken lists for it, else "default"."""
+    region_type = {region.id: kind for kind, items in (regions or {}).items() for region in items}
+    classes = []
+    for line in lines:
+        listed = [region_type[r] for r in line.regions or [] if r in region_type]
+        classes.append(STAMP_REGION if _type(line.tags) == STAMP_LINE_TYPE else listed[0] if listed else "default")
+    return classes
+
+
+def _tagged(lines, classes):
+    """Copies of the lines carrying the reading-order classes as their type; kraken's own lines stay unchanged."""
+    tagged = []
+    for line, name in zip(lines, classes):
+        line = copy.copy(line)
+        line.tags = {"type": [{"type": name}]}
+        tagged.append(line)
+    return tagged
+
+
 def _points(points, width: int, height: int) -> tuple[list[list[float]], bool]:
     """Clamp a polyline or polygon to the image; report whether any point moved."""
     clamped, moved = [], False
@@ -139,12 +171,14 @@ class KrakenPythonRecognizer:
     """Kraken segmentation and recognition in-process; optional learned line order from a separate model.
 
     The reading-order model is loaded from its own file so that its hash is recorded on its own; any
-    reading-order model embedded in the segmentation file is ignored.
+    reading-order model embedded in the segmentation file is ignored. `reading_order_classes` picks what it
+    sees as each line's class: the segmenter's line types (default) or predicted region types ("region").
     """
 
     def __init__(self, segmentation_model: Path, recognition_model: Path,
                  reading_order_model: Path | None = None, base_dir: str = "R",
-                 text_direction: str | None = None, device: str = "cpu"):
+                 text_direction: str | None = None, device: str = "cpu",
+                 reading_order_classes: str = "segmenter"):
         if base_dir not in BASE_DIRS:
             raise EngineError("Invalid base direction")
         self.text_direction = text_direction or DIRECTION_FOR_BASE.get(base_dir) or "horizontal-lr"
@@ -152,7 +186,11 @@ class KrakenPythonRecognizer:
             raise EngineError("Invalid text direction")
         if device not in DEVICES:
             raise EngineError("Invalid device")
-        self.base_dir, self.device = base_dir, device
+        if reading_order_classes not in READING_ORDER_CLASSES:
+            raise EngineError("Invalid reading-order classes")
+        if reading_order_classes == "region" and reading_order_model is None:
+            raise EngineError("Region reading-order classes need a reading-order model")
+        self.base_dir, self.device, self.reading_order_classes = base_dir, device, reading_order_classes
         self.paths = {"model:segmentation": segmentation_model.resolve(),
                       "model:recognition": recognition_model.resolve()}
         if reading_order_model is not None:
@@ -164,9 +202,12 @@ class KrakenPythonRecognizer:
                               license="Apache-2.0", config_sha256=config_digest(self._config()))
 
     def _config(self) -> dict:
-        return {"api": "python", "base_dir": self.base_dir, "reorder": True,
-                "text_direction": self.text_direction,
-                "neural_reading_order": "model:reading-order" in self.paths}
+        config = {"api": "python", "base_dir": self.base_dir, "reorder": True,
+                  "text_direction": self.text_direction,
+                  "neural_reading_order": "model:reading-order" in self.paths}
+        if self.reading_order_classes != "segmenter":  # the default keeps its earlier config digest
+            config["reading_order_classes"] = self.reading_order_classes
+        return config
 
     def _load(self, k):
         if self._models is None:
@@ -183,14 +224,35 @@ class KrakenPythonRecognizer:
                 reading_order = only(self.paths["model:reading-order"], "reading_order")
                 if reading_order.user_metadata.get("level", "baselines") != "baselines":
                     raise EngineError("Only line-level (baselines) reading-order models are supported")
+                seg_mapping = segmentation.user_metadata.get("class_mapping", {})
                 ro_classes = set(reading_order.user_metadata.get("class_mapping", {})) - {"default"}
-                seg_classes = set(segmentation.user_metadata.get("class_mapping", {})
-                                  .get("baselines", {})) - {"default"}
-                if ro_classes != seg_classes:
-                    raise EngineError("Reading-order and segmentation models know different line types")
+                line_types = set(seg_mapping.get("baselines", {})) - {"default"}
+                if self.reading_order_classes == "segmenter":
+                    if ro_classes != line_types:
+                        raise EngineError("Reading-order and segmentation models know different line types")
+                else:
+                    self._check_region_classes(reading_order.user_metadata.get("class_mapping", {}),
+                                               set(seg_mapping.get("regions", {})), line_types)
             self._models = (k["SegmentationTaskModel"]([segmentation]),
                             k["RecognitionTaskModel"]([recognition]), segmentation, reading_order)
         return self._models
+
+    @staticmethod
+    def _check_region_classes(mapping, region_types: set, line_types: set) -> None:
+        """Region mode: the reading-order classes must be region types this segmenter predicts."""
+        if not isinstance(mapping, dict) or not all(
+                isinstance(v, int) and not isinstance(v, bool) and v >= 0 for v in mapping.values()):
+            raise EngineError("The reading-order model has an invalid class mapping")
+        classes = set(mapping) - {"default"}
+        if not classes or classes & line_types:
+            raise EngineError("Region reading-order classes need a model trained on region types, "
+                              "not on line types")
+        if classes - region_types:
+            raise EngineError("The reading-order model has region classes the segmenter never predicts: "
+                              + ", ".join(sorted(classes - region_types)))
+        if STAMP_LINE_TYPE in line_types and STAMP_REGION not in classes:
+            raise EngineError(f"The segmenter types `{STAMP_LINE_TYPE}` lines, but the reading-order model has "
+                              f"no `{STAMP_REGION}` class")
 
     def recognize(self, page: Page) -> RecognitionResult:
         k = _kraken()
@@ -207,9 +269,14 @@ class KrakenPythonRecognizer:
         if reading_order is not None and len(lines) > 1:
             if recorder.pre_sort is None:
                 raise EngineError("Kraken did not report its pre-sort line list")
-            order = k["neural_reading_order"](
-                lines=recorder.pre_sort, model=reading_order, im_size=image.size,
-                class_mapping=segmentation_net.user_metadata["class_mapping"].get("baselines", {}))
+            if self.reading_order_classes == "region":
+                classes = region_line_classes(recorder.pre_sort, segmentation.regions)
+                ro_lines, mapping = _tagged(recorder.pre_sort, classes), reading_order.user_metadata["class_mapping"]
+            else:
+                ro_lines = recorder.pre_sort
+                mapping = segmentation_net.user_metadata["class_mapping"].get("baselines", {})
+            order = k["neural_reading_order"](lines=ro_lines, model=reading_order, im_size=image.size,
+                                              class_mapping=mapping)
             emitted = learned_line_order(recorder.pre_sort, lines, list(order))
         bidi = self.base_dir if self.base_dir != "auto" else True
         records = list(recognizer.predict(im=image, segmentation=segmentation,
@@ -234,5 +301,8 @@ class KrakenPythonRecognizer:
                    "region_counts": {t: len(r) for t, r in sorted((segmentation.regions or {}).items())}}
         if reading_order is not None:
             details["reading_order_model_sha256"] = self.hashes["model:reading-order"]
+        if self.reading_order_classes == "region":
+            details["reading_order_class_counts"] = dict(sorted(Counter(
+                region_line_classes(lines, segmentation.regions)).items()))
         # Kraken's line records carry no word geometry here; words stay empty, as in the CLI stage.
         return RecognitionResult(text, [], details)

@@ -11,7 +11,7 @@ from PIL import Image
 
 from heocr_engine.cli import EngineError, main
 from heocr_engine import kraken_api
-from heocr_engine.kraken_api import KrakenPythonRecognizer, learned_line_order
+from heocr_engine.kraken_api import KrakenPythonRecognizer, learned_line_order, region_line_classes
 from heocr_engine.stages import run_pipeline
 from heocr_engine.validate import validate_prediction
 
@@ -237,6 +237,125 @@ class KrakenPythonStageTests(unittest.TestCase):
             self.stage(device="tpu")
         with self.assertRaises(EngineError):
             self.stage(base_dir="X")
+
+
+# Region mode: body lines _r1, _r3, a stamp _r2 that Kraken lists in the body region first, a label _r4 in
+# table_cells and a line _r5 outside every region.
+REGION_LINES = [Line("_r1", [[10, 5], [30, 5]], [[10, 2], [30, 2], [30, 8], [10, 8]], regions=["_body"]),
+                Line("_r2", [[12, 7], [28, 7]], [[12, 4], [28, 4], [28, 10], [12, 10]], "stamp", ["_body", "_s"]),
+                Line("_r3", [[10, 12], [30, 12]], [[10, 9], [30, 9], [30, 15], [10, 15]], regions=["_body"]),
+                Line("_r4", [[32, 6], [38, 6]], [[32, 3], [38, 3], [38, 9], [32, 9]], regions=["_gone", "_t"]),
+                Line("_r5", [[2, 18], [20, 18]], [[2, 16], [20, 16], [20, 19], [2, 19]])]
+REGIONS = {"body": [Region("_body", [[8, 1], [31, 1], [31, 16], [8, 16]])],
+           "stamp_area": [Region("_s", [[11, 3], [29, 3], [29, 11], [11, 11]])],
+           "table_cells": [Region("_t", [[31, 2], [39, 2], [39, 10], [31, 10]])]}
+REGION_SEG = {"baselines": {"default": 2, "stamp": 3},
+              "regions": {"body": 4, "stamp_area": 5, "table_cells": 6, "footer": 7}}
+REGION_RO = {"default": 0, "body": 2, "stamp_area": 3, "table_cells": 8}
+
+
+class RegionFake(FakeKraken):
+    def __init__(self, ro_mapping=REGION_RO, learned=(0, 1, 2, 3, 4)):
+        super().__init__(learned)
+        self.ro_mapping, self.tags_seen = ro_mapping, None
+
+    def load_models(self, path, tasks):
+        kind = {"seg.safetensors": "segmentation", "rec.safetensors": "recognition",
+                "ro.safetensors": "reading_order"}[path.name]
+        metadata = {"segmentation": {"class_mapping": REGION_SEG},
+                    "reading_order": {"level": "baselines", "class_mapping": self.ro_mapping}}.get(kind, {})
+        return [Net(kind, metadata)]
+
+    def segmenter(self, models):
+        class Task:
+            def predict(self, im, config):
+                order = config.baseline_ro_fn(lines=REGION_LINES, regions=[], text_direction="rl")
+                return Segmentation([REGION_LINES[i] for i in order], REGIONS, config.text_direction)
+        return Task()
+
+    def recognizer(self, models):
+        class Task:
+            def predict(self, im, segmentation, config):
+                return (Record(line.id, line.id) for line in segmentation.lines)
+        return Task()
+
+    def neural(self, lines, model, im_size, class_mapping):
+        self.tags_seen = [line.tags["type"][0]["type"] for line in lines]
+        self.calls.append(("neural", [line.id for line in lines], im_size, class_mapping))
+        return self.learned
+
+    def modules(self):
+        return {**super().modules(),
+                "polygonal_reading_order": lambda lines, regions, text_direction: [4, 3, 2, 1, 0]}
+
+
+class RegionReadingOrderTests(unittest.TestCase):
+    setUp, stage, run_stage = (KrakenPythonStageTests.setUp, KrakenPythonStageTests.stage,
+                               KrakenPythonStageTests.run_stage)
+
+    def test_region_classes_tag_lines_stamp_first_and_use_the_model_mapping(self):
+        fake, stage = RegionFake(), self.stage(reading_order_classes="region")
+        prediction = self.run_stage(stage, fake)
+        # A `stamp` line is stamp_area even though Kraken lists the body region first; an unknown region id is
+        # skipped; a line outside every region is "default".
+        self.assertEqual(fake.tags_seen, ["body", "stamp_area", "body", "table_cells", "default"])
+        self.assertEqual(fake.calls[-1][3], REGION_RO)
+        self.assertEqual(prediction["text"], "_r1\n_r2\n_r3\n_r4\n_r5")
+        # Kraken's own lines keep their types; only the reading-order copies are retagged.
+        self.assertEqual([line.tags["type"][0]["type"] for line in REGION_LINES],
+                         ["default", "stamp", "default", "default", "default"])
+        self.assertEqual(stage.last_geometry["lines"][1]["type"], "stamp")
+        details = prediction["pipeline"][0]["details"]
+        self.assertEqual(details["reading_order_classes"], "region")
+        self.assertEqual(details["reading_order_class_counts"],
+                         {"body": 2, "default": 1, "stamp_area": 1, "table_cells": 1})
+        self.assertEqual(details["line_order"], "learned")
+
+    def test_default_classes_keep_the_earlier_config_digest(self):
+        self.assertEqual(self.stage().info.config_sha256,
+                         self.stage(reading_order_classes="segmenter").info.config_sha256)
+        self.assertNotIn("reading_order_classes", self.stage()._config())
+        self.assertNotEqual(self.stage().info.config_sha256,
+                            self.stage(reading_order_classes="region").info.config_sha256)
+
+    def test_region_classes_fail_closed(self):
+        bad = ({"default": 2, "stamp": 3},              # a line-typed model
+               {"default": 0},                           # no region classes
+               {"default": 0, "body": 2, "stamp_area": 3, "margin": 9},  # the segmenter never predicts margin
+               {"default": 0, "body": 2, "table_cells": 8},  # stamps would lose their class
+               {"default": 0, "body": "2", "stamp_area": 3})  # not an index
+        for mapping in bad:
+            with self.subTest(mapping=mapping), self.assertRaises(EngineError):
+                self.run_stage(self.stage(reading_order_classes="region"), RegionFake(ro_mapping=mapping))
+        # The default mode still rejects a region-typed model against a line-typed segmenter.
+        with self.assertRaises(EngineError):
+            self.run_stage(self.stage(), RegionFake())
+        with self.assertRaises(EngineError):
+            self.stage(reading_order=False, reading_order_classes="region")
+        with self.assertRaises(EngineError):
+            self.stage(reading_order_classes="lines")
+
+    def test_region_line_classes_rule(self):
+        self.assertEqual(region_line_classes(REGION_LINES, REGIONS),
+                         ["body", "stamp_area", "body", "table_cells", "default"])
+        self.assertEqual(region_line_classes(REGION_LINES[:1], {}), ["default"])
+
+    def test_pipeline_config_and_cli_pass_region_classes(self):
+        from heocr_engine.stages import build_stage
+
+        stage = build_stage({"type": "kraken-python", "segmentation_model": "seg.safetensors",
+                             "recognition_model": "rec.safetensors", "reading_order_model": "ro.safetensors",
+                             "reading_order_classes": "region"}, self.root)
+        self.assertEqual(stage.reading_order_classes, "region")
+        args = [str(self.image), str(self.root / "out.json"), "--segmentation-model",
+                str(self.root / "seg.safetensors"), "--recognition-model", str(self.root / "rec.safetensors")]
+        with patch("sys.stderr", io.StringIO()), self.assertRaises(SystemExit):
+            main(["kraken", *args, "--executable", "kraken", "--reading-order-classes", "region"])
+        with patch.object(kraken_api, "_kraken", RegionFake().modules):
+            self.assertEqual(main(["kraken", *args, "--api", "python", "--reading-order-model",
+                                   str(self.root / "ro.safetensors"), "--reading-order-classes", "region"]), 0)
+        details = json.loads((self.root / "out.json").read_text(encoding="utf-8"))["pipeline"][0]["details"]
+        self.assertEqual(details["reading_order_classes"], "region")
 
 
 class KrakenApiCliTests(unittest.TestCase):
