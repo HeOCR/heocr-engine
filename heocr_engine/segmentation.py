@@ -61,13 +61,46 @@ def _line_record(polygon, baseline, text: str) -> dict:
             "baseline": baseline if len(baseline) >= 2 else None, "text": text}
 
 
+def _read_kraken_geometry(raw: bytes, width: int, height: int) -> list[dict]:
+    """Lines of a `--api python` geometry file (heocr_engine_kraken_geometry.v1), in its emitted order."""
+    from heocr_engine.kraken_api import GEOMETRY_SCHEMA
+
+    try:
+        geometry = json.loads(raw)
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise EngineError("Invalid kraken geometry JSON") from exc
+    if not isinstance(geometry, dict) or geometry.get("schema_version") != GEOMETRY_SCHEMA \
+            or geometry.get("unit") != "pixel" or not isinstance(geometry.get("lines"), list):
+        raise EngineError(f"Geometry files must be {GEOMETRY_SCHEMA} in pixels")
+    if (geometry.get("width"), geometry.get("height")) != (width, height):
+        raise EngineError("Geometry page size differs from the annotated page")
+    lines = geometry["lines"]
+    if [line.get("order") if isinstance(line, dict) else None for line in lines] != list(range(len(lines))):
+        raise EngineError("Geometry lines must be listed in their order 0..n-1")
+
+    def pairs(points) -> list[tuple[int, int]]:
+        if not isinstance(points, list) or len(points) > 10_000 or not all(
+                isinstance(p, list) and len(p) == 2 and all(isinstance(v, (int, float)) and not isinstance(v, bool)
+                                                            for v in p) for p in points):
+            raise EngineError("Invalid kraken geometry coordinates")
+        return [(min(max(round(x), 0), width), min(max(round(y), 0), height)) for x, y in points]
+
+    return [_line_record(pairs(line.get("boundary")), pairs(line.get("baseline")), str(line.get("text", "")))
+            for line in lines]
+
+
 def read_predicted_lines(path: Path, width: int, height: int) -> tuple[str, list[dict]]:
-    """Return the format ("page" or "alto") and the text lines in document order.
+    """Return the format ("page", "alto" or "kraken-geometry") and the text lines in reading order.
 
     Each line has `polygon` and `baseline` (lists of (x, y) or None when absent) and its `text`.
-    Document order is taken as the predicted reading order.
+    Document order (XML) or the geometry's line order (JSON) is taken as the predicted reading order.
     """
     raw = read_limited(path, MAX_XML_BYTES)
+    if path.suffix == ".json":
+        lines = _read_kraken_geometry(raw, width, height)
+        if len(lines) > MAX_LINES:
+            raise EngineError("Too many predicted lines")
+        return "kraken-geometry", lines
     if b"<!DOCTYPE" in raw or b"<!ENTITY" in raw:
         raise EngineError("Predicted line files must not declare a DOCTYPE or entities")
     try:
@@ -295,14 +328,18 @@ def _finish(stats: dict) -> dict:
 
 def diagnose_segmentation(annotations: Path, manifest: Path, predictions: Path, method: str = "polygon",
                           threshold: float = 0.5, include_lines: bool = False) -> dict:
-    """Score a directory of `<page_sha256>.xml` predicted-line files against line annotations."""
+    """Score a directory of `<page_sha256>.xml` (PAGE XML or ALTO) or `<page_sha256>.json` (kraken geometry)
+    predicted-line files against line annotations."""
     pages, annotations_sha, manifest_sha = load_annotated_pages(annotations, manifest)
-    files = {path.stem: path for path in predictions.glob("*.xml")} if predictions.is_dir() else None
-    if files is None:
+    if not predictions.is_dir():
         raise EngineError("Predictions must be a directory")
+    paths = [*predictions.glob("*.xml"), *predictions.glob("*.json")]
+    files = {path.stem: path for path in paths}
+    if len(files) != len(paths):
+        raise EngineError("A page has both an .xml and a .json prediction file")
     expected = {page["page_sha256"] for page in pages}
     if set(files) != expected:
-        raise EngineError(f"Prediction files must be exactly <page_sha256>.xml for the {len(expected)} "
+        raise EngineError(f"Prediction files must be exactly <page_sha256>.xml or .json for the {len(expected)} "
                           f"annotated pages ({len(expected - set(files))} missing, "
                           f"{len(set(files) - expected)} unexpected)")
     overall, by_template, formats, file_hashes, page_reports = _empty(), {}, set(), [], []
@@ -326,7 +363,9 @@ def diagnose_segmentation(annotations: Path, manifest: Path, predictions: Path, 
                            **({"baseline_tolerance": BASELINE_TOLERANCE} if method == "baseline" else {}),
                            "one_to_one": "greedy by descending score"},
               "reading_order": {"gold": "logical_line_index, then line_index; lines outside logical_order last",
-                                "predicted": "document order of TextLine elements",
+                                "predicted": ("geometry line order" if formats == {"kraken-geometry"} else
+                                            "document order of TextLine elements" if "kraken-geometry" not in formats
+                                            else "document order of TextLine elements, or geometry line order"),
                                 "over": "one-to-one matched lines"},
               "overall": _finish(overall),
               "by_template": {name: _finish(stats) for name, stats in sorted(by_template.items())}}

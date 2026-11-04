@@ -15,7 +15,9 @@ R3b showed that segmentation, not recognition, limits HeOCR's end-to-end accurac
 | R4b1 | Segmentation data uses the sidecar's region polygons (hocrsyngen S11a page `regions`) when every page has them (`region_geometry: "sidecar"`), validated against the lines; line bounding boxes stay the fallback; recognition XML ignores them | done (PR #11) |
 | R4c | Train the first segmenter on the R3b training batch; score it with the R3b recognizer end to end on the seed-101 and held-out batches; results in `docs/baselines.md` | paused (partial): stopped after 2 epochs so the recognizer retrain (R3c) could take the training slot. Line geometry of the epoch-1 model against `blla` (polygon F1 0.911 / 0.899 against 0.765 / 0.671, seed-101 / held-out) is in `docs/baselines.md`. A full run on sidecar regions, if any, is a later slice (R4d) |
 | S11a | hocrsyngen, cross-repo: region polygons in the line-annotations sidecar, an additive `hocrsyngen_line_annotations.v1` field, so segmenters can train and be checked on region geometry | done (hocrsyngen PR #76) |
-| R4d1 | Segmentation line types from regions (`--line-type REGION=TYPE`, for example `stamp_area=stamp`), so that stamp baselines that overlap body lines get their own output channel; the map and per-split counts are recorded; recognition XML is unchanged | in review |
+| R4d1 | Segmentation line types from regions (`--line-type REGION=TYPE`, for example `stamp_area=stamp`), so that stamp baselines that overlap body lines get their own output channel; the map and per-split counts are recorded; recognition XML is unchanged | done (PR #16) |
+| R4d2 | Opt-in `--api python` Kraken stage: in-process segmentation and recognition, a learned line reading order (`ketos rotrain` model) applied correctly despite Kraken 7.0.2's `line_orders` issue, and line geometry output | done (PR #19) |
+| R4d | Train the segmenter to completion on sidecar regions with the `stamp` line type, train a line reading-order model on the same pages, and score R4d + R3d end to end (seed-101, held-out, both mixed-script batches) with heuristic and learned order; results in `docs/baselines.md` | in review |
 
 ## Boundaries
 

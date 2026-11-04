@@ -10,9 +10,9 @@ heocr-engine diagnose-segmentation batch/line_annotations.json batch/generation_
 ```
 
 - `line_annotations.json` is `hocrsyngen_line_annotations.v1`. It is validated against its manifest and the page image bytes, as in `prepare-kraken-data`.
-- `predicted/` holds exactly one `<page_sha256>.xml` per annotated page: PAGE XML (any PAGE namespace; `TextLine` with `Coords` and `Baseline`) or ALTO (`TextLine` with `Shape/Polygon` or `HPOS`/`VPOS`/`WIDTH`/`HEIGHT`, and `BASELINE`). `kraken -x … segment -bl` writes PAGE XML. A missing or extra file fails the run. Files that declare a DOCTYPE or entities are rejected.
+- `predicted/` holds exactly one `<page_sha256>.xml` per annotated page: PAGE XML (any PAGE namespace; `TextLine` with `Coords` and `Baseline`) or ALTO (`TextLine` with `Shape/Polygon` or `HPOS`/`VPOS`/`WIDTH`/`HEIGHT`, and `BASELINE`). `kraken -x … segment -bl` writes PAGE XML. A page may instead have a `<page_sha256>.json` geometry file from `heocr-engine kraken --api python --geometry-output` (`heocr_engine_kraken_geometry.v1`, pixel units, the annotated page's size, lines listed in `order` 0..n-1); this scores the stage's learned or heuristic line order without converting it. A missing or extra file, or a page with both an `.xml` and a `.json` file, fails the run. Files that declare a DOCTYPE or entities are rejected.
 - Coordinates are final page pixels and are clamped to the page.
-- The **document order** of `TextLine` elements is taken as the predicted reading order.
+- The **document order** of `TextLine` elements (or a geometry file's line `order`) is taken as the predicted reading order.
 - `--lines` adds per-page, per-line assignments (`pages`), for example to re-sort predicted lines into gold order.
 - The report has no local paths. It records the annotation and manifest sha256 and a sha256 over the sorted (page sha256, file sha256) pairs of the predicted files.
 

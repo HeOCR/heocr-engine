@@ -123,13 +123,13 @@ def page_geometry(segmentation, records, emitted, input_sha256: str, width: int,
         line = segmentation.lines[index]
         baseline, clipped_baseline = _points(line.baseline, width, height)
         boundary, clipped_boundary = _points(line.boundary, width, height)
-        record = by_id.get(line.id)
+        record = by_id[line.id]
         lines.append({"id": f"l{index}", "order": position, "heuristic_order": index,
                       "type": _type(line.tags), "regions": [region_ids[r] for r in line.regions or []
                                                             if r in region_ids],
                       "baseline": baseline, "boundary": boundary, "bbox": _bbox(boundary),
                       "clipped": clipped_baseline or clipped_boundary,
-                      "text": record.prediction if record is not None else ""})
+                      "text": record.prediction})
     return {"schema_version": GEOMETRY_SCHEMA, "input_sha256": input_sha256, "unit": "pixel",
             "width": width, "height": height, "text_direction": segmentation.text_direction,
             "line_order": line_order, "lines": lines, "regions": regions}
@@ -217,7 +217,10 @@ class KrakenPythonRecognizer:
                                               bidi_reordering=bidi, accelerator=accelerator,
                                               device=device, num_line_workers=0)))
         by_id = {record.id: record for record in records}
-        text = "\n".join(by_id[lines[i].id].prediction for i in emitted if lines[i].id in by_id)
+        # One record per segmented line, or the text and geometry would silently drop lines.
+        if len(records) != len(lines) or set(by_id) != {line.id for line in lines}:
+            raise EngineError("Kraken did not return exactly one recognition record per line")
+        text = "\n".join(by_id[lines[i].id].prediction for i in emitted)
         line_order = "learned" if reading_order is not None else "heuristic"
         self.last_geometry = page_geometry(segmentation, records, emitted, digest(page.data),
                                            page.width, page.height, line_order)
