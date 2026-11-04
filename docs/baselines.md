@@ -880,7 +880,7 @@ R4d's learned order against Kraken order, fixture pages by family (improved / un
 
 **The learned order makes every fixture `archive_card` worse (0.211 → 0.274).**
 - **What it does:** the `archive_card` gold reads the body lines, then the left label column (`מקור`, `תאריך`, `מספר`, `הערה`, `ארכיון`), then the footer. Kraken order keeps the five labels together on 24 of 25 pages. The reading-order model keeps them together on none: it interleaves the labels with the body lines by height.
-- **Probable cause (untested):** a layout the model was not trained on.
+- **Probable cause (untested):** a layout the model was not trained on. R4e (below) tested this and found otherwise: the model could not see region identity, and a model given region classes fixes the cards.
   - The reading-order model trained on R4d's batch (`train_batch_s5101`). That batch includes `archive_card_identifier_v1`, with the same gold order.
   - Its cards (generator `s10c-gold-complete-v1`) average 3.67 body lines (3 to 6, over 514 samples of both card recipes).
   - Every fixture card (`s11b-ledger-fit-v1`) has 6 longer mixed-script body lines, which run down beside the label column.
@@ -953,4 +953,236 @@ Limits:
 - One segmenter run and one reading-order run, one seed per batch, no confidence intervals.
 - Seed-101 and held-out use the four templates R4d trained on, from the same generator and fonts, so the perfect learned order there is in-distribution. On the fixture it makes every `archive_card` page worse; the cause given above is a hypothesis.
 - The gold-order rows use gold and are not pipelines.
+- Predictions, line files and reports stay local.
+
+## R4e: reading order beyond line types (2026-11-04)
+
+R4d's learned order is perfect on seed-101, held-out and eval-mixed-heldout. On the hocrgen fixture, though, it makes every `archive_card` worse and leaves `ledger` cell order unsolved (R4d section). R4e looked for the cause and fixed it.
+
+- **RO-v2, more layouts** (a negative result): trained on more card and ledger layouts with the same line-typed classes, it does not help.
+- **The cause is the features:** Kraken's line reading-order model cannot express card or ledger order from what it sees.
+- **The fix is region-typed classes:** with each line's region type as its class, ledgers and most cards are ordered (on the development set). The `kraken-python` stage now supports this as an opt-in (#23, `--reading-order-classes region`).
+
+End to end with R4d + R3d, the fixture's `archive_card` CER falls from 0.274 (RO-v1) to 0.052 (gold order 0.034), and the fixture overall from 0.313 to 0.146, equal to gold order. eval-mixed-heldout is unchanged at 0.016, and so are seed-101 and held-out (0.019 and 0.009).
+
+**The fixture is now a development set for reading order.** Its `archive_card` rows guided two choices here: training RO-v2, and the region classes with stamp-first tagging. Its reading-order numbers are therefore no longer an unbiased check. eval-mixed-heldout stays the clean check, and no R4e choice was tuned on it.
+
+### RO-v2: more layouts, same line classes (negative result)
+
+- **Data:** R4d's training pages (1,710 / 90, `s10c-gold-complete-v1`) plus R3d's seven-template batch (hocrsyngen `db3f73c`, `s11b-ledger-fit-v1`, seed 7101; 2,280 / 120, R3d's split).
+  - The R3d pages were prepared with `prepare-kraken-data --task segmentation --line-type stamp_area=stamp`.
+  - Train 3,990 pages (565–573 per template); validation 210, including 56 `archive_card` and 30 `ledger` pages.
+  - No page is in the fixture, eval-mixed-heldout, seed-101 or held-out, checked by page sha256.
+- **Training:** R4d's rotrain settings and line classes (`default` 2, `stamp` 3). Early stopping after 9 epochs, best epoch 3, `val_spearman` 0.0435 on the 210 validation pages. `val_loss` was still falling, so the model is undertrained next to RO-v1's 72 epochs. But RO-v1 fails in the same way (below).
+- **Model:** `best_0.0435.safetensors`, sha256 `8ffb24b969196871e0c715efaf0a2fc64b1942b22c9870a361e060dc03c43c3f`.
+
+**Order only, on gold lines** (Kraken's `neural_reading_order` on the gold lines of each page, input shuffled with a fixed seed; mean Kendall τ against gold order and pages fully in order; a diagnostic, not a pipeline):
+
+| Batch, template | RO-v1 (R4d) | RO-v2 |
+|---|---|---|
+| fixture `archive_card` | 0.830, 0 / 25 | 0.828, 0 / 25 |
+| fixture `ledger` | 0.866, 0 / 25 | 0.837, 0 / 25 |
+| fixture `printed_letter` | 0.996, 22 / 25 | 0.997, 23 / 25 |
+| fixture `handwritten_note` | 0.998, 24 / 25 | 1.000, 25 / 25 |
+| eval-mixed-heldout, seed-101, held-out (each template) | 1.000, all pages | 1.000, all pages |
+
+**Why more layouts cannot help:** neither model has ever ordered a card or a ledger, even on pages like its training data.
+
+| Pages fully in order, gold lines | RO-v1 | RO-v2 |
+|---|---|---|
+| R4d validation: `archive_card` (both recipes) / `ledger` | 0 / 19, 0 / 15 | 0 / 19, 0 / 15 |
+| R3d validation: `archive_card` / `ledger` | 0 / 37, 0 / 15 | 0 / 37, 0 / 15 |
+| R3d's six-body-line training cards | 0 / 13 | 0 / 13 |
+
+- **What the gold card order needs:** it reads the body lines, then the left label column (`table_cells`, at the same heights as the body lines), then the stamp and the footer.
+- **What the model sees:** Kraken's line reading-order model sees only each baseline's start, end and centre and the line's class. With line types as classes (`default` / `stamp`), nothing tells a label from a body line at the same height, so the model orders them by height and interleaves them.
+- **The fixture's cards are not a new template:** they are the same recipe as the training cards, with the same region mix (title, 2 identifier lines, body, 4 labels, stamp, footer). They differ only in having 6 body lines on every card.
+  - R3d's 685 cards have 3–6 body lines (mean 3.9): 3: 252, 4: 293, 5: 125, 6: 15.
+  - R4d's 514 cards: 3: 241, 4: 203, 5: 67, 6: 3.
+
+### Region-typed reading-order classes (A1)
+
+A1, a third reading-order model, was trained with each line's region type as its class. It uses the same pages and split as RO-v2, re-prepared with `prepare-kraken-data --task segmentation --line-type REGION=REGION` for all eight regions.
+- **Classes:** `default` 0, `title` 1, `body` 2, `stamp_area` 3, `signature_area` 4, `footer` 5, `margin` 6, `identifier_area` 7, `table_cells` 8.
+- **Settings:** as RO-v2, except `--min-epochs 30 --lag 10`, so this run is not cut short. It ran the 30-epoch minimum; `val_spearman` reached 0 from epoch 26.
+- **Model:** `best_0.0000.safetensors`, sha256 `69aa1946583bb68ddf13ef20860582f4aa982a46b2f79e38bd7d9ae20535fb56`, 8,492 bytes.
+
+**Order only.** A1 is scored two ways. On gold lines, the lines and region tags are gold, as in the tables above. On R4d's lines, the lines are R4d's own, tagged with R4d's predicted regions by the stage's rule:
+1. `stamp_area` if R4d typed the line `stamp`;
+2. otherwise the first region Kraken lists for the line;
+3. otherwise `default`.
+
+The R4d-lines check uses R4d's `--api python` geometry (segmenter `d32cd1a8…`), is scored with `diagnose-segmentation --lines` over matched lines, and has the R4d baselines on the same lines next to it.
+
+| Pages fully in order (τ) | R4d lines, heuristic | R4d lines, RO-v1 | A1, gold lines and tags | A1, R4d lines and predicted tags |
+|---|---|---|---|---|
+| fixture `archive_card` | 3 / 25 (0.917) | 0 / 25 (0.822) | 13 / 25 (0.991) | **15 / 25 (0.992)** |
+| fixture `ledger` | 0 / 25 (0.774) | 0 / 25 (0.866) | 25 / 25 | **25 / 25** |
+| fixture `printed_letter` | 0 / 25 (0.758) | 23 / 25 (0.996) | 25 / 25 | **25 / 25** |
+| fixture `handwritten_note` | 1 / 25 (0.902) | 25 / 25 | 25 / 25 | **25 / 25** |
+| eval-mixed-heldout | 11 / 80 (0.853) | 80 / 80 | 80 / 80 | **80 / 80** |
+| seed-101 | 9 / 80 (0.819) | 80 / 80 | 80 / 80 | **80 / 80** |
+| held-out | 12 / 80 (0.865) | 80 / 80 | 80 / 80 | **80 / 80** |
+
+- **In-distribution, gold lines:** A1 orders all 210 validation pages, including every card (56) and ledger (30).
+- **Predicted region types are reliable:** on matched lines, R4d's predicted type equals the gold region for 100% of lines in all four batches (fixture 2,274 / 2,274; eval-mixed-heldout 599 / 599; seed-101 585 / 585; held-out 589 / 589).
+- **Stamp-first matters:** if a line simply takes the first region Kraken lists, stamps that Kraken lists under the body region are tagged `body`. Fixture `printed_letter` then falls to 7 / 25, and eval-mixed-heldout's printed templates to 16 / 20 each.
+- **What is left on the cards:** every one of the 10 cards still out of order has exactly one discordant pair, the sixth and lowest body line read after the first label. Six-body-line cards are rare in training (18 of 1,199). Long cards generated from fresh seeds are the planned next step, not cards chosen to fit the fixture.
+
+### Seed-101 and held-out, end to end (R4d + R3d, `primary.v1` CER / WER)
+
+This runs through the stage itself: `heocr-engine` `4e09858`, `kraken-python` with `--reading-order-classes region` on cpu. It is scored against R4d's learned-order rows (RO-v1).
+
+| Batch | RO-v1 learned order (R4d section) | A1 learned order | Pages improved / unchanged / worsened, character edits |
+|---|---|---|---|
+| seed-101 | 0.019 / 0.055 | 0.019 / 0.055 | 0 / 78 / 2, 271 → 274 |
+| held-out | 0.009 / 0.032 | 0.009 / 0.032 | 0 / 80 / 0, 92 → 92 |
+
+- **No regression:** order over matched lines is still Kendall τ 1.000, with every page in order on both batches.
+- **The two seed-101 pages that differ** (`printed_letter_heavy_scan`) swap two short stamp fragments, such as `נב` and `בק`. These are split pieces that no gold line matches, so their order is not defined. Each page holds the same set of lines.
+- **By template:** every template is within 0.001 CER of the R4d section's learned-order rows.
+
+### Mixed-script batches, end to end (R4d + R3d with A1)
+
+A1 is the region-typed line reading-order model. At inference each line takes the class of the R4d region it falls in (`--reading-order-classes region`). Pipeline:
+- heocr-engine `4e09858`, `--api python` on cpu;
+- R4d segments (`best_0.8618`), R3d recognizes;
+- `--reading-order-model` A1 `--reading-order-classes region`.
+
+Rows are compared with three orders from the R4d section:
+- **Kraken order:** the heuristic order, `--api python`.
+- **RO-v1:** the line reading-order model, classes from the segmenter.
+- **Gold order:** a diagnostic. R4d's own lines are re-sorted into gold order by polygon anchors.
+
+The two batches play different roles for reading order:
+- **hocrgen fixture: a development set for reading order.** R4e's order-only checks were run on its gold lines while A1 was chosen, so its rows are not a clean test. It is not trained on.
+- **eval-mixed-heldout: the clean check.** It was not trained on and not used to choose the model.
+
+Both are scored on synthetic gold only (decision 0004), with hocrgen `c8fb74e`.
+
+**hocrgen fixture (reading-order development set), `primary.v1` CER / WER per family:**
+
+| Lines | Kind | Recognizer | `archive_card` | `ledger` | `printed_letter` | `handwritten_note` | overall |
+|---|---|---|---|---|---|---|---|
+| Tesseract `heb+eng` alone (recipe baseline) | pipeline | Tesseract | 0.444 / 0.617 | 0.770 / 0.867 | 0.177 / 0.257 | 0.737 / 0.932 | 0.575 / 0.723 |
+| `blla -d horizontal-rl` | pipeline | R3d | 0.332 / 0.403 | 0.657 / 0.794 | 0.172 / 0.380 | 0.181 / 0.377 | 0.419 / 0.598 |
+| R4d, Kraken order | pipeline | R3d | 0.211 / 0.294 | 0.580 / 0.749 | 0.142 / 0.292 | 0.125 / 0.238 | 0.346 / 0.522 |
+| R4d, RO-v1 | pipeline | R3d | 0.274 / 0.304 | 0.534 / 0.735 | 0.067 / 0.200 | **0.061** / 0.175 | 0.313 / 0.492 |
+| **R4d, A1 (region classes)** | pipeline | R3d | **0.052 / 0.123** | **0.260 / 0.366** | **0.062 / 0.195** | **0.061 / 0.175** | **0.146 / 0.269** |
+| R4d, gold order | diagnostic | R3d | 0.034 / 0.102 | 0.259 / 0.366 | 0.076 / 0.199 | 0.061 / 0.175 | 0.146 / 0.266 |
+| (e) at height 1800 | diagnostic | R3d | 0.028 / 0.089 | 0.259 / 0.366 | 0.059 / 0.173 | 0.057 / 0.185 | 0.140 / 0.260 |
+
+Bold marks the best pipeline per column.
+
+**eval-mixed-heldout (clean check), `primary.v1` CER / WER per template:**
+
+| Lines | Kind | Recognizer | `printed_letter` | `printed_letter_heavy_scan` | `handwritten_note` | `handwritten_note_heavy_wear` | overall |
+|---|---|---|---|---|---|---|---|
+| Tesseract `heb+eng` alone | pipeline | Tesseract | 0.171 / 0.278 | 0.152 / 0.236 | 0.775 / 0.963 | 0.794 / 0.983 | 0.425 / 0.562 |
+| `blla -d horizontal-rl` | pipeline | R3d | 0.258 / 0.457 | 0.232 / 0.410 | 0.187 / 0.311 | 0.230 / 0.380 | 0.229 / 0.396 |
+| R4d, Kraken order | pipeline | R3d | 0.110 / 0.191 | 0.117 / 0.188 | 0.111 / 0.142 | 0.123 / 0.175 | 0.115 / 0.176 |
+| R4d, RO-v1 | pipeline | R3d | **0.013** / 0.041 | **0.012** / 0.038 | **0.020** / 0.049 | **0.025** / 0.077 | **0.016 / 0.050** |
+| **R4d, A1 (region classes)** | pipeline | R3d | **0.013** / 0.041 | **0.012** / 0.038 | **0.020** / 0.049 | **0.025** / 0.077 | **0.016 / 0.050** |
+| R4d, gold order | diagnostic | R3d | 0.015 / 0.043 | 0.012 / 0.038 | 0.020 / 0.049 | 0.025 / 0.077 | 0.017 / 0.050 |
+| (e) at height 1800 | diagnostic | R3d | 0.009 / 0.031 | 0.011 / 0.033 | 0.019 / 0.051 | 0.020 / 0.062 | 0.014 / 0.043 |
+
+On eval-mixed-heldout, A1's text is identical to RO-v1's on all 80 pages. The region classes neither help nor hurt on the four benchmark templates, which RO-v1 already ordered at the gold-order level.
+
+**Paired accounting (E2c6, hocrgen `c8fb74e`; pages improved / unchanged / worsened, character edits baseline → candidate):**
+
+| A1 against | hocrgen fixture | eval-mixed-heldout |
+|---|---|---|
+| R4d Kraken order (`--api python`) | 99 / 1 / 0, 9,485 → 4,020 | 80 / 0 / 0, 1,195 → 170 |
+| R4d RO-v1 | 53 / 46 / 1, 8,601 → 4,020 | 0 / 80 / 0, 170 → 170 |
+| R3d + `blla -d horizontal-rl` | 99 / 0 / 1, 11,495 → 4,020 | 80 / 0 / 0, 2,379 → 170 |
+| Tesseract alone | 100 / 0 / 0, 15,780 → 4,020 | 80 / 0 / 0, 4,414 → 170 |
+
+Fixture pages by family, A1 against each order (improved / unchanged / worsened, character edits):
+
+| Family | against Kraken order | against RO-v1 | against gold order |
+|---|---|---|---|
+| `archive_card` | 25 / 0 / 0, 1,181 → 290 | 25 / 0 / 0, 1,538 → 290 | 0 / 15 / 10, 191 → 290 |
+| `ledger` | 25 / 0 / 0, 6,983 → 3,125 | 25 / 0 / 0, 6,429 → 3,125 | 0 / 24 / 1, 3,122 → 3,125 |
+| `printed_letter` | 25 / 0 / 0, 810 → 356 | 3 / 21 / 1, 385 → 356 | 10 / 14 / 1, 432 → 356 |
+| `handwritten_note` | 24 / 1 / 0, 511 → 249 | 0 / 25 / 0, 249 → 249 | 0 / 25 / 0, 249 → 249 |
+
+On `printed_letter`, A1 beats gold order on 10 pages. A polygon-anchor re-sort is not a perfect order where R4d splits or merges lines, so gold order is not a strict ceiling.
+
+**`archive_card`: the RO-v1 regression is fixed.**
+- **CER:** 0.274 with RO-v1 and 0.211 in Kraken order, down to 0.052 with A1 (gold order 0.034). All 25 cards improve on both.
+- **Label column:**
+  - RO-v1 kept the five labels (`מקור` … `ארכיון`) together on 0 of 25 cards and Kraken order on 24. A1 keeps them together on 15.
+  - Those 15 cards have the same character edits as gold order.
+- **The 10 cards still off:** one mistake each. The first label, `מקור`, is placed before the last body line, which runs down beside the label column. Hebrew-letter CER on `archive_card` is 0.028, against 0.211 for RO-v1 and 0.001 in gold order.
+
+**`ledger`: cell order is solved.** Raw NFC character edits on the fixture's 25 `ledger` pages, against the gold as is and with ` | ` replaced by a line break (one cell per line; hocrgen#98):
+
+| Lines | Gold as is | One cell per line |
+|---|---|---|
+| R4d, Kraken order | 6,983 | 4,895 |
+| R4d, RO-v1 | 6,429 | 4,260 |
+| **R4d, A1** | **3,125** | **149** |
+| R4d, gold order (diagnostic) | 3,122 | 137 |
+
+What is left on `ledger` (about 3,000 edits) is the ` | ` convention, not order. 24 of the 25 `ledger` pages have the same character edits as gold order.
+
+**By script (page CER; reference counts as in the R4d section):**
+
+| Batch | Lines | Latin letters | Digits | Hebrew letters |
+|---|---|---|---|---|
+| hocrgen fixture | R4d, Kraken order | 0.050 | 0.441 | 0.105 |
+| | R4d, RO-v1 | 0.050 | 0.414 | 0.096 |
+| | R4d, A1 | 0.050 | **0.024** | **0.014** |
+| | R4d, gold order (diagnostic) | 0.047 | 0.024 | 0.013 |
+| eval-mixed-heldout | R4d, Kraken order | 0.044 | 0.043 | 0.106 |
+| | R4d, RO-v1 | 0.044 | 0.043 | 0.004 |
+| | R4d, A1 | 0.044 | 0.043 | 0.004 |
+| | R4d, gold order (diagnostic) | 0.044 | 0.043 | 0.005 |
+
+The fixture's digit error was `ledger` cell order: `ledger` digit CER falls from 0.527 with RO-v1 to 0.005 with A1, the same as gold order.
+
+### Mixed-script reading (A1)
+
+- **A1 reaches gold order end to end on the development set.**
+  - With region classes, R3d + R4d + A1 scores 0.146 overall on the fixture: the same as gold order (0.146), within 0.006 of (e) (0.140), and down from 0.313 with RO-v1.
+  - It is the best pipeline on every family and beats Tesseract alone on all 100 pages.
+  - These are development-set numbers (A1 was chosen on this fixture's gold-line order checks), so they are likely optimistic for new layouts.
+- **No change on the clean check.** On eval-mixed-heldout A1 gives the same text as RO-v1 on every page (0.016, gold order 0.017). Region classes cost nothing where RO-v1 was already right. eval-mixed-heldout has no `archive_card` or `ledger`, so it does not test the fix itself.
+- **The RO-v1 failure was missing region identity.** The same lines, with only the line classes changed from segmenter types to R4d region types, take `archive_card` from 0.274 to 0.052 and `ledger` from 0.534 to 0.260 (the ` | ` floor).
+- **What remains on the fixture:**
+  - the ` | ` convention, about 3,000 `ledger` edits (hocrgen#98);
+  - one misplaced label on 10 `archive_card` pages;
+  - the em-dash gap (hocrsyngen#87);
+  - in-line recognition errors, Latin letters 0.050.
+- **Still missing:** a clean test of the `archive_card` and `ledger` fix. That needs an `s11b`-style card and ledger batch not used in R4e's choices.
+
+### Mixed-script run identities (A1)
+
+| Part | Identity |
+|---|---|
+| heocr-engine | `4e09858` (#23, region-typed RO classes), own detached worktree; `kraken-python` stage, `--api python`, cpu |
+| Segmenter | R4d `best_0.8618.safetensors`, sha256 `d32cd1a8efe7354445ccfea76551cc9943ca05792c332b5865f9bec985fe7bf7` |
+| Recognizer | R3d `best_0.9962.safetensors`, sha256 `374f9302eba092f67c06af0be2ef04c4ad528e4f60a11c2255a2bd3a75c0c889` |
+| Reading order | A1 `tasks/r4e-reading-order/a1/run_a1_ro/checkpoints/best_0.0000.safetensors`, sha256 `69aa1946583bb68ddf13ef20860582f4aa982a46b2f79e38bd7d9ae20535fb56`, 8,492 bytes, `--reading-order-classes region` |
+| Comparison rows | Kraken order and RO-v1 from the R4d section (heocr-engine `129c58e`; the `kraken-python` stage is unchanged up to `5294ca5`); gold order as in the R4d section |
+| hocrgen | `c8fb74e` (main), `primary.v1`, `raw.v1` and `consonantal.v1` |
+| Prediction sets | hocrgen fixture A1 `88d7e1bf1d25a482…`; eval-mixed-heldout A1 `6418149af3ff1ec2…` (text identical to RO-v1 `f6c96bf895218f4f…`; the sets differ in pipeline metadata) |
+| Run | every page of both batches (100 and 80), no failures; one kraken job |
+
+### Run identities
+
+| Part | Identity |
+|---|---|
+| heocr-engine | data preparation `5294ca5`; stage and end-to-end runs `4e09858` (#23) |
+| RO-v2 | ketos 7.0.2 `rotrain -f page --level baselines`, mapping by `--config`, lr 0.001, `quit early` lag 5, min-epochs 5, mps, seed 42. Train / validation lists sha256 in the local run record (`run_r4e_ro.record.json`) |
+| A1 | the same, with lag 10 and min-epochs 30 and the nine-class mapping above (`run_a1_ro.record.json`) |
+| R3d batch | hocrsyngen `db3f73c`, manifest `e8098844…`, annotations `51cab2f3…`; split as R3d (by sample, split seed 0, validation fraction 0.05) |
+| Segmenter and recognizer | R4d `best_0.8618.safetensors` (`d32cd1a8…`), R3d `best_0.9962.safetensors` (`374f9302…`) |
+| Order-only check | `ro_gold_check.py` and `a2_predicted_regions.py` (local task scripts) over `prepare-kraken-data` PAGE XML of each batch. These eval-only copies are never trained on |
+| A1 prediction sets, seed-101 and held-out (hocrgen `set_sha256`) | seed-101 `fbea7f8fd518042b…`, held-out `4c090e53c57c719d…` |
+
+Limits:
+- One run per reading-order model, one seed per batch, no confidence intervals.
+- **The card fix has so far been shown only on the development set.** The fixture guided the choice of A1, and eval-mixed-heldout contains neither `archive_card` nor `ledger`. The clean check, a fresh batch of card and ledger layouts from new seeds, is pending (R4a).
+- The gold-line rows and the gold-order rows use gold and are not pipelines.
 - Predictions, line files and reports stay local.
