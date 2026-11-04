@@ -923,7 +923,7 @@ Even in gold order, about 3,000 `ledger` edits are the ` | ` convention. Apart f
 
 | Part | Identity |
 |---|---|
-| heocr-engine | segmenter training `aa67fa7` (main, includes #16); `--api python` runs and diagnostics `129c58e` / `eed1839` (this PR) |
+| heocr-engine | segmenter training `aa67fa7` (main, includes #16); `--api python` runs and diagnostics `129c58e` / `eed1839` (#22) |
 | Training data | `train_batch_s5101_regions`, generated with hocrsyngen `8698895` (#76, S11a region polygons; `GENERATOR_VERSION` `s10c-gold-complete-v1`, as recorded in every sample's `generator_version`; 1,800 samples). Manifest `29dffcca…` (identical to `train_batch_s5101`); annotations `871355fd…` (adds the S11a region polygons). Split as R3b (by sample, split seed 0, validation fraction 0.05): 1,710 / 90 pages. Line types: training `default` 26,510 and `stamp` 977; validation 1,501 and 52 |
 | Generator note | hocrsyngen #78 (S11b, `s11b-ledger-fit-v1`) changed how ledger pages render, after this batch was made. Batches generated after #78 render ledger pages differently, including R3d's training batch (`db3f73c`) and the hocrgen fixture. R4d's training pages therefore do not show those ledger layouts (see the fixture's `ledger` rows above) |
 | Segmenter training | ketos 7.0.2 `segtrain` from scratch, default network, lr 0.0002, AdamW, constant schedule, no augmentation, `quit early` with lag 8 and min-epochs 10, mps, seed 42, not deterministic. Record `run_r4d_s5101.record.json` (validates) |
