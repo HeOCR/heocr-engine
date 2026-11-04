@@ -8,6 +8,7 @@ sys.path.insert(0, str(Path(__file__).parent / 'fixtures'))
 from line_annotations_fixture import build_batch, line_geometry  # noqa: E402
 
 from heocr_engine.cli import EngineError, main  # noqa: E402
+from heocr_engine.kraken_api import GEOMETRY_SCHEMA  # noqa: E402
 from heocr_engine.segmentation import (EVENTS, GOLD_CATEGORIES, PREDICTED_CATEGORIES, SCHEMA_ID,  # noqa: E402
                                        diagnose_segmentation, match_page, read_predicted_lines)
 
@@ -48,6 +49,12 @@ def alto_xml(lines):
     return f'<alto xmlns="{ALTO}"><Layout><Page><PrintSpace><TextBlock>{body}</TextBlock></PrintSpace></Page></Layout></alto>'
 
 
+def geometry_json(lines, width=240, height=160):
+    return json.dumps({'schema_version': GEOMETRY_SCHEMA, 'unit': 'pixel', 'width': width, 'height': height,
+                       'lines': [{'id': f'l{n}', 'order': n, 'boundary': polygon, 'baseline': baseline, 'text': text}
+                                 for n, (polygon, baseline, text) in enumerate(lines)]}, ensure_ascii=False)
+
+
 class SegmentationTestCase(unittest.TestCase):
     def setUp(self):
         self.tmp = tempfile.TemporaryDirectory()
@@ -59,7 +66,9 @@ class SegmentationTestCase(unittest.TestCase):
         self.predictions.mkdir()
 
     def write(self, page, lines, render=page_xml):
-        (self.predictions / f"{self.pages[page]['page_sha256']}.xml").write_text(render(lines), encoding='utf-8')
+        suffix = '.json' if render is geometry_json else '.xml'
+        (self.predictions / f"{self.pages[page]['page_sha256']}{suffix}").write_text(render(lines),
+                                                                                     encoding='utf-8')
 
     def perfect(self, page):
         return [(*gold_line(i), line['text']) for i, line in enumerate(self.pages[page]['lines'])]
@@ -132,6 +141,44 @@ class DiagnosticTests(SegmentationTestCase):
         # Coordinates are clamped to the page; a one-point baseline counts as no baseline.
         self.assertEqual(results[0][1]['polygon'], [tuple(point) for point in box(0, 50, 240, 80)])
         self.assertIsNone(results[0][1]['baseline'])
+
+    def test_kraken_geometry_reads_like_page_xml(self):
+        lines = [(box(20, 10, 220, 40), [[220, 34], [20, 34]], 'א'), (box(-5, 50, 260.4, 80), [[0, 74]], '')]
+        xml, geometry = self.root / 'line.xml', self.root / 'line.json'
+        xml.write_text(page_xml(lines), encoding='utf-8')
+        geometry.write_text(geometry_json(lines), encoding='utf-8')
+        self.assertEqual(read_predicted_lines(geometry, 240, 160),
+                         ('kraken-geometry', read_predicted_lines(xml, 240, 160)[1]))
+        # The geometry's line order is the predicted reading order, as document order is for XML.
+        reports = []
+        for render in (page_xml, geometry_json):
+            for path in self.predictions.iterdir():
+                path.unlink()
+            self.write(0, list(reversed(self.perfect(0))), render)
+            self.write(1, self.perfect(1), render)
+            reports.append(self.diagnose())
+        self.assertEqual(reports[0]['overall'], reports[1]['overall'])
+        self.assertEqual((reports[1]['predictions']['format'], reports[1]['reading_order']['predicted']),
+                         ('kraken-geometry', 'geometry line order'))
+        self.assertEqual(reports[0]['reading_order']['predicted'], 'document order of TextLine elements')
+
+    def test_bad_kraken_geometry_fails_closed(self):
+        self.write(1, self.perfect(1))
+        self.write(0, self.perfect(0), geometry_json)
+        self.write(0, self.perfect(0))
+        with self.assertRaisesRegex(EngineError, 'both an .xml and a .json'):
+            self.diagnose()
+        (self.predictions / f"{self.pages[0]['page_sha256']}.xml").unlink()
+        target = self.predictions / f"{self.pages[0]['page_sha256']}.json"
+        good = json.loads(geometry_json(self.perfect(0)))
+        bad = [{**good, 'schema_version': 'other'}, {**good, 'unit': 'point'}, {**good, 'width': 241},
+               {**good, 'lines': list(reversed(good['lines']))},
+               {**good, 'lines': [{**good['lines'][0], 'boundary': [[0, 'x']]}]},
+               {**good, 'lines': [{**good['lines'][0], 'baseline': [[True, 1], [2, 3]]}]}, []]
+        for content in [*(json.dumps(value) for value in bad), '{', '\udcff']:
+            with self.subTest(content=content[:40]), self.assertRaises(EngineError):
+                target.write_text(content, encoding='utf-8', errors='surrogateescape')
+                self.diagnose()
 
     def test_bad_inputs_fail_closed(self):
         self.write(0, self.perfect(0))

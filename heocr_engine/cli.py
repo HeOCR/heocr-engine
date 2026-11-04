@@ -443,7 +443,8 @@ def _diagnose_segmentation_main(argv: list[str]) -> int:
     parser.add_argument("annotations", type=Path, help="hocrsyngen_line_annotations.v1 JSON")
     parser.add_argument("manifest", type=Path, help="The generation_manifest.json the annotations name")
     parser.add_argument("predictions", type=Path,
-                        help="Directory of <page_sha256>.xml files (PAGE XML or ALTO), one per annotated page")
+                        help="Directory with one <page_sha256>.xml (PAGE XML or ALTO) or .json "
+                             "(--api python geometry) file per annotated page")
     parser.add_argument("--match", choices=METHODS, default="polygon",
                         help="polygon IoU or baseline overlap (default polygon)")
     parser.add_argument("--threshold", type=float, default=0.5, help="One-to-one match threshold (default 0.5)")
