@@ -34,10 +34,12 @@ heocr-engine kraken page.png prediction.json \
     --reading-order-model ro.safetensors --geometry-output geometry.json
   ```
 
-  - `--reading-order-model` takes a line-level (`baselines`) model from `ketos rotrain`, loaded from its own file (a reading-order model embedded in the segmentation file is ignored). Its line types must match the segmentation model's. The text then follows the learned order.
+  - `--reading-order-model` takes a line-level (`baselines`) model from `ketos rotrain`. A reading-order model is used only when this flag names a file, never picked up implicitly from the segmentation file. The file may be the segmentation file itself when that is a `ketos convert` combination of both models (R4d). Its line types must match the segmentation model's. The text then follows the learned order.
   - **Why the order is recomputed here:** Kraken 7.0.2 does not deliver a usable learned order. `kraken … ocr` writes plain text in the heuristic order even when a reading-order model is attached. The deprecated `blla.segment` stores the learned order in `line_orders` as indices into its line list *before* the heuristic sort, next to the sorted lines, so reading the returned lines by those indices gives the heuristic order back. `tests/test_kraken_api.py` (`KrakenLineOrdersBugTests`) proves this against Kraken's own code. The stage keeps the pre-sort list Kraken hands its heuristic order function, runs the reading-order model on that list, and maps the result onto the returned lines by line id. It fails closed unless the result is a permutation. Not reported upstream yet; that needs the maintainer's go-ahead.
   - The stage is named `kraken-python`. Its artifacts are `library:kraken-record` (sha256 of the installed Kraken distribution's `RECORD` file list), `model:segmentation`, `model:recognition` and, with a learned order, `model:reading-order`. `details` has `api: "python"`, `neural_reading_order` (true with a reading-order model), `line_order` (`learned` or `heuristic`), `reading_order_model_sha256`, `lines`, `lines_moved_by_learned_order` and `region_counts` per predicted region type.
   - `--geometry-output` writes `heocr_engine_kraken_geometry.v1`: the input sha256, `unit: "pixel"`, and per line its order, heuristic order, Kraken line type, region ids, baseline, polygon, `[x, y, width, height]` box and text, plus the predicted typed regions (for example `table_cells`) with polygons and boxes. Points are clamped to the image, and `clipped` marks any that were moved. Predicted regions are the segmenter's own detections, not generator gold. This is not the `heocr_engine.bidi` geometry contract (no word boxes); an adapter to it is future work.
+  - `diagnose-segmentation` reads these geometry files directly when they are named `<page_sha256>.json`, and scores the learned order without a PAGE conversion.
+  - The stage fails closed unless Kraken returns exactly one recognition record per segmented line.
   - `--device` is `cpu` (default), `mps` or `cuda`. In a pipeline config: `{"type": "kraken-python", "segmentation_model": "…", "recognition_model": "…", "reading_order_model": "…", "base_dir": "R"}`.
 - **Known issue, Kraken 7.0.2 on macOS:** Kraken occasionally crashes on exit after it has written its output (stderr shows `libc++abi` … `recursive_mutex lock failed`) and exits non-zero. In the first 80-page run this happened once in 82 page runs. heocr-engine fails closed and reports `Kraken failed with exit status …`, even though an output file exists; this is intended, because a crashed process gives no guarantee that its output is complete. Retry the page. Do not wrap Kraken so that non-zero exits are accepted.
 
@@ -293,7 +295,14 @@ With baseline matching (`--match baseline`), F1 goes from 0.842 to 0.949 on seed
 
 - **Line finding:** after only two epochs, the trained segmenter finds lines much better than `blla`. Splits almost disappear (78 → 14 and 96 → 5 gold lines). On the handwriting-style templates, held-out polygon F1 is 0.979 and 0.934, against 0.767 and 0.691 for `blla`.
 - **Merges are stamps:** on seed-101, 27 of the 40 stamp lines are merged with the body line they overlap. Training regions were line bounding boxes. The sidecar's region polygons (R4b1) and a longer run are the obvious next steps.
-- **Order:** Kendall τ is slightly better, but fewer pages are perfectly in order. This is not diagnosed yet.
+- **Order:** Kendall τ is slightly better, but fewer pages are perfectly in order. The cause is Kraken's heuristic line order, not the trained segmenter. With `-d horizontal-rl`, the column rule in `polygonal_reading_order` treats the short footer at the right edge as a right-hand column, because it has no x-overlap with the signature row or the margin notes. So the footer is read first, and the signature and margin lines after it. That is the dominant discordant pair for both segmenters (`diagnose-segmentation --lines`, against gold line order):
+
+  | Discordant pair | `blla` seed-101 | R4c seed-101 | `blla` held-out | R4c held-out |
+  |---|---|---|---|---|
+  | `signature_area` read after `footer` | 87 | 95 | 84 | 81 |
+  | margin read after `footer` | 21 | 31 | 17 | 32 |
+
+  R4c loses fully-ordered pages mainly because it *finds* more margin lines (seed-101: 34 matched, against 24 for `blla`), and each of them is then misplaced against the footer. Typed regions do not fix this, because the footer region is still a small box on the right. R4d's learned reading order does (below).
 - **Limits:** a partial model (epoch 1, `val_mean_iu` 0.761), one seed, synthetic pages only, and the same generator and fonts as the training batch.
 
 ### Run identities
@@ -672,3 +681,265 @@ On Tesseract lines, R3c and R3d write Latin letters that are not on the page: 15
 | eval-mixed-heldout prediction sets | Tesseract `heb+eng` `6750031f46e0507b…`. `blla -d horizontal-rl`: R3b `d50f6cc4a4e76c8b…`, R3c `74f8a7f00887476a…`, R3d `678f920229a1e611…`. Tesseract lines: R3b `ae607e61c8e96a30…`, R3c `898eac7a70e9e371…`, R3d `a0b503dfc887dddc…`. (e): R3b `9563097d160759ca…`, R3c `e41c98d60114a885…`, R3d `344ae1a6e4eeb7f3…`. (d): R3b `4f1acd60f1fa9222…`, R3c `48b4573141a9a5d5…`, R3d `01626ebf141d78ad…` |
 
 Limits: the R3c limits apply. One training run, one seed per batch, and no confidence intervals. R3d changes both the training text and the template mix, so the hocrgen fixture's gain cannot be split between them. eval-mixed-heldout separates the text change, but it shares the training generator, fonts and 153 Latin words. Predictions, line files and reports stay local.
+
+## R4d: trained segmenter with a learned line order (2026-11-04)
+
+R4d is R4c's segmenter recipe, run to completion, with two data changes:
+- Training regions are the S11a sidecar region polygons (`region_geometry: "sidecar"`, eight region types including `table_cells`).
+- Lines inside `stamp_area` regions get their own line type `stamp` (`--line-type stamp_area=stamp`, #16).
+
+A line-level reading-order model (`ketos rotrain`) was then trained on R4d's own training pages. The opt-in `--api python` stage (#19) applies it. Recognition is R3d throughout. Decision 0008 applies: licence `Needs verification`, not published.
+
+### Training
+
+- **Segmenter:** early stopping after 29 epochs. Best epoch 20, `val_mean_iu` 0.8618 (R4c epoch 1: 0.761); it stays between 0.854 and 0.862 from epoch 9 on. Baseline P / R / F1 at the best epoch: 0.9994 / 0.9800 / 0.9890.
+- **Reading order:** `ketos rotrain --level baselines` on the same 1,710 / 90 pages, with lines in gold order and the segmenter's line classes (`default` 2, `stamp` 3). Early stopping after 72 epochs, about 15 s each on mps. Best `val_spearman` 0.0320, against 0.105 after the first epoch. `val_spearman` is Kraken's normalised Spearman footrule distance on the validation pages, so lower is better.
+
+### Line geometry (`diagnose-segmentation`, polygon IoU ≥ 0.5)
+
+The `-d horizontal-rl` rows use `kraken segment -bl`, and only the model differs. The `blla` and R4c rows are the R4c section's. The learned-order row scores the `--api python` stage's geometry files directly (`<page_sha256>.json`, see `docs/segmentation_diagnostic.md`). It has the same lines as the R4d CLI row, but in the learned order.
+
+| Segmenter | Batch | P / R / F1 | Split gold lines | Merging predicted lines (gold lines merged) | Missed | Spurious | Kendall τ | Adjacent pairs kept | Pages fully in order | F1, `--match baseline` |
+|---|---|---|---|---|---|---|---|---|---|---|
+| `blla -d horizontal-rl` | seed-101 | 0.733 / 0.800 / 0.765 | 78 | 16 (32) | 27 | 1 | 0.838 | 0.866 | 26 / 80 | 0.842 |
+| R4c epoch 1 `-d horizontal-rl` | seed-101 | 0.926 / 0.897 / 0.911 | 14 | 27 (54) | 5 | 0 | 0.860 | 0.862 | 13 / 80 | 0.949 |
+| R4d `-d horizontal-rl` | seed-101 | 0.913 / 0.914 / 0.913 | 19 | 14 (28) | 1 | 0 | 0.819 | 0.824 | 9 / 80 | 0.995 |
+| R4d, learned order (`--api python`) | seed-101 | 0.913 / 0.914 / 0.913 | 19 | 14 (28) | 1 | 0 | 1.000 | 1.000 | 80 / 80 | 0.995 |
+| `blla -d horizontal-rl` | held-out | 0.624 / 0.726 / 0.671 | 96 | 4 (8) | 28 | 0 | 0.811 | 0.858 | 31 / 80 | 0.773 |
+| R4c epoch 1 `-d horizontal-rl` | held-out | 0.912 / 0.886 / 0.899 | 5 | 5 (10) | 20 | 2 | 0.872 | 0.863 | 14 / 80 | 0.951 |
+| R4d `-d horizontal-rl` | held-out | 0.915 / 0.916 / 0.915 | 4 | 4 (8) | 0 | 1 | 0.865 | 0.849 | 12 / 80 | 0.998 |
+| R4d, learned order (`--api python`) | held-out | 0.915 / 0.916 / 0.915 | 4 | 4 (8) | 0 | 1 | 1.000 | 1.000 | 80 / 80 | 0.998 |
+
+- **Line finding:** R4d matches R4c-e01's polygon F1 (0.913 and 0.915, against 0.911 and 0.899) but finds lines more completely.
+  - Baseline-match F1 rises to 0.995 and 0.998, against 0.949 and 0.951.
+  - Missed gold lines fall from 5 to 1 and from 20 to 0.
+  - On seed-101, merging predicted lines are halved (27 → 14).
+- **Stamps are fixed:** R4d matches 25 of the 40 stamp lines on seed-101 and 35 of 40 on held-out; R4c-e01 matches 1 on each. On seed-101 it merges 8, against 27 for R4c-e01. The `stamp` line type and the region polygons together separate them from the body lines they overlap.
+- **Kraken's heuristic order is worse with R4d,** clearly on seed-101 (Kendall τ 0.819, 9 / 80 pages fully in order) and slightly on held-out (0.865, 12 / 80).
+  - The footer pairs from R4c remain.
+  - Separated stamp lines are a new source of error. The heuristic now orders them, and it reads them before the body lines around them: 70 discordant pairs on seed-101, against 3 for R4c-e01, which merged most stamps into body lines.
+- **The learned order is perfect on both batches:** Kendall τ 1.000, and every page is fully in order over the matched lines. Both batches use the training templates (see Limits); the fixture's `archive_card` rows below are where it fails.
+
+**Discordant pairs over matched lines** (`--lines`, against gold line order; the three most frequent kinds):
+
+| Segmenter | Seed-101 | Held-out |
+|---|---|---|
+| `blla -d horizontal-rl` | 121: `signature_area` after `footer` 87, margin after `footer` 21, body after `stamp_area` 13 | 119: `signature_area` after `footer` 84, margin after `footer` 17, `stamp_area` after `signature_area` 12 |
+| R4c epoch 1 | 131: `signature_area` after `footer` 95, margin after `footer` 31, body after `stamp_area` 3 | 117: `signature_area` after `footer` 81, margin after `footer` 32 |
+| R4d | 177: `signature_area` after `footer` 71, body after `stamp_area` 70, margin after `footer` 36 | 134: `signature_area` after `footer` 67, margin after `footer` 33, body after `stamp_area` 29 |
+| R4d, learned order | 0 | 0 |
+
+### Seed-101 and held-out, end to end (R4d + R3d, `primary.v1` CER / WER)
+
+R4d segments and R3d recognizes through `--api python` on cpu. Heuristic order is Kraken's line order, which gives the CLI's text (see "Python-API checks" below). Learned order is the same lines in the order the reading-order model gives. Comparison rows are from the R3c and R3d sections.
+
+| Lines | Kind | Seed-101 | Held-out |
+|---|---|---|---|
+| R3d + `blla -d horizontal-rl` (R3d section) | pipeline | 0.167 / 0.292 | 0.240 / 0.405 |
+| R3c + R4c-e01, preview (R3c section) | pipeline | 0.096 / 0.172 | 0.143 / 0.295 |
+| R4d + R3d, heuristic order | pipeline | 0.098 / 0.151 | 0.111 / 0.162 |
+| R4d + R3d, learned order | pipeline | **0.019 / 0.055** | **0.009 / 0.032** |
+| R3d (e) gold baselines, Kraken polygons at height 1800, gold order (R3d section) | diagnostic | 0.018 / 0.040 | 0.006 / 0.020 |
+
+**By template (`primary.v1` CER / WER), R4d + R3d:**
+
+| Template | Seed-101 heuristic | Seed-101 learned | Held-out heuristic | Held-out learned |
+|---|---|---|---|---|
+| `printed_letter` | 0.112 / 0.182 | 0.021 / 0.065 | 0.110 / 0.184 | 0.011 / 0.037 |
+| `printed_letter_heavy_scan` | 0.106 / 0.179 | 0.025 / 0.070 | 0.108 / 0.171 | 0.004 / 0.013 |
+| `handwritten_note` | 0.081 / 0.107 | 0.011 / 0.032 | 0.115 / 0.131 | 0.010 / 0.031 |
+| `handwritten_note_heavy_wear` | 0.084 / 0.113 | 0.015 / 0.041 | 0.113 / 0.150 | 0.013 / 0.050 |
+| overall | 0.098 / 0.151 | 0.019 / 0.055 | 0.111 / 0.162 | 0.009 / 0.032 |
+
+**Paired accounting (E2c6, learned against heuristic order; pages improved / unchanged / worsened, character edits):** seed-101 80 / 0 / 0, 1,413 → 271; held-out 80 / 0 / 0, 1,119 → 92.
+
+- **The learned order removes almost all of the remaining error.** Seed-101 goes from 0.098 to 0.019 and held-out from 0.111 to 0.009. Every page improves on both batches.
+- That is within 0.003 CER of R3d's own (e) gold-line, gold-order diagnostic (0.018 and 0.006), now from a pipeline. The previous best pipeline was R3c + R4c-e01 (preview) at 0.096 and 0.143.
+- Without the learned order, R4d + R3d (0.098 and 0.111) is already about level with R3c + R4c-e01 on seed-101 and better on held-out.
+
+### Python-API checks
+
+- **Parity:** with R4d + R3d, the `--api python` stage without a reading-order model gives text identical to the default CLI stage on 4 of 4 seed-101 pages (one per template). R4a's mixed-batch runs repeat the check at scale (below).
+- **One file for segmentation and reading order:** in Kraken 7.0.2 the way to ship them together is `ketos convert -o seg_ro.safetensors seg.safetensors ro.safetensors`, a safetensors file that holds both models.
+  - Passed as both `--segmentation-model` and `--reading-order-model`, it gives text identical to the separate files on 4 of 4 seed-101 pages, with the same lines moved.
+  - `ketos roadd` cannot be used with this run's models (below).
+
+### Kraken 7.0.2 issues found in R4d (not reported upstream yet)
+
+Reporting them, like the `line_orders` issue in the Kraken section, needs the maintainer's go-ahead. The R4d runs work around each one.
+
+1. **`ketos rotrain --class-mapping-from-ckpt` always fails** with "--class-mapping and --class-mapping-from-ckpt are mutually exclusive". ketos's built-in defaults (`default_map`) always set rotrain's `class_mapping`.
+   - Workaround: pass the segmenter's line classes in a config file, `ketos --config rotrain.yaml rotrain …` with `{"rotrain": {"class_mapping": [["default", 2], ["stamp", 3]]}}`.
+   - The mapping must equal the segmenter's: at inference, `neural_reading_order` one-hot encodes line types with the segmentation model's mapping.
+2. **`--class-mapping-from-ckpt` also reads `hparams["data_config"]`,** which `ketos segtrain` checkpoints do not have. Their hparams hold only `config`, and the mapping is in `net.user_metadata["class_mapping"]`. So it would fail on these checkpoints even without issue 1.
+3. **`ketos roadd` cannot read a safetensors segmenter.** It loads it with the CoreML-only `TorchVGSLModel.load_model` ("Failure parsing model protobuf"), and it writes CoreML.
+4. **`roadd`'s CoreML output cannot be loaded by Kraken 7.0.2 itself.** R4d was converted to CoreML first (`ketos convert --weights-format coreml`) and then given to `roadd`. `kraken.models.load_models`, and so `SegmentationTaskModel.load_model` and the CLI, reject the result ("Unexpected key(s) … `nn.ro_model_mlp_lin_*`"). The `--api python` stage fails closed on it. Use `ketos convert` instead (above).
+
+### Mixed-script batches (R4d with R3d)
+
+These are the two mixed-script batches from the R3d section: hocrgen's 100-page fixture and the 80-page eval-mixed-heldout. Neither is trained on. Both are scored on synthetic gold only (decision 0004).
+
+R4d segments and R3d recognizes in three line orders:
+- **Kraken order:** `segment -bl -d horizontal-rl` with R4d, then `ocr --reorder --base-dir R` with R3d, in the order Kraken emits the lines. Run through the CLI and again through `--api python`; the two give the same text (below).
+- **Learned order:** the same lines in the order R4d's reading-order model gives (`--api python --reading-order-model`).
+- **Gold order (diagnostic):** R4d's own lines and text, re-sorted into gold reading order by polygon anchors. It uses gold, so it is not a pipeline. It shows what a perfect order would give with R4d's lines.
+
+Kinds and scoring are as in the R3c section. R3d + `blla -d horizontal-rl`, Tesseract lines, (e) and (d) are the R3d section's rows.
+
+**hocrgen fixture, `primary.v1` CER per family** (hocrgen `c8fb74e`):
+
+| Lines | Kind | Recognizer | `printed_letter` | `handwritten_note` | `archive_card` | `ledger` | overall CER / WER |
+|---|---|---|---|---|---|---|---|
+| Tesseract `heb+eng` alone (recipe baseline) | pipeline | Tesseract | 0.177 | 0.737 | 0.444 | 0.770 | 0.575 / 0.723 |
+| `blla -d horizontal-rl` | pipeline | R3d | 0.172 | 0.181 | 0.332 | 0.657 | 0.419 / 0.598 |
+| Tesseract `heb` lines | pipeline | R3d | 0.266 | 0.163 | 0.534 | 0.829 | 0.552 / 0.744 |
+| R4d, Kraken order | pipeline | R3d | 0.142 | 0.125 | **0.211** | 0.580 | 0.346 / 0.522 |
+| R4d, learned order | pipeline | R3d | **0.067** | **0.061** | 0.274 | **0.534** | **0.313 / 0.492** |
+| R4d, gold order | diagnostic | R3d | 0.076 | 0.061 | 0.034 | 0.259 | 0.146 / 0.266 |
+| (e) at height 1800 | diagnostic | R3d | 0.059 | 0.057 | 0.028 | 0.259 | 0.140 / 0.260 |
+| (d) | diagnostic | R3d | 0.068 | 0.074 | 0.048 | 0.276 | 0.156 / 0.316 |
+
+Bold marks the best pipeline per column.
+
+**eval-mixed-heldout, `primary.v1` CER / WER per template** (hocrgen `c8fb74e`; the Kraken-order CLI row and the R3d rows were scored with `2d3efb0`, whose `scored` block is identical):
+
+| Lines | Kind | Recognizer | `printed_letter` | `printed_letter_heavy_scan` | `handwritten_note` | `handwritten_note_heavy_wear` | overall |
+|---|---|---|---|---|---|---|---|
+| Tesseract `heb+eng` alone | pipeline | Tesseract | 0.171 / 0.278 | 0.152 / 0.236 | 0.775 / 0.963 | 0.794 / 0.983 | 0.425 / 0.562 |
+| `blla -d horizontal-rl` | pipeline | R3d | 0.258 / 0.457 | 0.232 / 0.410 | 0.187 / 0.311 | 0.230 / 0.380 | 0.229 / 0.396 |
+| Tesseract `heb` lines | pipeline | R3d | 0.269 / 0.487 | 0.250 / 0.435 | 0.117 / 0.308 | 0.099 / 0.228 | 0.196 / 0.379 |
+| R4d, Kraken order | pipeline | R3d | 0.110 / 0.191 | 0.117 / 0.188 | 0.111 / 0.142 | 0.123 / 0.175 | 0.115 / 0.176 |
+| R4d, learned order | pipeline | R3d | **0.013** / 0.041 | **0.012** / 0.038 | **0.020** / 0.049 | **0.025** / 0.077 | **0.016 / 0.050** |
+| R4d, gold order | diagnostic | R3d | 0.015 / 0.043 | 0.012 / 0.038 | 0.020 / 0.049 | 0.025 / 0.077 | 0.017 / 0.050 |
+| (e) at height 1800 | diagnostic | R3d | 0.009 / 0.031 | 0.011 / 0.033 | 0.019 / 0.051 | 0.020 / 0.062 | 0.014 / 0.043 |
+| (d) | diagnostic | R3d | 0.037 / 0.144 | 0.062 / 0.214 | 0.029 / 0.098 | 0.033 / 0.092 | 0.042 / 0.143 |
+
+Bold marks the best pipeline per column.
+
+**CLI and `--api python` give the same text.** For Kraken order, the `--api python` stage (heocr-engine `129c58e`) reproduces the CLI rows:
+- eval-mixed-heldout: 80 of 80 pages identical.
+- Fixture: 99 of 100 identical. One page differs in two lines by one or two recognized characters (9,486 against 9,485 character edits, the same CER to three places).
+
+The learned-order rows therefore differ from the Kraken-order rows only in line order.
+
+**R4d's lines are close to gold.** Line counts on the fixture, R4d (`blla`) against gold:
+
+| Family | Gold | R4d | `blla` |
+|---|---|---|---|
+| `printed_letter` | 261 | 264 | 286 |
+| `handwritten_note` | 169 | 168 | 170 |
+| `archive_card` | 375 | 375 | 381 |
+| `ledger` | 1,500 | 1,507 | 1,492 |
+
+In gold order, R4d's lines score within 0.006 CER of (e) on both batches (0.146 against 0.140, and 0.017 against 0.014). Nearly all of the Kraken-order error is therefore reading order.
+
+**By script.** These are the same page projections as in the R3d section: CER on Latin letters, ASCII digits and Hebrew letters, with reference counts in brackets.
+
+| Batch | Lines | Latin letters | Digits | Hebrew letters |
+|---|---|---|---|---|
+| hocrgen fixture (1,795 / 5,119 / 11,958) | Tesseract `heb+eng` alone | 0.892 | 0.668 | 0.381 |
+| | R3d + `blla -d horizontal-rl` | 0.060 | 0.541 | 0.176 |
+| | R3d + R4d, Kraken order | 0.050 | 0.441 | 0.105 |
+| | R3d + R4d, learned order | 0.050 | 0.414 | 0.096 |
+| | R3d + R4d, gold order (diagnostic) | 0.047 | 0.024 | 0.013 |
+| | R3d (e) (diagnostic) | 0.045 | 0.014 | 0.008 |
+| eval-mixed-heldout (873 / 750 / 6,566) | Tesseract `heb+eng` alone | 1.378 | 0.636 | 0.448 |
+| | R3d + `blla -d horizontal-rl` | 0.094 | 0.165 | 0.232 |
+| | R3d + R4d, Kraken order | 0.044 | 0.043 | 0.106 |
+| | R3d + R4d, learned order | 0.044 | 0.043 | 0.004 |
+| | R3d + R4d, gold order (diagnostic) | 0.044 | 0.043 | 0.005 |
+| | R3d (e) (diagnostic) | 0.039 | 0.033 | 0.002 |
+
+Order moves whole lines, so it charges whichever script those lines hold.
+- On eval-mixed-heldout, the misordered lines are Hebrew, and learned order removes that error (0.106 → 0.004).
+- On the fixture, the remaining digit error is mostly `ledger` (0.527 digit CER with learned order, against 0.005 in gold order).
+
+**Paired accounting (E2c6, hocrgen `c8fb74e`; pages improved / unchanged / worsened, character edits baseline → candidate):**
+
+| Candidate against baseline | hocrgen fixture | eval-mixed-heldout |
+|---|---|---|
+| R4d Kraken order against R3d + `blla -d horizontal-rl` | 88 / 1 / 11, 11,495 → 9,486 | 77 / 2 / 1, 2,379 → 1,195 |
+| R4d Kraken order against Tesseract alone | 90 / 2 / 8, 15,780 → 9,486 | 62 / 2 / 16, 4,414 → 1,195 |
+| R4d learned order against R4d Kraken order (`--api python`) | 69 / 3 / 28, 9,485 → 8,601 | 80 / 0 / 0, 1,195 → 170 |
+| R4d learned order against R3d + `blla -d horizontal-rl` | 91 / 0 / 9, 11,495 → 8,601 | 80 / 0 / 0, 2,379 → 170 |
+| R4d learned order against R3d + Tesseract lines | 99 / 1 / 0, 15,161 → 8,601 | 80 / 0 / 0, 2,030 → 170 |
+| R4d learned order against Tesseract alone | 100 / 0 / 0, 15,780 → 8,601 | 80 / 0 / 0, 4,414 → 170 |
+
+R4d's learned order against Kraken order, fixture pages by family (improved / unchanged / worsened): `printed_letter` 25 / 0 / 0, `handwritten_note` 24 / 1 / 0, `ledger` 20 / 2 / 3, `archive_card` 0 / 0 / 25.
+
+**The learned order makes every fixture `archive_card` worse (0.211 → 0.274).**
+- **What it does:** the `archive_card` gold reads the body lines, then the left label column (`מקור`, `תאריך`, `מספר`, `הערה`, `ארכיון`), then the footer. Kraken order keeps the five labels together on 24 of 25 pages. The reading-order model keeps them together on none: it interleaves the labels with the body lines by height.
+- **Probable cause (untested):** a layout the model was not trained on.
+  - The reading-order model trained on R4d's batch (`train_batch_s5101`). That batch includes `archive_card_identifier_v1`, with the same gold order.
+  - Its cards (generator `s10c-gold-complete-v1`) average 3.67 body lines (3 to 6, over 514 samples of both card recipes).
+  - Every fixture card (`s11b-ledger-fit-v1`) has 6 longer mixed-script body lines, which run down beside the label column.
+- **What would test it:** training or scoring the reading-order model on `s11b` card layouts. Not run.
+
+**`ledger`: order and the cell separator.** Raw NFC character edits on the fixture's 25 `ledger` pages, against the gold as is and with ` | ` replaced by a line break (one cell per line; see hocrgen#98):
+
+| Lines | Gold as is | One cell per line |
+|---|---|---|
+| R3d + `blla -d horizontal-rl` | 7,875 | 6,120 |
+| R3d + R4d, Kraken order | 6,983 | 4,895 |
+| R3d + R4d, learned order | 6,429 | 4,260 |
+| R3d + R4d, gold order (diagnostic) | 3,122 | 137 |
+| R3d (e) (diagnostic) | 3,112 | 130 |
+
+Even in gold order, about 3,000 `ledger` edits are the ` | ` convention. Apart from that convention, R4d's `ledger` lines are as good as (e). What remains for a pipeline is cell order, which the learned order improves only a little (4,895 → 4,260 edits, against 137 in gold order).
+
+### Mixed-script reading
+
+- **R4d is the best segmenter on both mixed batches.**
+  - In Kraken order, R3d + R4d is the best pipeline on both batches (0.346 and 0.115). It beats R3d + `blla` on 88 and 77 pages and Tesseract alone on 90 and 62.
+  - Its line counts are within 7 of gold on every family, where `blla` over-splits printed letters (286 against 261).
+- **The learned order closes the order gap on eval-mixed-heldout.**
+  - CER goes from 0.115 to 0.016, with every page improved, and every template is at or below 0.025.
+  - That is the same as gold order (0.017) and within 0.002 of (e). R3d + R4d + learned order is, end to end, as good as R3d on gold lines for the four benchmark templates.
+  - It also beats Tesseract alone on both printed templates by an order of magnitude (0.013 and 0.012 against 0.171 and 0.152).
+- **On the fixture it helps letters and notes, but not cards or ledgers.**
+  - `printed_letter` and `handwritten_note` reach gold-order CER.
+  - `archive_card` regresses on every page (cause above, untested), and `ledger` cell order is mostly unsolved.
+  - Overall 0.346 → 0.313, against 0.146 in gold order.
+- **Next levers:**
+  - A reading-order model trained on the mixed layouts (`archive_card`, `ledger` from `s11b`).
+  - The ` | ` convention (hocrgen#98), which is about 3,000 of the fixture's remaining `ledger` edits in every row.
+
+### Mixed-script run identities
+
+| Part | Identity |
+|---|---|
+| Segmenter | R4d `best_0.8618.safetensors`, sha256 `d32cd1a8efe7354445ccfea76551cc9943ca05792c332b5865f9bec985fe7bf7`, 5,056,800 bytes (record `run_r4d_s5101.record.json`) |
+| Reading order | R4d reading-order model `best_0.0320.safetensors`, sha256 `aeccae502349b6e5fdefdd6aeba58822ae5217ef73ea76cc65d956d23fcb42bf`, 4,204 bytes, passed as a separate file |
+| Recognizer | R3d `best_0.9962.safetensors`, sha256 `374f9302eba092f67c06af0be2ef04c4ad528e4f60a11c2255a2bd3a75c0c889` |
+| Kraken order, CLI | Kraken 7.0.2 on cpu (executable `58ff77e3…`): `segment -bl -d horizontal-rl -i R4d ocr -m R3d --reorder --base-dir R`, lines in document order, assembled as the R3d rows |
+| Kraken and learned order, `--api python` | heocr-engine `129c58e` (`claude/r4d2-parity`), `kraken-python` stage on cpu; learned order with `--reading-order-model` |
+| Gold order | R4d's CLI lines re-sorted into gold order by polygon anchors (R4a's `assemble.py`, `gold:`) |
+| hocrgen | `c8fb74e` (main) for every R4d row and all paired accounting. eval-mixed-heldout Kraken order (CLI) was scored with `2d3efb0`; `c8fb74e` gives an identical `scored` block |
+| Batches | as in the R3d section: hocrgen fixture (`s11b-ledger-fit-v1`) and eval-mixed-heldout (hocrsyngen `db3f73c`, seed 8101) |
+| R4d prediction sets, hocrgen fixture | Kraken order CLI `3e78e309cde106c3…`, Kraken order `--api python` `26688aa7519dd508…`, learned order `c12cd66cf9196efb…`, gold order `a08840877b42bf04…` |
+| R4d prediction sets, eval-mixed-heldout | Kraken order CLI `02e38f450ed7bc61…`, Kraken order `--api python` `e2eec4c74e8223a7…`, learned order `f6c96bf895218f4f…`, gold order `0ccf90053cf270cd…` |
+
+### Run identities
+
+| Part | Identity |
+|---|---|
+| heocr-engine | segmenter training `aa67fa7` (main, includes #16); `--api python` runs and diagnostics `129c58e` / `eed1839` (this PR) |
+| Training data | `train_batch_s5101_regions`, generated with hocrsyngen `8698895` (#76, S11a region polygons; `GENERATOR_VERSION` `s10c-gold-complete-v1`, as recorded in every sample's `generator_version`; 1,800 samples). Manifest `29dffcca…` (identical to `train_batch_s5101`); annotations `871355fd…` (adds the S11a region polygons). Split as R3b (by sample, split seed 0, validation fraction 0.05): 1,710 / 90 pages. Line types: training `default` 26,510 and `stamp` 977; validation 1,501 and 52 |
+| Generator note | hocrsyngen #78 (S11b, `s11b-ledger-fit-v1`) changed how ledger pages render, after this batch was made. Batches generated after #78 render ledger pages differently, including R3d's training batch (`db3f73c`) and the hocrgen fixture. R4d's training pages therefore do not show those ledger layouts (see the fixture's `ledger` rows above) |
+| Segmenter training | ketos 7.0.2 `segtrain` from scratch, default network, lr 0.0002, AdamW, constant schedule, no augmentation, `quit early` with lag 8 and min-epochs 10, mps, seed 42, not deterministic. Record `run_r4d_s5101.record.json` (validates) |
+| Segmenter | `best_0.8618.safetensors`, sha256 `d32cd1a8efe7354445ccfea76551cc9943ca05792c332b5865f9bec985fe7bf7`, 5,056,800 bytes |
+| Reading-order training | ketos 7.0.2 `rotrain -f page --level baselines`, the class mapping by `--config` (issue 1), lr 0.001 (default), `quit early` with lag 5 and min-epochs 5, mps, seed 42, on R4d's segmentation PAGE XML |
+| Reading-order model | `best_0.0320.safetensors`, sha256 `aeccae502349b6e5fdefdd6aeba58822ae5217ef73ea76cc65d956d23fcb42bf`, 4,204 bytes |
+| Combined file | `ketos convert` of the two: sha256 `74afdf1c61aa10a2a446ab019490a9c9fd3fe14d1022d4a7137c2ed899a5464a` |
+| Recognizer | R3d `best_0.9962.safetensors` (`374f9302…`) |
+| Inference | Kraken 7.0.2 on cpu: `segment -bl -d horizontal-rl` for the CLI geometry rows; `--api python` (`kraken-python`, `base_dir` R) for the text rows and the learned-order geometry |
+| hocrgen | `2d3efb0` for seed-101 and held-out |
+| Batches | as R4a |
+| R4d prediction sets (hocrgen `set_sha256`) | seed-101 heuristic `aea91d9011f88f7e…`, learned `4a7f7a73e6fc8a34…`; held-out heuristic `115155e7103ed4fc…`, learned `a4574f731f40b6c4…` |
+| R4d line-file sets (`diagnose-segmentation` `set_sha256`) | CLI PAGE XML: seed-101 `4007cbcb51555537…`, held-out `b2de6c90888fbbbd…`. Learned-order geometry: seed-101 `a53d14a8ccc55bab…`, held-out `7f62e45f722fc648…` |
+
+Limits:
+- One segmenter run and one reading-order run, one seed per batch, no confidence intervals.
+- Seed-101 and held-out use the four templates R4d trained on, from the same generator and fonts, so the perfect learned order there is in-distribution. On the fixture it makes every `archive_card` page worse; the cause given above is a hypothesis.
+- The gold-order rows use gold and are not pipelines.
+- Predictions, line files and reports stay local.
