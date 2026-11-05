@@ -1620,3 +1620,284 @@ Limits:
 - Two seeds of one recipe, each one non-deterministic run on `mps`, is still a small sample of training-run variation.
 - s7202 was not scored on eval-typo-heldout, eval-layout-heldout, or with `blla` or (e) lines.
 - Predictions, line files and reports stay local.
+
+## R3g: crop-mix recognizer (2026-11-05)
+
+R3f regresses on line geometry it was not trained on: hocrsyngen's polygons (d) and Tesseract lines, in both seeds (R3f section). R3g tests whether varying the training crop geometry fixes that and keeps R3f's typographic gains. Naming: R3e is PR #21's printed transfer and R3f the typographic run, so this run is R3g. Its local task folder is `r3g-crop-mix`.
+
+**Recipe:** R3f s7201's recipe exactly, with one change, `--line-polygons mix` (heocr-engine #28).
+- **Kept from s7201:** the batch (hocrsyngen `88ba5e6`, seed 7201), the corpus, training seed 42, mps, workers 0, and the settings and early stopping. Geometry is the only variable against R3f s7201.
+- **Geometry per line:** each line gets exactly one geometry, by `sha256("<page_sha256>\0<line_index>")` mod 4.
+  - 1/2 Kraken polygonizer at height 1800, as R3d and R3f;
+  - 1/4 sidecar polygon, as in (d);
+  - 1/4 `rect`, the sidecar polygon's bounding box with a vertical pad. It stands in for Tesseract line boxes.
+- **Split:** the split and the validation set are R3f s7201's, so validation is mixed too.
+
+None of the batches below is trained on. The weights are not in this repository and are not published; their licence is `Needs verification` (decision 0007).
+
+### Rect pad, measured on the training batch
+
+The pad is measured on R3g's own training batch, not on an eval batch.
+- **Method:** Tesseract 5.5.3 (`-l heb --psm 3`, line boxes, no pad) on the first 80 samples of the s7201 training batch (80 pages, all seven templates). Each Tesseract box is matched to the sidecar line whose polygon bounding box has the highest IoU, if above 0.5.
+- **Result:** 778 boxes matched.
+  - Height ratio, Tesseract box over sidecar box: median **0.719** (IQR 0.690–0.770).
+  - Tesseract's box is inside the sidecar box by 0.138 of its height at the top and 0.133 at the bottom.
+  - Per template, the median ratio runs from 0.714 (`archive_card`, `ledger`) to 0.791 (`handwritten_note`).
+- **Pad:** the trim per edge is (0.719 − 1) / 2 = −0.141, so `--rect-pad -0.14` (rounded to 0.01, clamped to [−0.2, 0]).
+- **Cross-check:** the same measurement on seed-101 gave −0.12 (439 boxes, ratio 0.76). It was not used, because seed-101 is an eval batch.
+
+### Training (R3g)
+
+- **Stopping:** early stopping after 7 epochs. The best epoch is **3** (0-based), with val_accuracy 0.9956 on the mixed validation split.
+  - History: 0.9808, 0.9917, 0.9933, **0.9956**, 0.9946, 0.9951, 0.9955.
+  - val_accuracy is on mixed geometry, so it is not comparable with R3f's 0.9960 / 0.9959.
+- **Lines by geometry:** train 47,633 lines (Kraken 23,773, sidecar 11,916, `rect` 11,944); validation 2,706 (1,378 / 671 / 657).
+- **Polygonizer:** drops none.
+
+### Seed-101, held-out and the mixed batches (`primary.v1` CER)
+
+These are the same line sources and pipeline as the R3f rows. Intervals are 95% paired page bootstrap intervals (2,000 resamples, seed 0) on the change in pooled CER, R3g minus the baseline. Pages are improved / unchanged / worsened against R3d.
+
+| Batch, lines | R3d | R3f s7201 | R3f s7202 | R3g | R3g against R3d | against s7201 | against s7202 |
+|---|---|---|---|---|---|---|---|
+| seed-101, (d) | 0.028 | 0.054 | 0.048 | **0.015** | 56 / 16 / 8 [−0.017, −0.009] | [−0.055, −0.026] | [−0.045, −0.023] |
+| held-out, (d) | 0.024 | 0.064 | 0.053 | **0.004** | 60 / 17 / 3 [−0.026, −0.015] | [−0.083, −0.041] | [−0.066, −0.035] |
+| seed-101, Tesseract lines | 0.194 | 0.216 | 0.226 | **0.116** | 79 / 0 / 1 [−0.098, −0.060] | [−0.122, −0.078] | [−0.135, −0.086] |
+| held-out, Tesseract lines | 0.196 | 0.248 | 0.256 | **0.089** | 80 / 0 / 0 [−0.133, −0.082] | [−0.194, −0.126] | [−0.213, −0.127] |
+| seed-101, R4d + A1 | **0.019** | 0.018 | 0.023 | 0.023 | 19 / 26 / 35 [+0.001, +0.006] | [+0.002, +0.007] | [−0.003, +0.002] |
+| held-out, R4d + A1 | **0.009** | 0.010 | 0.011 | 0.013 | 10 / 40 / 30 [+0.001, +0.007] | [+0.001, +0.005] | [−0.001, +0.005] |
+| hocrgen fixture (development set), R4d + A1 | 0.146 | 0.130 | **0.128** | 0.132 | 87 / 4 / 9 [−0.018, −0.011] | [−0.000, +0.004] | [+0.002, +0.006] |
+| eval-mixed-heldout, R4d + A1 | **0.016** | 0.021 | 0.016 | 0.025 | 18 / 20 / 42 [+0.004, +0.014] | [−0.002, +0.009] | [+0.005, +0.013] |
+
+**By template, R3d → R3g, where the interval against R3d excludes zero:**
+- **(d), every template improves:**
+  - seed-101: `printed_letter_heavy_scan` 0.043 → 0.018, `printed_letter` 0.029 → 0.016;
+  - held-out: `printed_letter_heavy_scan` 0.038 → 0.001, `handwritten_note` 0.018 → 0.003.
+- **Tesseract lines, every template improves:**
+  - seed-101: `printed_letter` 0.282 → 0.156, `printed_letter_heavy_scan` 0.258 → 0.166;
+  - held-out: `printed_letter` 0.252 → 0.105, `printed_letter_heavy_scan` 0.267 → 0.121.
+- **R4d + A1, seed-101:** `handwritten_note` 0.011 → 0.015, `printed_letter` 0.021 → 0.025, `printed_letter_heavy_scan` 0.026 → 0.032.
+- **R4d + A1, held-out:** spread thinly, e.g. `printed_letter` 0.011 → 0.016, `handwritten_note` 0.010 → 0.013.
+- **R4d + A1, eval-mixed-heldout:** `handwritten_note_heavy_wear` 0.025 → 0.046, `handwritten_note` 0.020 → 0.030, `printed_letter` 0.013 → 0.018.
+- **Em dash on the fixture:** R3g writes 311 `—`, against 317 for R3f s7201 and 312 for s7202.
+
+### checkpoint_06: a post-hoc diagnostic (2026-11-05)
+
+The best epoch (3) is an early peak on the mixed validation split. To check whether the R4d + A1 loss comes from checkpoint selection, the last checkpoint was scored too.
+- **Model:** `checkpoint_06-0.9955.ckpt`, converted with `ketos convert`; sha256 `a3c044aee717d6a0289a61fb657efd5b98446180c16d22c18491e4a91b48049e`.
+- **Conversion check:** the same conversion of `checkpoint_03` gives tensors identical to `best_0.9956.safetensors` (maximum absolute difference 0.0).
+- **Status:** a post-hoc pick, so these rows are diagnostic only. `best_0.9956.safetensors` stays the R3g model.
+
+| Batch, lines | R3d | R3g (best, epoch 3) | checkpoint_06 | checkpoint_06 against R3d | against R3g best |
+|---|---|---|---|---|---|
+| seed-101, (d) | 0.028 | 0.015 | 0.015 | 57 / 15 / 8 [−0.016, −0.009] | 21 / 41 / 18 [−0.001, +0.002] |
+| seed-101, Tesseract lines | 0.194 | 0.116 | 0.118 | 78 / 1 / 1 [−0.095, −0.058] | 29 / 15 / 36 [−0.000, +0.006] |
+| seed-101, R4d + A1 | 0.019 | 0.023 | 0.024 | 21 / 21 / 38 [+0.002, +0.007] | 22 / 26 / 32 [−0.001, +0.003] |
+| held-out, R4d + A1 | 0.009 | 0.013 | 0.013 | 12 / 35 / 33 [+0.001, +0.007] | 24 / 33 / 23 [−0.002, +0.002] |
+| eval-mixed-heldout, R4d + A1 | 0.016 | 0.025 | 0.025 | 15 / 23 / 42 [+0.004, +0.013] | 30 / 20 / 30 [−0.005, +0.004] |
+
+checkpoint_06 is indistinguishable from the best checkpoint on every row; every interval against it includes zero. On eval-mixed-heldout, `handwritten_note_heavy_wear` is 0.042, against 0.046. **Checkpoint selection does not explain the R4d + A1 loss.**
+
+
+### R3g on eval-typo-heldout and eval-layout-heldout (2026-11-05)
+
+R3g is R3f s7201's recipe with one change: `--line-polygons mix` (heocr-engine #28). Per line, training draws the kraken polygonizer half the time, the sidecar polygon a quarter and a padded `rect` a quarter. These rows check the success bar's third item, "typographic marks still come out", and R3g's effect on the layout check.
+
+**Setup:**
+- **Pipeline:** R4d + A1 (`--reading-order-classes region`) on heocr-engine `3aa9572`, `--api python`, cpu. R3d and R3f s7201 ran the same pipeline on the same code (`660e5a4` and `c5f8034`; since then main has changed only training code, its training CLI options and docs, so inference is the same).
+- **Batches:** both were fixed before R3g was trained. Neither has ever been trained or tuned on. Each was scored once with R3g.
+- **Gold:** synthetic only (decision 0004), hocrgen `c8fb74e`.
+- **Intervals:** 95% paired page bootstrap on the pooled `primary.v1` CER delta (2,000 resamples, seed 0), the same method as the R3f s7202 rows. They resample pages, not training runs.
+
+#### eval-typo-heldout (80 pages, typographic punctuation)
+
+**`primary.v1` CER / WER per template:**
+
+| Lines | `printed_letter` | `printed_letter_heavy_scan` | `handwritten_note` | `handwritten_note_heavy_wear` | overall |
+|---|---|---|---|---|---|
+| R4d + R3d + A1 | 0.032 / 0.129 | 0.042 / 0.158 | 0.040 / 0.180 | 0.052 / 0.214 | 0.041 / 0.166 |
+| R4d + R3f s7201 + A1 | **0.008** / 0.037 | **0.005 / 0.027** | **0.009 / 0.046** | **0.019 / 0.077** | **0.010 / 0.044** |
+| R4d + R3g + A1 | 0.008 / **0.031** | 0.007 / 0.037 | 0.017 / 0.079 | 0.022 / 0.079 | 0.012 / 0.053 |
+
+**Paired (pages better / same / worse; CER delta [95% interval]; character edits):**
+
+| Template | R3g against R3d | R3g against R3f s7201 |
+|---|---|---|
+| `printed_letter` | 17 / 2 / 1, −0.024 [−0.033, −0.017], 98 → 24 | 5 / 11 / 4, +0.000 [−0.003, +0.004], 23 → 24 |
+| `printed_letter_heavy_scan` | 20 / 0 / 0, −0.035 [−0.042, −0.028], 131 → 23 | 5 / 7 / 8, +0.002 [−0.001, +0.005], 17 → 23 |
+| `handwritten_note` | 18 / 1 / 1, −0.023 [−0.031, −0.016], 88 → 37 | 2 / 5 / 13, **+0.008 [+0.004, +0.012]**, 20 → 37 |
+| `handwritten_note_heavy_wear` | 18 / 0 / 2, −0.030 [−0.041, −0.020], 105 → 44 | 7 / 6 / 7, +0.003 [−0.004, +0.010], 39 → 44 |
+| **all 80 pages** | **73 / 3 / 4, −0.029 [−0.032, −0.024], 422 → 128** | **19 / 29 / 32, +0.002 [+0.001, +0.005], 99 → 128** |
+
+For reference, R3f s7201 against R3d is 75 / 4 / 1, −0.031 [−0.035, −0.027], 422 → 99. R3g against Tesseract alone is 80 / 0 / 0, 4,305 → 128.
+
+**Overall CER / WER by profile:**
+
+| Lines | `primary.v1` (= `raw.v1` = `consonantal.v1`) | `punct_folded.v1` (report only) |
+|---|---|---|
+| R4d + R3d + A1 | 0.041 / 0.166 | 0.007 / 0.028 |
+| R4d + R3f s7201 + A1 | **0.010 / 0.044** | **0.006 / 0.024** |
+| R4d + R3g + A1 | 0.012 / 0.053 | 0.008 / 0.030 |
+
+With punctuation folded, R3g is behind both R3f s7201 and R3d. Its extra edits are not only marks.
+
+**By script (page CER; 335 digits and 7,559 Hebrew letters in the reference, no Latin):**
+
+| Lines | Digits | Hebrew letters |
+|---|---|---|
+| R4d + R3d + A1 | 0.101 (34 edits) | 0.004 (29) |
+| R4d + R3f s7201 + A1 | **0.048** (16) | 0.004 (33) |
+| R4d + R3g + A1 | 0.093 (31) | 0.006 (42) |
+
+**Per-character rows** (gold marks after `primary.v1` normalization; page-level optimal Levenshtein alignment; "kept" means aligned to the same character):
+
+| Mark | Code point | Gold | R3d kept | R3f s7201 kept | **R3g kept** | R3g main substitutes |
+|---|---|---|---|---|---|---|
+| em dash `—` | U+2014 | 52 | 0 | 51 | **50** | `–` 2 |
+| en dash `–` | U+2013 | 26 | 0 | 22 | **17** | `—` 7, `-` 2 |
+| geresh `׳` | U+05F3 | 58 | 0 | 40 | **42** | `'` 12, `״` 2 |
+| gershayim `״` | U+05F4 | 81 | 0 | 79 | **81** | — |
+| left double quote `“` | U+201C | 30 | 0 | 30 | **22** | `״` 6, `"` 2 |
+| right double quote `”` | U+201D | 37 | 0 | 33 | **32** | `״` 4 |
+| low double quote `„` | U+201E | 7 | 0 | 5 | **5** | (2 deleted) |
+| left single quote `‘` | U+2018 | 5 | 0 | 2 | **2** | `“` 2 |
+| right single quote `’` | U+2019 | 5 | 0 | 0 | **0** | `'` 5 |
+| ellipsis `…` | U+2026 | 7 | 0 | 6 | **7** | — |
+| all new marks | | 308 | 0 | 268 (87%) | **258** (84%) | |
+| ASCII `"` (control) | U+0022 | 14 | 14 | 14 | 14 | |
+
+**Characters added where the gold has none:**
+
+| Character | R3d | R3f s7201 | R3g |
+|---|---|---|---|
+| hyphen-minus `-` | 106 | 0 | 2 |
+| apostrophe `'` | 62 | 22 | 18 |
+| quotation mark `"` | 147 | 3 | 2 |
+| gershayim `״` | 0 | 0 | **12** |
+| em dash `—` | 0 | 4 | 7 |
+
+#### eval-layout-heldout (100 pages, cards, ledger and the benchmark templates; ASCII-only gold)
+
+**`primary.v1` CER / WER per template:**
+
+| Lines | `archive_card` | `archive_card_faded_scan` | `ledger` | `printed_letter` | `printed_letter_heavy_scan` | `handwritten_note` | `handwritten_note_heavy_wear` | overall |
+|---|---|---|---|---|---|---|---|---|
+| R4d + R3d + A1 | **0.005 / 0.023** | **0.007 / 0.019** | **0.258 / 0.348** | 0.007 / 0.025 | **0.013 / 0.035** | 0.037 / **0.090** | **0.035 / 0.117** | **0.122 / 0.202** |
+| R4d + R3f s7201 + A1 | 0.005 / 0.028 | 0.013 / 0.021 | 0.260 / 0.354 | **0.006 / 0.021** | 0.019 / 0.062 | **0.028 / 0.090** | 0.046 / 0.122 | 0.124 / 0.208 |
+| R4d + R3g + A1 | 0.007 / 0.032 | 0.016 / 0.035 | 0.262 / 0.355 | 0.008 / 0.032 | 0.019 / 0.062 | 0.031 / 0.104 | 0.049 / **0.117** | 0.126 / 0.212 |
+
+`raw.v1` and `consonantal.v1` match `primary.v1`. `punct_folded.v1` is higher on this batch because it also folds the ledger's ` | ` separators: R3g 0.131 / 0.202.
+
+**Paired (pages better / same / worse; CER delta [95% interval]; character edits):**
+
+| Template | R3g against R3d | R3g against R3f s7201 |
+|---|---|---|
+| `archive_card` | 2 / 12 / 6, +0.002 [+0.000, +0.004], 16 → 23 | 4 / 8 / 8, +0.002 [−0.001, +0.004], 17 → 23 |
+| `archive_card_faded_scan` | 1 / 11 / 8, **+0.009 [+0.002, +0.021]**, 22 → 54 | 2 / 12 / 6, +0.003 [−0.001, +0.007], 44 → 54 |
+| `ledger` | 2 / 5 / 13, **+0.004 [+0.002, +0.007]**, 2,418 → 2,455 | 6 / 5 / 9, +0.002 [−0.001, +0.004], 2,438 → 2,455 |
+| `printed_letter` | 3 / 3 / 4, +0.001 [−0.010, +0.009], 11 → 12 | 2 / 6 / 2, +0.002 [−0.004, +0.008], 9 → 12 |
+| `printed_letter_heavy_scan` | 0 / 6 / 4, **+0.006 [+0.001, +0.011]**, 18 → 27 | 3 / 4 / 3, +0.000 [−0.007, +0.007], 27 → 27 |
+| `handwritten_note` | 4 / 2 / 4, −0.006 [−0.028, +0.009], 40 → 34 | 2 / 3 / 5, +0.003 [−0.005, +0.011], 30 → 34 |
+| `handwritten_note_heavy_wear` | 4 / 0 / 6, +0.014 [−0.004, +0.042], 37 → 52 | 4 / 1 / 5, +0.003 [−0.009, +0.017], 49 → 52 |
+| **all 100 pages** | **16 / 39 / 45, +0.005 [+0.002, +0.007], 2,562 → 2,657** | **23 / 39 / 38, +0.002 [+0.000, +0.004], 2,614 → 2,657** |
+
+For reference, R3f s7201 against R3d is 15 / 49 / 36, +0.002 [+0.001, +0.005], 2,562 → 2,614. R3g against Tesseract alone is 100 / 0 / 0, 11,885 → 2,657.
+
+**Per-class edits** (class of the gold character for substitutions and deletions, of the predicted character for insertions):
+
+| Class | R3d | R3f s7201 | R3g | R3g against R3d |
+|---|---|---|---|---|
+| Latin letters | 63 | 83 | 110 | +47 |
+| Digits | 45 | 51 | 62 | +17 |
+| Hebrew letters | 23 | 29 | 29 | +6 |
+| Punctuation (mostly the ledger ` \| `) | 814 | 827 | 836 | +22 |
+| Spaces and line breaks (mostly the ledger ` \| `) | 1,617 | 1,624 | 1,620 | +3 |
+| **all** | 2,562 | 2,614 | 2,657 | +95 |
+
+- **By script** (page CER; 932 Latin letters, 4,704 digits, 9,036 Hebrew letters): Latin 0.048 / 0.075 / 0.099, digits 0.008 / 0.009 / 0.016, Hebrew 0.002 / 0.003 / 0.004 (R3d / R3f s7201 / R3g).
+- **ASCII marks the gold has** (R3d kept all of them): R3g keeps 327 of 335 hyphens (7 deleted), 34 of 37 apostrophes and 26 of 33 quotation marks (6 become `״`). It adds 7 typographic marks where the gold has none, 6 of them `״`.
+- **`ledger` with one cell per line** (raw NFC edits on the 20 pages, hocrgen#98): R3d 20, R3f s7201 42, R3g 62.
+
+### Reading (R3g, R4a's batches)
+
+- **Typographic marks still come out.**
+  - R3g keeps 258 of 308 new marks (R3f s7201: 268, R3d: 0).
+  - It no longer adds stray ASCII: hyphens 2 and quotation marks 2, against 106 and 147 for R3d.
+  - On eval-typo-heldout it is still far ahead of R3d: 0.041 → 0.012, 73 of 80 pages better.
+- **It is slightly behind R3f s7201 on both batches.**
+  - eval-typo-heldout: 0.010 → 0.012 [+0.001, +0.005]. The clearest part is `handwritten_note`, +0.008 [+0.004, +0.012].
+  - eval-layout-heldout: 0.124 → 0.126 [+0.000, +0.004].
+  - The losses are not all marks.
+    - Curly double quotes are now read as gershayim (`“` 6, `”` 4), plus 12 stray `״`, and more en dashes are read as em dashes (7).
+    - With punctuation folded, eval-typo-heldout is 0.008 against 0.006.
+    - Hebrew edits are 42 against 33, digits 31 against 16.
+    - On eval-layout-heldout, Latin letters are 110 edits against 83, digits 62 against 51.
+- **Against R3d on eval-layout-heldout, R3g is further behind than R3f was:** +0.005 [+0.002, +0.007] against +0.002 [+0.001, +0.005]. The interval is strictly positive on `archive_card_faded_scan`, `ledger` and `printed_letter_heavy_scan`.
+- **A plausible reason, not tested here:** R4d + A1 lines are polygonized by kraken from R4d's baselines. R3f trained on that geometry for every line, R3g for half of them. R3g's gains should show where line geometry differs (the (d) and Tesseract-line rows in R4b's rows), not in this pipeline.
+- **The intervals resample pages, not training runs.** Each of R3g and R3f s7201 is one run. R3f s7202 moved eval-mixed-heldout by as much as these differences, so the gaps against R3f here are within what a second seed could change.
+
+### Run identities (R3g, R4a's batches)
+
+| Part | Identity |
+|---|---|
+| eval-typo-heldout | `tasks/eval-typo-heldout/eval-typo-heldout`: hocrsyngen `88ba5e6`, seed 9201, 80 pages, manifest `23019cf554472fb11432d96c4c5972caad8ff087fc8c99b961361d4f7205221c`, line annotations `7c493887c3def96e24b8e507a685b0ddbedf689b8d4353027389b2e148f628da` |
+| eval-layout-heldout | `tasks/eval-layout-heldout/eval-layout-heldout`: hocrsyngen `d63b627`, seed 9101, 100 pages, manifest `facbe571069308c8f842d4f30d0cd946c2494061bfa1018c900a556b551e2259`, line annotations `ec93f337cf04ffe484383c046c259049e13a279231615ed58de22035086acb96` |
+| heocr-engine | R3g rows: `3aa9572` (main), `kraken-python` stage, cpu, own detached worktree. R3d rows: `660e5a4`. R3f s7201 rows: `c5f8034` |
+| Models | R4d `d32cd1a8efe7354445ccfea76551cc9943ca05792c332b5865f9bec985fe7bf7`; A1 `69aa1946583bb68ddf13ef20860582f4aa982a46b2f79e38bd7d9ae20535fb56` (`--reading-order-classes region`); R3d `374f9302eba092f67c06af0be2ef04c4ad528e4f60a11c2255a2bd3a75c0c889`; R3f s7201 `52a208659f06f771ce4aebb09fa3a6b737fc82c92e084165e4fca9c419107dfd`; R3g `fe4f082ded551f82a4ef8f2a18e5e3b59de8b442a41ceec48b88b93b46b41623` (`run_r3g/checkpoints/best_0.9956.safetensors`; record `run_r3g.record.json` validated, sha checked before scoring) |
+| hocrgen | `c8fb74e` (main): `primary.v1`, `raw.v1`, `consonantal.v1`, `punct_folded.v1` |
+| Rows | R4a's local `r3g_rows.py` (bootstrap, R4b's method), `mark_table.py`, `edit_class.py`, `script_cer.py`, `ledger_cost.py`: `primary.v1` normalization, `rapidfuzz` 3.14.6 |
+| Prediction sets | R3g: eval-typo-heldout `ff73a72951d60845…`, eval-layout-heldout `78dc951566e91018…`. R3f s7201: `848bb222f8b5833d…`, `22ac660f18381a0e…`. R3d: `922c8a9fed7f17db…`, `beca6e735a13326c…` |
+| Run | both sets complete (80 and 100 pages), no failures. On eval-layout-heldout the polygonizer reports "failed on line 0" once, as for R3d and R3f. One kraken job of R4a's, next to R4b's scorer |
+
+Limits:
+- One run per recognizer. The intervals cover page sampling only.
+- R3g's validation accuracy (0.9956) is on mixed geometries and is not comparable to R3f's 0.9960.
+- The per-character rows depend on a page-level alignment.
+- eval-layout-heldout's ASCII gold counts a typographic `״` in an abbreviation as an error.
+- Predictions and reports stay local.
+
+### Success bar and reading (R3g)
+
+The success bar was set before training (maintainer's lead):
+
+1. **(d) and Tesseract lines no worse than R3d: met, by about 2×.**
+   - (d): seed-101 0.028 → 0.015, held-out 0.024 → 0.004.
+   - Tesseract lines: seed-101 0.194 → 0.116, held-out 0.196 → 0.089.
+   - All four intervals exclude zero in R3g's favour, against R3d and against both R3f seeds. Every template improves.
+2. **R4d + A1 on seed-101, held-out and eval-mixed-heldout within interval of R3d: not met.** All three intervals exclude zero on the worse side:
+   - seed-101 +0.004;
+   - held-out +0.004;
+   - eval-mixed-heldout +0.009, mostly `handwritten_note_heavy_wear` and `handwritten_note`.
+3. **Typographic marks still come out: met, a little below R3f.**
+   - On eval-typo-heldout, R3g keeps 258 of 308 marks (R3f s7201: 268), and its CER is 0.012 against 0.010. eval-layout-heldout is 0.126 against 0.124 (R4a's rows above).
+   - On the fixture, R3g writes 311 em dashes.
+
+**Two explanations were proposed for the R4d + A1 loss:**
+- **(a) Recipe, untested.** R4d + A1 crops lines with Kraken's polygonizer, from R4d's baselines. R3f trained on that geometry for every line, R3g for half of them. Its gains are where line geometry differs from Kraken's, not in the Kraken pipeline. R4a's reading of eval-layout-heldout points the same way.
+- **(b) Checkpoint selection, ruled out for checkpoint_06.** The epoch-3 best and the last checkpoint (epoch 6) score the same within interval on every row.
+
+**One run.** R3g is a single training run. Its intervals resample pages, not training runs, and R3f s7202 showed that a second seed can move eval-mixed-heldout by about 0.005.
+
+**Decision (maintainer's lead, 2026-11-05):**
+- R3d stays the default recognizer for the R4d + A1 pipeline.
+- R3g is the recognizer of record for line geometry other than Kraken's: sidecar polygons and Tesseract lines. There it beats R3d by about 2× on (d) and Tesseract lines.
+- R3g is not promoted overall, because it misses item 2 of the success bar.
+
+### Run identities (R3g)
+
+| Part | Identity |
+|---|---|
+| Training batch and corpus | As R3f s7201: hocrsyngen `88ba5e6`, seed 7201, manifest `e7406e20a6144f9128068dc5c6245947cd598f31bbb8ea71f89e05e9d6243f12`, line annotations `30cba05a8a7c5579e500069b850c44e29491612de1cf2ddb9e6ed19e2bd050a3`; corpus `7c2a62b83d3be29ab796c30b3e3272576c1f7e9c4302f7003fc6829f97984573` |
+| Training | heocr-engine `3aa9572` `train-kraken`: R3f s7201's command plus `--line-polygons mix --rect-pad -0.14`, at polygonizer height 1800. Kraken 7.0.2, mps, seed 42, not deterministic. Record `run_r3g.record.json` (validates) |
+| Model | `best_0.9956.safetensors`, sha256 `fe4f082ded551f82a4ef8f2a18e5e3b59de8b442a41ceec48b88b93b46b41623`, 16,167,536 bytes. Licence `Needs verification`, unpublished |
+| Diagnostic model | `checkpoint_06-0.9955.ckpt` via `ketos convert`, sha256 `a3c044aee717d6a0289a61fb657efd5b98446180c16d22c18491e4a91b48049e`. Post hoc, diagnostic only |
+| Rect pad measurement | Tesseract 5.5.3 `-l heb --psm 3` line boxes on the first 80 samples of the training batch; IoU > 0.5 matching against sidecar polygon bounding boxes |
+| Scoring (R4b's rows) | heocr-engine `3aa9572` (inference unchanged since `660e5a4`). Line inputs and assembly as for the R3f rows. hocrgen `2d3efb0` for seed-101 and held-out, `c8fb74e` for the fixture and eval-mixed-heldout. R4d `d32cd1a8…`, A1 `69aa1946…` with `--reading-order-classes region`. The record is validated and the model sha checked before scoring. The polygonizer reports "failed on line 0" 4 times over the four R4d batches, as for R3f |
+| Prediction sets, R3g | seed-101: (d) `0f955c049483d42c…`, Tesseract lines `b98e9e8621cd755c…`, R4d + A1 `9ad14995f83c2dc2…`. held-out: (d) `d809ebf67676f1ad…`, Tesseract lines `a0d25311df845cf3…`, R4d + A1 `96eebe1be6a1393b…`. Fixture `a12f017fafe8340c…`, eval-mixed-heldout `4c562119ef040434…` |
+| Prediction sets, checkpoint_06 | seed-101: (d) `7bbb9c07c8c3bc20…`, Tesseract lines `cf267e765781841d…`, R4d + A1 `ce31e1b8626bdf20…`. held-out R4d + A1 `073cdd51785887e2…`, eval-mixed-heldout `d615e1ed54659879…` |
+
+Limits:
+- One training run. The intervals cover page sampling only.
+- The checkpoint_06 rows are a post-hoc pick and diagnostic only.
+- The `rect` geometry approximates Tesseract boxes through one pad fitted on the training batch. Tesseract's own boxes were not used in training.
+- Predictions, line files and reports stay local.
