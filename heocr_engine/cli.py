@@ -289,14 +289,19 @@ def _split_args(parser: argparse.ArgumentParser) -> None:
 
 
 def _line_polygon_args(parser: argparse.ArgumentParser) -> None:
-    from heocr_engine.training import LINE_POLYGONS, POLYGONIZER_HEIGHT
+    from heocr_engine.training import LINE_POLYGONS, POLYGONIZER_HEIGHT, RECT_PAD
 
     parser.add_argument("--line-polygons", choices=LINE_POLYGONS, default="sidecar",
-                        help="Recognition line polygons: the sidecar's (default), or rebuilt from the gold "
-                             "baselines by Kraken's polygonizer, as at inference (needs kraken installed)")
+                        help="Recognition line polygons: the sidecar's (default); rebuilt from the gold "
+                             "baselines by Kraken's polygonizer, as at inference (kraken, needs kraken installed); "
+                             "or mix: per line, by a hash of page sha and line index, 1/2 kraken, 1/4 sidecar and "
+                             "1/4 rect (the sidecar polygon's bounding box, padded vertically)")
     parser.add_argument("--polygonizer-height", type=int, default=POLYGONIZER_HEIGHT,
                         help=f"Image height the polygonizer runs at (default {POLYGONIZER_HEIGHT}, blla's input "
                              "height; 0 for the page's own resolution)")
+    parser.add_argument("--rect-pad", type=float, default=RECT_PAD,
+                        help=f"mix: vertical pad of rect lines, as a fraction of the box height above and below "
+                             f"(default {RECT_PAD}; negative trims; -0.2 to 0.5)")
 
 
 def _line_type(value: str) -> tuple[str, str]:
@@ -334,7 +339,7 @@ def _prepare_kraken_data_main(argv: list[str]) -> int:
     summary = prepare_kraken_data(args.annotations, args.manifest, args.output, args.validation_fraction,
                                   args.split_seed, task=args.task, line_polygons=args.line_polygons,
                                   polygonizer_height=args.polygonizer_height,
-                                  line_types=_line_type_map(args.line_type))
+                                  line_types=_line_type_map(args.line_type), rect_pad=args.rect_pad)
     json.dump(summary, sys.stdout, ensure_ascii=False, indent=2)
     sys.stdout.write("\n")
     return 0
@@ -386,7 +391,8 @@ def _train_kraken_main(argv: list[str]) -> int:
                           deterministic=args.deterministic, precision=args.precision, workers=args.workers,
                           threads=args.threads, validation_fraction=args.validation_fraction,
                           split_seed=args.split_seed, hyperparameters=hyperparameters, timeout=args.timeout,
-                          line_polygons=args.line_polygons, polygonizer_height=args.polygonizer_height)
+                          line_polygons=args.line_polygons, polygonizer_height=args.polygonizer_height,
+                          rect_pad=args.rect_pad)
     write_prediction(record, args.record)
     return 0
 

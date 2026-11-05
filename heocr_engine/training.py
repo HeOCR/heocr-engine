@@ -46,8 +46,21 @@ REGION_GEOMETRIES = ("sidecar", "line_polygon_bbox")
 # Recognition line polygons: the sidecar's own, or rebuilt from each gold baseline by Kraken's polygonizer,
 # the step that turns detected baselines into line polygons at inference (R4a: R3b reads sidecar-shaped
 # polygons only). The polygonizer runs at the segmenter's input height, as `blla` does (1800 px); 0 runs
-# it at the page's own resolution.
-LINE_POLYGONS = ("sidecar", "kraken")
+# it at the page's own resolution. `mix` gives each line one of three geometries (R3g), so the recognizer
+# also sees crops unlike the polygonizer's: (d) sidecar polygons, and `rect`, the axis-aligned bounding box of
+# the sidecar polygon padded vertically, a stand-in for Tesseract line boxes.
+LINE_POLYGONS = ("sidecar", "kraken", "mix")
+# Mix assignment: sha256("<page_sha256>\0<line_index>"), its first 8 bytes as a big-endian integer mod 4;
+# buckets 0-1 kraken, 2 sidecar, 3 rect. A page's assignment is fixed by its image bytes, whatever the split.
+MIX_BUCKETS = ("kraken", "kraken", "sidecar", "rect")
+MIX_GEOMETRIES = ("kraken", "sidecar", "rect")
+MIX_SHARES = {name: MIX_BUCKETS.count(name) / len(MIX_BUCKETS) for name in MIX_GEOMETRIES}
+MIX_ASSIGNMENT = ("sha256('<page_sha256>\\0<line_index>'), first 8 bytes big-endian mod 4: "
+                  "0-1 kraken, 2 sidecar, 3 rect")
+# `rect` pads the polygon's bounding box by this fraction of its height above and below (at least 1 px, or
+# trims it when negative, keeping at least 2 px), clamped to the page; the width is the polygon's.
+RECT_PAD = 0.05
+RECT_PAD_RANGE = (-0.2, 0.5)
 POLYGONIZER = "kraken.lib.segmentation.calculate_polygonal_environment"
 POLYGONIZER_HEIGHT = 1800
 MAX_JSON_BYTES = 500_000_000
@@ -336,6 +349,53 @@ def kraken_line_polygons(raw: bytes, page: dict, polygonize,
     return kept, len(page["lines"]) - len(kept)
 
 
+def mix_geometry(page_sha256: str, line_index: int) -> str:
+    """The `mix` geometry of one line: kraken, sidecar or rect (MIX_ASSIGNMENT)."""
+    key = hashlib.sha256(f"{page_sha256}\0{line_index}".encode()).digest()
+    return MIX_BUCKETS[int.from_bytes(key[:8], "big") % len(MIX_BUCKETS)]
+
+
+def rect_polygon(polygon, width: int, height: int, pad: float = RECT_PAD) -> list[tuple[int, int]]:
+    """The axis-aligned bounding box of `polygon`, padded vertically by `pad` x its height (see RECT_PAD)."""
+    xs, ys = [x for x, _ in polygon], [y for _, y in polygon]
+    x0, x1, y0, y1 = min(xs), max(xs), min(ys), max(ys)
+    step = round(pad * (y1 - y0))
+    if pad > 0:
+        step = max(step, 1)
+    top, bottom = max(y0 - step, 0), min(y1 + step, height)
+    if bottom - top < 2:
+        top, bottom = y0, y1
+    return [(x0, top), (x1, top), (x1, bottom), (x0, bottom)]
+
+
+def mix_line_polygons(raw: bytes, page: dict, polygonize, height: int = POLYGONIZER_HEIGHT,
+                      pad: float = RECT_PAD) -> tuple[list[dict], int, dict[str, int]]:
+    """The page's lines, each with its `mix` geometry; the kraken lines lost; kept lines per geometry.
+
+    Kraken lines are polygonized exactly as with `kraken` (every baseline of the page as a boundary), and
+    only they can be dropped. Sidecar and rect lines never call the polygonizer.
+    """
+    chosen = {line["line_index"]: mix_geometry(page["page_sha256"], line["line_index"]) for line in page["lines"]}
+    rebuilt: dict[int, dict] = {}
+    dropped = 0
+    if "kraken" in chosen.values():
+        kept, _ = kraken_line_polygons(raw, page, polygonize, height)
+        rebuilt = {line["line_index"]: line for line in kept}
+    lines, counts = [], dict.fromkeys(MIX_GEOMETRIES, 0)
+    for line in page["lines"]:
+        geometry = chosen[line["line_index"]]
+        if geometry == "kraken":
+            if line["line_index"] not in rebuilt:
+                dropped += 1
+                continue
+            line = rebuilt[line["line_index"]]
+        elif geometry == "rect":
+            line = {**line, "polygon": rect_polygon(line["polygon"], page["width"], page["height"], pad)}
+        lines.append(line)
+        counts[geometry] += 1
+    return lines, dropped, counts
+
+
 def _canonical_sha(value) -> str:
     return digest(json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8"))
 
@@ -343,19 +403,23 @@ def _canonical_sha(value) -> str:
 def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validation_fraction: float = 0.1,
                         split_seed: int = 0, task: str = "recognition", line_polygons: str = "sidecar",
                         polygonizer_height: int = POLYGONIZER_HEIGHT, polygonizer=None,
-                        line_types: dict[str, str] | None = None) -> dict:
+                        line_types: dict[str, str] | None = None, rect_pad: float = RECT_PAD) -> dict:
     """Write pages/<sha256>.{jpg,png,xml}, train.txt, validation.txt and dataset.json into `output`.
 
     The two list files hold absolute XML paths for ketos and stay local. dataset.json is path-free.
     `task="segmentation"` types the regions and counts them per split. `line_polygons="kraken"` (recognition
-    only) rebuilds line polygons with Kraken's polygonizer (`polygonizer`, by default Kraken's own).
+    only) rebuilds line polygons with Kraken's polygonizer (`polygonizer`, by default Kraken's own);
+    `line_polygons="mix"` gives each line one geometry by MIX_ASSIGNMENT, with `rect_pad` for rect lines.
     `line_types` (segmentation only) maps region names to kraken line types, such as {"stamp_area": "stamp"};
     lines of other regions keep the `default` type.
     """
     if task not in TASKS:
         raise EngineError("Invalid training task")
     if line_polygons not in LINE_POLYGONS or (task == "segmentation" and line_polygons != "sidecar"):
-        raise EngineError("Line polygons must be sidecar or kraken, and sidecar for segmentation")
+        raise EngineError("Line polygons must be sidecar, kraken or mix, and sidecar for segmentation")
+    if (isinstance(rect_pad, bool) or not isinstance(rect_pad, (int, float)) or not math.isfinite(rect_pad)
+            or not RECT_PAD_RANGE[0] <= rect_pad <= RECT_PAD_RANGE[1]):
+        raise EngineError(f"Rect pad must be a fraction from {RECT_PAD_RANGE[0]} to {RECT_PAD_RANGE[1]}")
     if not (_is_int(polygonizer_height, 64, 20_000) or polygonizer_height == 0):
         raise EngineError("Polygonizer height must be 0 or 64-20000 pixels")
     line_types = dict(sorted((line_types or {}).items()))
@@ -363,7 +427,8 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
             REGION_TYPE.fullmatch(key) and REGION_TYPE.fullmatch(value) and value != DEFAULT_LINE_TYPE
             for key, value in line_types.items())):
         raise EngineError("Line types are for segmentation and map region names to non-default type names")
-    rebuild = line_polygons == "kraken"
+    mix = line_polygons == "mix"
+    rebuild = line_polygons in ("kraken", "mix")
     kraken_version = None
     if rebuild and polygonizer is None:
         polygonizer, kraken_version = kraken_polygonizer()
@@ -386,8 +451,11 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
         suffix = ".png" if raw.startswith(b"\x89PNG\r\n\x1a\n") else ".jpg"
         image = output / "pages" / (page["page_sha256"] + suffix)
         image.write_bytes(raw)
-        dropped = 0
-        if rebuild:
+        dropped, geometries = 0, None
+        if mix:
+            lines, dropped, geometries = mix_line_polygons(raw, page, polygonizer, polygonizer_height, rect_pad)
+            page = {**page, "lines": lines}
+        elif rebuild:
             lines, dropped = kraken_line_polygons(raw, page, polygonizer, polygonizer_height)
             page = {**page, "lines": lines}
         xml = page_xml(page, image.name, region_types=segmentation, sidecar_regions=sidecar, line_types=line_types)
@@ -406,6 +474,7 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
                                                  for line in page["lines"])}
                            if segmentation else {}),
                         **({"lines_dropped_by_polygonizer": dropped} if rebuild else {}),
+                        **({"lines_by_geometry": geometries} if mix else {}),
                         "page_xml_sha256": digest(xml)})
     for split, paths in lists.items():
         if not paths:
@@ -419,6 +488,9 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
         summary.update(task=task, region_geometry=REGION_GEOMETRIES[0 if sidecar else 1], line_type_map=line_types)
     else:
         summary["line_polygons"] = line_polygons
+    if mix:
+        summary["line_geometry"] = {"mode": "mix", "shares": MIX_SHARES, "assignment": MIX_ASSIGNMENT,
+                                    "rect": {"source": "sidecar polygon bounding box", "vertical_pad": rect_pad}}
     if rebuild:
         summary["polygonizer"] = {"function": POLYGONIZER, "kraken_version": kraken_version,
                                   "height": polygonizer_height, "topline": False, "boundaries": "other baselines",
@@ -437,6 +509,9 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
         if rebuild:
             summary[split]["lines_dropped_by_polygonizer"] = sum(entry["lines_dropped_by_polygonizer"]
                                                                  for entry in chosen)
+        if mix:
+            summary[split]["lines_by_geometry"] = {name: sum(entry["lines_by_geometry"][name] for entry in chosen)
+                                                   for name in MIX_GEOMETRIES}
         if segmentation:
             regions: dict[str, int] = {}
             for entry in chosen:
@@ -589,6 +664,23 @@ def _has_path(value) -> bool:
     return False
 
 
+def _mix_record_ok(data: dict) -> bool:
+    geometry = data["line_geometry"]
+    rect = geometry.get("rect")
+    pad = rect.get("vertical_pad") if isinstance(rect, dict) else None
+    if (geometry.get("mode") != "mix" or geometry.get("shares") != MIX_SHARES
+            or geometry.get("assignment") != MIX_ASSIGNMENT or isinstance(pad, bool)
+            or not isinstance(pad, (int, float)) or not RECT_PAD_RANGE[0] <= pad <= RECT_PAD_RANGE[1]):
+        return False
+    for split in ("train", "validation"):
+        counts = data.get(split, {}).get("lines_by_geometry") if isinstance(data.get(split), dict) else None
+        if (not isinstance(counts, dict) or set(counts) != set(MIX_GEOMETRIES)
+                or not all(_is_int(value, 0, 100_000_000) for value in counts.values())
+                or sum(counts.values()) != data[split].get("lines")):
+            return False
+    return True
+
+
 def validate_training_run(record: dict) -> list[str]:
     """Return the problems with a heocr_engine_training_run.v1 record; empty means valid."""
     problems = []
@@ -618,9 +710,15 @@ def validate_training_run(record: dict) -> list[str]:
     if task == "recognition":
         source = data.get("line_polygons", "sidecar")
         polygonizer = data.get("polygonizer")
-        if source not in LINE_POLYGONS or (source == "kraken") != isinstance(polygonizer, dict) or (
-                source == "kraken" and not _is_int(polygonizer.get("dropped_lines"), 0, 100_000_000)):
-            problems.append("data.line_polygons must be sidecar, or kraken with a polygonizer and its dropped lines")
+        rebuilt = source in ("kraken", "mix")
+        if source not in LINE_POLYGONS or rebuilt != isinstance(polygonizer, dict) or (
+                rebuilt and not _is_int(polygonizer.get("dropped_lines"), 0, 100_000_000)):
+            problems.append("data.line_polygons must be sidecar, or kraken or mix with a polygonizer and its "
+                            "dropped lines")
+        geometry = data.get("line_geometry")
+        if (source == "mix") != isinstance(geometry, dict) or (source == "mix" and not _mix_record_ok(data)):
+            problems.append("data.line_geometry must state the mix shares, assignment, rect pad and each split's "
+                            "lines by geometry, for mix only")
         order = record["text_order"]
         if (order.get("ground_truth") != "logical" or order.get("training_reorder") is not True
                 or order.get("base_dir") not in BASE_DIRS
@@ -651,7 +749,8 @@ def train_kraken(annotations: Path, manifest: Path, work: Path, ketos: Path, *, 
                  deterministic: bool = False, precision: str = "32-true", workers: int = 0, threads: int = 1,
                  validation_fraction: float = 0.1, split_seed: int = 0,
                  hyperparameters: Hyperparameters = Hyperparameters(), timeout: float = 172_800,
-                 line_polygons: str = "sidecar", polygonizer_height: int = POLYGONIZER_HEIGHT) -> dict:
+                 line_polygons: str = "sidecar", polygonizer_height: int = POLYGONIZER_HEIGHT,
+                 rect_pad: float = RECT_PAD) -> dict:
     """Prepare data, compile it, train a recognizer from scratch with local ketos, and describe the run."""
     hyperparameters.check()
     if (not DEVICE.fullmatch(device) or precision not in PRECISIONS or not _is_int(seed, 0, 2**32 - 1)
@@ -673,7 +772,8 @@ def train_kraken(annotations: Path, manifest: Path, work: Path, ketos: Path, *, 
     work.mkdir(parents=True, exist_ok=True)
     work = work.resolve()
     summary = prepare_kraken_data(annotations, manifest, work / "data", validation_fraction, split_seed,
-                                  line_polygons=line_polygons, polygonizer_height=polygonizer_height)
+                                  line_polygons=line_polygons, polygonizer_height=polygonizer_height,
+                                  rect_pad=rect_pad)
     global_args = ["--workers", str(workers), "--threads", str(threads)]
     commands = {f"compile_{split}": [str(ketos), *global_args, "compile", "-f", "page",
                                      "-o", str(work / f"{split}.arrow"), "-F", str(work / "data" / f"{split}.txt")]
