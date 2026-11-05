@@ -11,14 +11,17 @@ import unittest
 from unittest.mock import patch
 import xml.etree.ElementTree as ET
 
+from PIL import Image
+
 sys.path.insert(0, str(Path(__file__).parent / 'fixtures'))
 from line_annotations_fixture import SAMPLES, build_batch, write_fake_ketos  # noqa: E402
 
 from heocr_engine.cli import EngineError, main  # noqa: E402
 from heocr_engine.kraken import KrakenRecognizer  # noqa: E402
-from heocr_engine.training import (BASE_DIR, Hyperparameters, PAGE_NS, POLYGONIZER_HEIGHT,  # noqa: E402
-                                   TRAINING_SCHEMA_ID, assign_splits, load_annotated_pages, prepare_kraken_data,
-                                   safetensors_kraken_metadata, train_kraken, validate_training_run)
+from heocr_engine.training import (BASE_DIR, Hyperparameters, MIX_ASSIGNMENT, MIX_GEOMETRIES,  # noqa: E402
+                                   MIX_SHARES, PAGE_NS, POLYGONIZER_HEIGHT, RECT_PAD, TRAINING_SCHEMA_ID,
+                                   assign_splits, load_annotated_pages, mix_geometry, prepare_kraken_data,
+                                   rect_polygon, safetensors_kraken_metadata, train_kraken, validate_training_run)
 
 HAS_KRAKEN = importlib.util.find_spec('kraken') is not None
 NS = {'p': PAGE_NS}
@@ -308,6 +311,138 @@ class BidiRoundTripTests(unittest.TestCase):
         self.assertNotEqual(infer(SAMPLES[0][1][0][0]), SAMPLES[0][1][0][0])
 
 
+class MixGeometryTests(LinePolygonTests):
+    def prepare(self, name, **options):
+        options = {'validation_fraction': 0.25, 'line_polygons': 'mix', 'polygonizer': FakePolygonizer(), **options}
+        return prepare_kraken_data(self.annotations, self.manifest, self.root / name, **options)
+
+    def source_lines(self):
+        return {(page['page_sha256'], f"l{line['line_index']}"): (page, line)
+                for page in json.loads(self.annotations.read_text(encoding='utf-8'))['pages']
+                for line in page['lines']}
+
+    def test_assignment_is_a_deterministic_hash_of_page_sha_and_line_index(self):
+        sha = 'ab' * 32
+        key = hashlib.sha256(f'{sha}\0{7}'.encode()).digest()
+        self.assertEqual(mix_geometry(sha, 7), ('kraken', 'kraken', 'sidecar', 'rect')[int.from_bytes(key[:8], 'big') % 4])
+        self.assertEqual([mix_geometry(sha, n) for n in range(50)], [mix_geometry(sha, n) for n in range(50)])
+        first, second = self.prepare('a'), self.prepare('b')
+        self.assertEqual(first, second)
+        for path in (self.root / 'a' / 'pages').glob('*.xml'):
+            self.assertEqual(path.read_bytes(), (self.root / 'b' / 'pages' / path.name).read_bytes())
+        dataset = json.loads((self.root / 'a' / 'dataset.json').read_text(encoding='utf-8'))
+        source = {page['page_sha256']: page for page in json.loads(self.annotations.read_text(encoding='utf-8'))['pages']}
+        for entry in dataset['pages']:
+            expected = dict.fromkeys(MIX_GEOMETRIES, 0)
+            for line in source[entry['page_sha256']]['lines']:
+                expected[mix_geometry(entry['page_sha256'], line['line_index'])] += 1
+            self.assertEqual(entry['lines_by_geometry'], expected)
+
+    def test_shares_are_within_tolerance(self):
+        self.assertEqual(MIX_SHARES, {'kraken': 0.5, 'sidecar': 0.25, 'rect': 0.25})
+        counts = dict.fromkeys(MIX_GEOMETRIES, 0)
+        for page in range(400):
+            sha = hashlib.sha256(f'page {page}'.encode()).hexdigest()
+            for line in range(25):
+                counts[mix_geometry(sha, line)] += 1
+        for name, share in MIX_SHARES.items():
+            self.assertAlmostEqual(counts[name] / 10_000, share, delta=0.02)
+        summary = self.prepare('data')
+        total = sum(summary[split]['lines_by_geometry'][name] for split in ('train', 'validation')
+                    for name in MIX_GEOMETRIES)
+        self.assertEqual(total, sum(len(lines) for _, lines in SAMPLES))
+
+    def test_rect_geometry(self):
+        polygon = [(10, 40), (90, 44), (88, 60), (12, 58)]
+        self.assertEqual(rect_polygon(polygon, 240, 160, 0.25), [(10, 35), (90, 35), (90, 65), (10, 65)])
+        self.assertEqual(rect_polygon(polygon, 240, 160, 0.01), [(10, 39), (90, 39), (90, 61), (10, 61)])
+        self.assertEqual(rect_polygon(polygon, 240, 160, -0.1), [(10, 42), (90, 42), (90, 58), (10, 58)])
+        self.assertEqual(rect_polygon(polygon, 240, 50, 0.5), [(10, 30), (90, 30), (90, 50), (10, 50)])
+        self.assertEqual(rect_polygon([(0, 5), (9, 5), (9, 6)], 20, 20, -0.2), [(0, 5), (9, 5), (9, 6), (0, 6)])
+        # Every written line has its mix geometry: kraken from the polygonizer, sidecar as is, rect padded.
+        self.prepare('data', rect_pad=0.2)
+        written, seen = self.lines_in(self.root / 'data'), set()
+        boxes = FakePolygonizer()
+        for (sha, line_id), (page, line) in self.source_lines().items():
+            geometry = mix_geometry(sha, line['line_index'])
+            seen.add(geometry)
+            points = [tuple(point) for point in written[sha, line_id]]
+            if geometry == 'sidecar':
+                self.assertEqual(points, [tuple(point) for point in line['polygon']])
+            elif geometry == 'rect':
+                self.assertEqual(points, rect_polygon(line['polygon'], page['width'], page['height'], 0.2))
+            else:
+                box = boxes(Image.new('L', (1, 1)), [other['baseline'] for other in page['lines']])[line['line_index']]
+                clamp = [(min(max(x, 0), page['width']), min(max(y, 0), page['height'])) for x, y in box]
+                self.assertEqual(points, clamp)
+        self.assertEqual(seen, set(MIX_GEOMETRIES))
+
+    def test_split_stays_per_sample_and_validation_uses_the_mix(self):
+        for seed in (0, 1, 2):
+            with self.subTest(split_seed=seed):
+                summary = self.prepare(f'seed{seed}', split_seed=seed)
+                dataset = json.loads((self.root / f'seed{seed}' / 'dataset.json').read_text(encoding='utf-8'))
+                sides = {}
+                for entry in dataset['pages']:
+                    sides.setdefault(entry['sample_id'], set()).add(entry['split'])
+                    sides.setdefault(entry['page_sha256'], set()).add(entry['split'])
+                self.assertTrue(all(len(value) == 1 for value in sides.values()))
+                for split in ('train', 'validation'):
+                    counts = summary[split]['lines_by_geometry']
+                    self.assertEqual(sum(counts.values()), summary[split]['lines'])
+                    self.assertEqual(counts, {name: sum(entry['lines_by_geometry'][name] for entry in dataset['pages']
+                                                        if entry['split'] == split) for name in MIX_GEOMETRIES})
+                # A line's geometry depends on its page and index only, never on its split.
+                for (sha, line_id), (page, line) in self.source_lines().items():
+                    self.assertIn((sha, line_id), self.lines_in(self.root / f'seed{seed}'))
+        self.assertEqual(summary['line_polygons'], 'mix')
+        self.assertEqual(summary['line_geometry'], {'mode': 'mix', 'shares': MIX_SHARES, 'assignment': MIX_ASSIGNMENT,
+                                                    'rect': {'source': 'sidecar polygon bounding box',
+                                                             'vertical_pad': RECT_PAD}})
+
+    def test_only_kraken_lines_are_dropped(self):
+        pages = sorted(json.loads(self.annotations.read_text(encoding='utf-8'))['pages'], key=lambda p: p['sample_id'])
+        # The polygonizer is called once per page with a kraken line, in page order.
+        called = [page for page in pages
+                  if any(mix_geometry(page['page_sha256'], line['line_index']) == 'kraken' for line in page['lines'])]
+        lines = [(n, line, mix_geometry(page['page_sha256'], line['line_index']))
+                 for n, page in enumerate(called) for line in page['lines']]
+        kraken = [(n, line['line_index']) for n, line, geometry in lines if geometry == 'kraken']
+        others = [(n, line['line_index']) for n, line, geometry in lines if geometry != 'kraken']
+        self.assertTrue(kraken and others)
+
+        def failing(targets):
+            calls = []
+
+            def polygonize(image, baselines, scale=None):
+                calls.append(True)
+                boxes = FakePolygonizer()(image, baselines, scale)
+                return [None if (len(calls) - 1, index) in targets else box for index, box in enumerate(boxes)]
+            return polygonize
+        total = sum(len(page['lines']) for page in pages)
+        summary = self.prepare('k', polygonizer=failing({kraken[0]}))
+        self.assertEqual(summary['polygonizer']['dropped_lines'], 1)
+        self.assertEqual(summary['train']['lines'] + summary['validation']['lines'], total - 1)
+        # Sidecar and rect lines keep their geometry even where the polygonizer fails on them.
+        summary = self.prepare('o', polygonizer=failing(set(others)))
+        self.assertEqual(summary['polygonizer']['dropped_lines'], 0)
+        self.assertEqual(summary['train']['lines'] + summary['validation']['lines'], total)
+
+    def test_bad_mode_or_pad_fails_closed(self):
+        for options in ({'line_polygons': 'mixed'}, {'line_polygons': 'mix', 'task': 'segmentation'},
+                        {'rect_pad': 0.6}, {'rect_pad': -0.3}, {'rect_pad': float('nan')}, {'rect_pad': True},
+                        {'rect_pad': '0.1'}):
+            with self.subTest(options=options), self.assertRaises(EngineError):
+                self.prepare('x', **options)
+            self.assertFalse((self.root / 'x').exists())
+        blocked = dict.fromkeys(('kraken', 'kraken.lib', 'kraken.lib.segmentation'))
+        with patch.dict(sys.modules, blocked), self.assertRaisesRegex(EngineError, 'kraken installed'):
+            self.prepare('y', polygonizer=None)
+        with patch('sys.stderr', io.StringIO()):
+            self.assertEqual(main(['prepare-kraken-data', str(self.annotations), str(self.manifest),
+                                   str(self.root / 'z'), '--line-polygons', 'mix', '--rect-pad', '0.9']), 1)
+
+
 class TrainKrakenTests(TrainingTestCase):
     def setUp(self):
         super().setUp()
@@ -383,6 +518,27 @@ class TrainKrakenTests(TrainingTestCase):
                 bad = {**record, 'data': {**record['data'], **broken}}
                 if broken.get('polygonizer') is None and 'polygonizer' in broken:
                     bad['data'].pop('polygonizer')
+                self.assertTrue(validate_training_run(bad))
+
+    def test_mix_line_geometry_is_recorded(self):
+        with patch('heocr_engine.training.kraken_polygonizer', return_value=(FakePolygonizer(), '7.0.2')):
+            record = self.train(line_polygons='mix', rect_pad=-0.1)
+        self.assertEqual(validate_training_run(record), [])
+        data = record['data']
+        self.assertEqual((data['line_polygons'], data['line_geometry']['rect']['vertical_pad']), ('mix', -0.1))
+        self.assertEqual(data['polygonizer']['dropped_lines'], 0)
+        for split in ('train', 'validation'):
+            self.assertEqual(sum(data[split]['lines_by_geometry'].values()), data[split]['lines'])
+        uneven = {**data['train'], 'lines_by_geometry': {**data['train']['lines_by_geometry'], 'rect': 10**6}}
+        for broken in ({'line_geometry': None}, {'line_geometry': {**data['line_geometry'], 'shares': {'kraken': 1.0}}},
+                       {'line_geometry': {**data['line_geometry'], 'assignment': 'random'}},
+                       {'line_geometry': {**data['line_geometry'], 'rect': {'vertical_pad': 2}}},
+                       {'train': uneven}, {'line_polygons': 'kraken'}, {'polygonizer': None}):
+            with self.subTest(broken=broken):
+                bad = {**record, 'data': {**data, **broken}}
+                for key in ('line_geometry', 'polygonizer'):
+                    if key in broken and broken[key] is None:
+                        bad['data'].pop(key)
                 self.assertTrue(validate_training_run(bad))
 
     def test_prepare_cli(self):
