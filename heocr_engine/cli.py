@@ -289,7 +289,7 @@ def _split_args(parser: argparse.ArgumentParser) -> None:
 
 
 def _line_polygon_args(parser: argparse.ArgumentParser) -> None:
-    from heocr_engine.training import LINE_POLYGONS, POLYGONIZER_HEIGHT, RECT_PAD
+    from heocr_engine.training import LINE_POLYGONS, MIX_BUCKETS, POLYGONIZER_HEIGHT, RECT_PAD
 
     parser.add_argument("--line-polygons", choices=LINE_POLYGONS, default="sidecar",
                         help="Recognition line polygons: the sidecar's (default); rebuilt from the gold "
@@ -302,6 +302,10 @@ def _line_polygon_args(parser: argparse.ArgumentParser) -> None:
     parser.add_argument("--rect-pad", type=float, default=RECT_PAD,
                         help=f"mix: vertical pad of rect lines, as a fraction of the box height above and below "
                              f"(default {RECT_PAD}; negative trims; -0.2 to 0.5)")
+    parser.add_argument("--mix-buckets", type=lambda value: tuple(value.split(",")), default=MIX_BUCKETS,
+                        help=f"mix: comma list of 1-16 geometries (kraken, sidecar, rect; kraken required); a line "
+                             f"takes the bucket its hash selects, mod the list's length (default "
+                             f"{','.join(MIX_BUCKETS)})")
 
 
 def _line_type(value: str) -> tuple[str, str]:
@@ -339,7 +343,8 @@ def _prepare_kraken_data_main(argv: list[str]) -> int:
     summary = prepare_kraken_data(args.annotations, args.manifest, args.output, args.validation_fraction,
                                   args.split_seed, task=args.task, line_polygons=args.line_polygons,
                                   polygonizer_height=args.polygonizer_height,
-                                  line_types=_line_type_map(args.line_type), rect_pad=args.rect_pad)
+                                  line_types=_line_type_map(args.line_type), rect_pad=args.rect_pad,
+                                  mix_buckets=args.mix_buckets)
     json.dump(summary, sys.stdout, ensure_ascii=False, indent=2)
     sys.stdout.write("\n")
     return 0
@@ -392,7 +397,7 @@ def _train_kraken_main(argv: list[str]) -> int:
                           threads=args.threads, validation_fraction=args.validation_fraction,
                           split_seed=args.split_seed, hyperparameters=hyperparameters, timeout=args.timeout,
                           line_polygons=args.line_polygons, polygonizer_height=args.polygonizer_height,
-                          rect_pad=args.rect_pad)
+                          rect_pad=args.rect_pad, mix_buckets=args.mix_buckets)
     write_prediction(record, args.record)
     return 0
 

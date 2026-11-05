@@ -50,13 +50,43 @@ REGION_GEOMETRIES = ("sidecar", "line_polygon_bbox")
 # also sees crops unlike the polygonizer's: (d) sidecar polygons, and `rect`, the axis-aligned bounding box of
 # the sidecar polygon padded vertically, a stand-in for Tesseract line boxes.
 LINE_POLYGONS = ("sidecar", "kraken", "mix")
-# Mix assignment: sha256("<page_sha256>\0<line_index>"), its first 8 bytes as a big-endian integer mod 4;
-# buckets 0-1 kraken, 2 sidecar, 3 rect. A page's assignment is fixed by its image bytes, whatever the split.
+# Mix assignment: sha256("<page_sha256>\0<line_index>"), its first 8 bytes as a big-endian integer mod N, the
+# number of buckets; the line takes that bucket's geometry. The default buckets (R3g) are 0-1 kraken, 2 sidecar,
+# 3 rect; `--mix-buckets` changes the list (R3h: 3/4 kraken). A page's assignment is fixed by its image bytes,
+# whatever the split.
 MIX_BUCKETS = ("kraken", "kraken", "sidecar", "rect")
 MIX_GEOMETRIES = ("kraken", "sidecar", "rect")
-MIX_SHARES = {name: MIX_BUCKETS.count(name) / len(MIX_BUCKETS) for name in MIX_GEOMETRIES}
-MIX_ASSIGNMENT = ("sha256('<page_sha256>\\0<line_index>'), first 8 bytes big-endian mod 4: "
-                  "0-1 kraken, 2 sidecar, 3 rect")
+MAX_MIX_BUCKETS = 16
+
+
+def check_mix_buckets(buckets) -> tuple[str, ...]:
+    """The bucket list as a tuple: 1-16 geometry names, kraken among them; anything else fails closed."""
+    if (not isinstance(buckets, (list, tuple)) or not 1 <= len(buckets) <= MAX_MIX_BUCKETS
+            or not all(isinstance(name, str) and name in MIX_GEOMETRIES for name in buckets)
+            or "kraken" not in buckets):
+        raise EngineError(f"Mix buckets must be 1-{MAX_MIX_BUCKETS} of {', '.join(MIX_GEOMETRIES)}, "
+                          "including kraken")
+    return tuple(buckets)
+
+
+def mix_shares(buckets=MIX_BUCKETS) -> dict[str, float]:
+    return {name: buckets.count(name) / len(buckets) for name in MIX_GEOMETRIES}
+
+
+def mix_assignment(buckets=MIX_BUCKETS) -> str:
+    """MIX_ASSIGNMENT for a bucket list, with runs of one geometry joined (0-1 kraken)."""
+    runs: list[list] = []
+    for index, name in enumerate(buckets):
+        if runs and runs[-1][2] == name:
+            runs[-1][1] = index
+        else:
+            runs.append([index, index, name])
+    parts = ", ".join(f"{a}-{b} {name}" if a != b else f"{a} {name}" for a, b, name in runs)
+    return f"sha256('<page_sha256>\\0<line_index>'), first 8 bytes big-endian mod {len(buckets)}: {parts}"
+
+
+MIX_SHARES = mix_shares()
+MIX_ASSIGNMENT = mix_assignment()
 # `rect` pads the polygon's bounding box by this fraction of its height above and below (at least 1 px, or
 # trims it when negative, keeping at least 2 px), clamped to the page; the width is the polygon's.
 RECT_PAD = 0.05
@@ -349,10 +379,10 @@ def kraken_line_polygons(raw: bytes, page: dict, polygonize,
     return kept, len(page["lines"]) - len(kept)
 
 
-def mix_geometry(page_sha256: str, line_index: int) -> str:
-    """The `mix` geometry of one line: kraken, sidecar or rect (MIX_ASSIGNMENT)."""
+def mix_geometry(page_sha256: str, line_index: int, buckets=MIX_BUCKETS) -> str:
+    """The `mix` geometry of one line: kraken, sidecar or rect (MIX_ASSIGNMENT, mod len(buckets))."""
     key = hashlib.sha256(f"{page_sha256}\0{line_index}".encode()).digest()
-    return MIX_BUCKETS[int.from_bytes(key[:8], "big") % len(MIX_BUCKETS)]
+    return buckets[int.from_bytes(key[:8], "big") % len(buckets)]
 
 
 def rect_polygon(polygon, width: int, height: int, pad: float = RECT_PAD) -> list[tuple[int, int]]:
@@ -369,13 +399,14 @@ def rect_polygon(polygon, width: int, height: int, pad: float = RECT_PAD) -> lis
 
 
 def mix_line_polygons(raw: bytes, page: dict, polygonize, height: int = POLYGONIZER_HEIGHT,
-                      pad: float = RECT_PAD) -> tuple[list[dict], int, dict[str, int]]:
+                      pad: float = RECT_PAD, buckets=MIX_BUCKETS) -> tuple[list[dict], int, dict[str, int]]:
     """The page's lines, each with its `mix` geometry; the kraken lines lost; kept lines per geometry.
 
     Kraken lines are polygonized exactly as with `kraken` (every baseline of the page as a boundary), and
     only they can be dropped. Sidecar and rect lines never call the polygonizer.
     """
-    chosen = {line["line_index"]: mix_geometry(page["page_sha256"], line["line_index"]) for line in page["lines"]}
+    chosen = {line["line_index"]: mix_geometry(page["page_sha256"], line["line_index"], buckets)
+              for line in page["lines"]}
     rebuilt: dict[int, dict] = {}
     dropped = 0
     if "kraken" in chosen.values():
@@ -403,13 +434,15 @@ def _canonical_sha(value) -> str:
 def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validation_fraction: float = 0.1,
                         split_seed: int = 0, task: str = "recognition", line_polygons: str = "sidecar",
                         polygonizer_height: int = POLYGONIZER_HEIGHT, polygonizer=None,
-                        line_types: dict[str, str] | None = None, rect_pad: float = RECT_PAD) -> dict:
+                        line_types: dict[str, str] | None = None, rect_pad: float = RECT_PAD,
+                        mix_buckets=MIX_BUCKETS) -> dict:
     """Write pages/<sha256>.{jpg,png,xml}, train.txt, validation.txt and dataset.json into `output`.
 
     The two list files hold absolute XML paths for ketos and stay local. dataset.json is path-free.
     `task="segmentation"` types the regions and counts them per split. `line_polygons="kraken"` (recognition
     only) rebuilds line polygons with Kraken's polygonizer (`polygonizer`, by default Kraken's own);
-    `line_polygons="mix"` gives each line one geometry by MIX_ASSIGNMENT, with `rect_pad` for rect lines.
+    `line_polygons="mix"` gives each line one geometry by MIX_ASSIGNMENT over `mix_buckets`, with `rect_pad` for
+    rect lines.
     `line_types` (segmentation only) maps region names to kraken line types, such as {"stamp_area": "stamp"};
     lines of other regions keep the `default` type.
     """
@@ -420,6 +453,9 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
     if (isinstance(rect_pad, bool) or not isinstance(rect_pad, (int, float)) or not math.isfinite(rect_pad)
             or not RECT_PAD_RANGE[0] <= rect_pad <= RECT_PAD_RANGE[1]):
         raise EngineError(f"Rect pad must be a fraction from {RECT_PAD_RANGE[0]} to {RECT_PAD_RANGE[1]}")
+    mix_buckets = check_mix_buckets(mix_buckets)
+    if line_polygons != "mix" and mix_buckets != MIX_BUCKETS:
+        raise EngineError("Mix buckets are for --line-polygons mix")
     if not (_is_int(polygonizer_height, 64, 20_000) or polygonizer_height == 0):
         raise EngineError("Polygonizer height must be 0 or 64-20000 pixels")
     line_types = dict(sorted((line_types or {}).items()))
@@ -453,7 +489,8 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
         image.write_bytes(raw)
         dropped, geometries = 0, None
         if mix:
-            lines, dropped, geometries = mix_line_polygons(raw, page, polygonizer, polygonizer_height, rect_pad)
+            lines, dropped, geometries = mix_line_polygons(raw, page, polygonizer, polygonizer_height, rect_pad,
+                                                           mix_buckets)
             page = {**page, "lines": lines}
         elif rebuild:
             lines, dropped = kraken_line_polygons(raw, page, polygonizer, polygonizer_height)
@@ -489,7 +526,8 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
     else:
         summary["line_polygons"] = line_polygons
     if mix:
-        summary["line_geometry"] = {"mode": "mix", "shares": MIX_SHARES, "assignment": MIX_ASSIGNMENT,
+        summary["line_geometry"] = {"mode": "mix", "buckets": list(mix_buckets), "shares": mix_shares(mix_buckets),
+                                    "assignment": mix_assignment(mix_buckets),
                                     "rect": {"source": "sidecar polygon bounding box", "vertical_pad": rect_pad}}
     if rebuild:
         summary["polygonizer"] = {"function": POLYGONIZER, "kraken_version": kraken_version,
@@ -668,8 +706,13 @@ def _mix_record_ok(data: dict) -> bool:
     geometry = data["line_geometry"]
     rect = geometry.get("rect")
     pad = rect.get("vertical_pad") if isinstance(rect, dict) else None
-    if (geometry.get("mode") != "mix" or geometry.get("shares") != MIX_SHARES
-            or geometry.get("assignment") != MIX_ASSIGNMENT or isinstance(pad, bool)
+    # Records made before `buckets` existed (R3g) used the default list.
+    try:
+        buckets = check_mix_buckets(geometry.get("buckets", list(MIX_BUCKETS)))
+    except EngineError:
+        return False
+    if (geometry.get("mode") != "mix" or geometry.get("shares") != mix_shares(buckets)
+            or geometry.get("assignment") != mix_assignment(buckets) or isinstance(pad, bool)
             or not isinstance(pad, (int, float)) or not RECT_PAD_RANGE[0] <= pad <= RECT_PAD_RANGE[1]):
         return False
     for split in ("train", "validation"):
@@ -750,7 +793,7 @@ def train_kraken(annotations: Path, manifest: Path, work: Path, ketos: Path, *, 
                  validation_fraction: float = 0.1, split_seed: int = 0,
                  hyperparameters: Hyperparameters = Hyperparameters(), timeout: float = 172_800,
                  line_polygons: str = "sidecar", polygonizer_height: int = POLYGONIZER_HEIGHT,
-                 rect_pad: float = RECT_PAD) -> dict:
+                 rect_pad: float = RECT_PAD, mix_buckets=MIX_BUCKETS) -> dict:
     """Prepare data, compile it, train a recognizer from scratch with local ketos, and describe the run."""
     hyperparameters.check()
     if (not DEVICE.fullmatch(device) or precision not in PRECISIONS or not _is_int(seed, 0, 2**32 - 1)
@@ -773,7 +816,7 @@ def train_kraken(annotations: Path, manifest: Path, work: Path, ketos: Path, *, 
     work = work.resolve()
     summary = prepare_kraken_data(annotations, manifest, work / "data", validation_fraction, split_seed,
                                   line_polygons=line_polygons, polygonizer_height=polygonizer_height,
-                                  rect_pad=rect_pad)
+                                  rect_pad=rect_pad, mix_buckets=mix_buckets)
     global_args = ["--workers", str(workers), "--threads", str(threads)]
     commands = {f"compile_{split}": [str(ketos), *global_args, "compile", "-f", "page",
                                      "-o", str(work / f"{split}.arrow"), "-F", str(work / "data" / f"{split}.txt")]
