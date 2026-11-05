@@ -1562,3 +1562,61 @@ Limits:
 - Gold that uses ASCII `"` and `'` (seed-101, held-out, eval-mixed-heldout, eval-layout-heldout) counts a typographically correct `״` or `׳` as an error.
 - The hocrgen fixture is a development set for reading order, and its gain here is mostly one character (`—`).
 - Predictions, line files and reports stay local.
+
+### R3f second seed (s7202) (2026-11-05)
+
+The second R3f run reuses R3f's recipe, corpus and engine exactly. Only the training batch seed changes, from 7201 to 7202; the training seed is again 42. Its local run name keeps the working label: `run_r3e_s7202`. No page of the s7202 batch matches seed-101, held-out, the hocrgen fixture, eval-mixed-heldout, eval-layout-heldout or eval-typo-heldout, by page image sha256 or by page text.
+
+**Training:**
+- **Stopping:** early stopping after 9 epochs. The best epoch is 5 (0-based), with val_accuracy 0.9959 on its own validation split.
+- **Split:** train 2,850 pages / 47,705 lines, validation 150 pages / 2,645 lines; every template is in both.
+- **Lines:** the polygonizer drops 2 lines, both in the training split.
+- **Pause:** the run was paused (SIGSTOP) from 13:15 to 21:46 IST on 2026-11-04 because the laptop was on battery, then resumed. The record validates.
+
+**`primary.v1` CER, R3d, R3f s7201 and R3f s7202.** These are the same line sources and pipeline as the R3f rows above. Intervals are 95% paired page bootstrap intervals (2,000 resamples, seed 0) on the change in pooled CER. Pages are improved / unchanged / worsened.
+
+| Batch, lines | R3d | R3f s7201 | R3f s7202 | s7202 against R3d | s7202 against s7201 |
+|---|---|---|---|---|---|
+| seed-101, (d) | **0.028** | 0.054 | 0.048 | 14 / 19 / 47 [+0.012, +0.029] | 33 / 15 / 32 [−0.012, +0.000] |
+| held-out, (d) | **0.024** | 0.064 | 0.053 | 16 / 14 / 50 [+0.018, +0.042] | 38 / 9 / 33 [−0.021, −0.003] |
+| seed-101, Tesseract lines | **0.194** | 0.216 | 0.226 | 15 / 7 / 58 [+0.022, +0.040] | 32 / 3 / 45 [+0.003, +0.017] |
+| held-out, Tesseract lines | **0.196** | 0.248 | 0.256 | 15 / 5 / 60 [+0.041, +0.083] | 39 / 11 / 30 [−0.002, +0.021] |
+| seed-101, R4d + A1 | **0.019** | 0.018 | 0.023 | 25 / 23 / 32 [+0.001, +0.006] | 19 / 25 / 36 [+0.002, +0.007] |
+| held-out, R4d + A1 | **0.009** | 0.010 | 0.011 | 21 / 35 / 24 [−0.002, +0.006] | 21 / 40 / 19 [−0.002, +0.004] |
+| hocrgen fixture (development set), R4d + A1 | 0.146 | 0.130 | **0.128** | 93 / 1 / 6 [−0.022, −0.015] | 39 / 31 / 30 [−0.004, +0.000] |
+| eval-mixed-heldout, R4d + A1 | **0.016** | 0.021 | **0.016** | 28 / 30 / 22 [−0.003, +0.002] | 32 / 32 / 16 [−0.010, −0.002] |
+
+**Replicated in both seeds (a recipe effect):**
+- **Line crops unlike the training geometry regress.**
+  - (d): both seeds regress, again almost all on `printed_letter_heavy_scan`. s7202 goes 0.043 → 0.102 on seed-101 and 0.038 → 0.120 on held-out.
+  - Tesseract lines: both seeds regress on every template.
+- **The fixture gain holds.** It is again mostly the em dash: s7202 writes 312 `—`, where s7201 wrote 317 and R3d none. The fixture remains a development set.
+
+**Seed variance (not replicated):**
+- **The eval-mixed-heldout loss.** s7202 is level with R3d (0.016 → 0.016, interval includes zero), where s7201 lost 0.016 → 0.021.
+- **`handwritten_note_heavy_wear`** goes 0.025 → 0.028, where s7201 went to 0.041.
+
+**s7202 only (unreplicated):**
+- **Seed-101 with R4d + A1** dips 0.019 → 0.023, mostly on `printed_letter` (0.021 → 0.031).
+- **s7201 was level with R3d there** (0.019 → 0.018). One seed shows it and the other does not, so it is not attributed to the recipe.
+
+**Decision (maintainer's lead, 2026-11-05):**
+- R3d stays the default and reported recognizer. R3f stays a typographic-punctuation candidate.
+- The reason, corrected after the second seed: R3f's regression on degraded crops and on line geometry outside its training (d, Tesseract lines) is a recipe effect, seen in both seeds. The eval-mixed-heldout loss was seed variance.
+
+**Run identities (R3f s7202):**
+
+| Part | Identity |
+|---|---|
+| Training batch | hocrsyngen `88ba5e6` (`s11b-ledger-fit-v1`), Pillow 13.0.0 with raqm, 3,000 pages, seed 7202. The seven templates round robin, 428–429 pages each. Corpus `7c2a62b83d3be29ab796c30b3e3272576c1f7e9c4302f7003fc6829f97984573`, as for s7201. Manifest `7853eb5ae46e54e7e33ef3fb83bd01eb450f1b3253f6e992f554bce1b1d867a3`, line annotations `b07a11f29227c212dce8f2003b7347f73ce74114062bb2cc194db43274787686`. Validates; quality check passes (50,352 lines) |
+| Training | heocr-engine `660e5a4` `train-kraken`, the s7201 command with the s7202 batch: Kraken 7.0.2, mps, seed 42, not deterministic. Record `run_r3e_s7202.record.json` (validates) |
+| Model | `best_0.9959.safetensors`, sha256 `88f60b38348514a9a2d4e1bba2af8412b5488bd0a1c4813f8577b82181e20406`, 16,167,536 bytes. Licence `Needs verification`, unpublished |
+| Scoring | As for the s7201 rows: heocr-engine `660e5a4`; hocrgen `2d3efb0` for seed-101 and held-out, `c8fb74e` for the fixture and eval-mixed-heldout; R4d `d32cd1a8…`, A1 `69aa1946…` with `--reading-order-classes region`. The record is validated and the model sha checked before scoring. The polygonizer reports "failed on line 0" 4 times over the four R4d batches, as for s7201 |
+| Prediction sets, seed-101 | (d) `0f230fa5f3d9dea2…`, Tesseract lines `58b6d8c878016411…`, R4d + A1 `849d5898a4669bb5…` |
+| Prediction sets, held-out | (d) `c772310bfe7d6448…`, Tesseract lines `1adbed947f5f3a25…`, R4d + A1 `fd4227e7615f8008…` |
+| Prediction sets, mixed batches (R4d + A1) | hocrgen fixture `c6adabfaf135e828…`, eval-mixed-heldout `0528f762a4a58eb7…` |
+
+Limits:
+- Two seeds of one recipe, each one non-deterministic run on `mps`, is still a small sample of training-run variation.
+- s7202 was not scored on eval-typo-heldout, eval-layout-heldout, or with `blla` or (e) lines.
+- Predictions, line files and reports stay local.
