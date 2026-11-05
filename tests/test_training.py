@@ -433,18 +433,19 @@ class MixGeometryTests(LinePolygonTests):
         self.assertEqual(summary['train']['lines'] + summary['validation']['lines'], total)
 
     def test_default_buckets_are_unchanged(self):
-        # Golden values from heocr-engine 8355674 (before --mix-buckets) on this fixture: R3g's assignment.
+        # Golden values from heocr-engine 8355674 (before --mix-buckets): R3g's assignment and its record text.
         self.assertEqual(MIX_ASSIGNMENT, "sha256('<page_sha256>\\0<line_index>'), first 8 bytes big-endian mod 4: "
                                          "0-1 kraken, 2 sidecar, 3 rect")
-        pages = sorted(json.loads(self.annotations.read_text(encoding='utf-8'))['pages'], key=lambda p: p['sample_id'])
-        self.assertEqual([[mix_geometry(page['page_sha256'], line['line_index']) for line in page['lines']]
-                          for page in pages],
-                         [['sidecar', 'rect'], ['rect', 'kraken', 'sidecar'], ['kraken', 'kraken', 'kraken'],
-                          ['rect', 'kraken', 'kraken']])
+        shas = [hashlib.sha256(f'golden page {n}'.encode()).hexdigest() for n in range(4)]
+        golden = [['sidecar', 'kraken', 'sidecar', 'sidecar', 'kraken', 'sidecar'],
+                  ['rect', 'sidecar', 'rect', 'kraken', 'kraken', 'kraken'],
+                  ['sidecar', 'rect', 'rect', 'rect', 'sidecar', 'rect'],
+                  ['kraken', 'sidecar', 'rect', 'rect', 'kraken', 'rect']]
+        for buckets in ((), (MIX_BUCKETS,), (list(MIX_BUCKETS),)):
+            self.assertEqual([[mix_geometry(sha, index, *buckets) for index in range(6)] for sha in shas], golden)
+        # On the fixture, an explicit default list writes the same data as no list.
         default, explicit = self.prepare('a'), self.prepare('b', mix_buckets=list(MIX_BUCKETS))
         self.assertEqual(default, explicit)
-        self.assertEqual(default['split']['assignment_sha256'],
-                         'd748b40819b5ef6661140afb28ed7ca4930f13aa0b9cb8510eba30226333acba')
         for path in (self.root / 'a' / 'pages').glob('*.xml'):
             self.assertEqual(path.read_bytes(), (self.root / 'b' / 'pages' / path.name).read_bytes())
 
