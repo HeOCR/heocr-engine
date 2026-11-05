@@ -18,10 +18,13 @@ from line_annotations_fixture import SAMPLES, build_batch, write_fake_ketos  # n
 
 from heocr_engine.cli import EngineError, main  # noqa: E402
 from heocr_engine.kraken import KrakenRecognizer  # noqa: E402
-from heocr_engine.training import (BASE_DIR, Hyperparameters, MIX_ASSIGNMENT, MIX_GEOMETRIES,  # noqa: E402
-                                   MIX_SHARES, PAGE_NS, POLYGONIZER_HEIGHT, RECT_PAD, TRAINING_SCHEMA_ID,
-                                   assign_splits, load_annotated_pages, mix_geometry, prepare_kraken_data,
-                                   rect_polygon, safetensors_kraken_metadata, train_kraken, validate_training_run)
+from heocr_engine.training import (BASE_DIR, Hyperparameters, MIX_ASSIGNMENT, MIX_BUCKETS,  # noqa: E402
+                                   MIX_GEOMETRIES, MIX_SHARES, PAGE_NS, POLYGONIZER_HEIGHT, RECT_PAD,
+                                   TRAINING_SCHEMA_ID, assign_splits, load_annotated_pages, mix_assignment,
+                                   mix_geometry, mix_shares, prepare_kraken_data, rect_polygon,
+                                   safetensors_kraken_metadata, train_kraken, validate_training_run)
+
+R3H_BUCKETS = ('kraken',) * 6 + ('sidecar', 'rect')
 
 HAS_KRAKEN = importlib.util.find_spec('kraken') is not None
 NS = {'p': PAGE_NS}
@@ -396,7 +399,8 @@ class MixGeometryTests(LinePolygonTests):
                 for (sha, line_id), (page, line) in self.source_lines().items():
                     self.assertIn((sha, line_id), self.lines_in(self.root / f'seed{seed}'))
         self.assertEqual(summary['line_polygons'], 'mix')
-        self.assertEqual(summary['line_geometry'], {'mode': 'mix', 'shares': MIX_SHARES, 'assignment': MIX_ASSIGNMENT,
+        self.assertEqual(summary['line_geometry'], {'mode': 'mix', 'buckets': list(MIX_BUCKETS), 'shares': MIX_SHARES,
+                                                    'assignment': MIX_ASSIGNMENT,
                                                     'rect': {'source': 'sidecar polygon bounding box',
                                                              'vertical_pad': RECT_PAD}})
 
@@ -427,6 +431,57 @@ class MixGeometryTests(LinePolygonTests):
         summary = self.prepare('o', polygonizer=failing(set(others)))
         self.assertEqual(summary['polygonizer']['dropped_lines'], 0)
         self.assertEqual(summary['train']['lines'] + summary['validation']['lines'], total)
+
+    def test_default_buckets_are_unchanged(self):
+        # Golden values from heocr-engine 8355674 (before --mix-buckets): R3g's assignment and its record text.
+        self.assertEqual(MIX_ASSIGNMENT, "sha256('<page_sha256>\\0<line_index>'), first 8 bytes big-endian mod 4: "
+                                         "0-1 kraken, 2 sidecar, 3 rect")
+        shas = [hashlib.sha256(f'golden page {n}'.encode()).hexdigest() for n in range(4)]
+        golden = [['sidecar', 'kraken', 'sidecar', 'sidecar', 'kraken', 'sidecar'],
+                  ['rect', 'sidecar', 'rect', 'kraken', 'kraken', 'kraken'],
+                  ['sidecar', 'rect', 'rect', 'rect', 'sidecar', 'rect'],
+                  ['kraken', 'sidecar', 'rect', 'rect', 'kraken', 'rect']]
+        for buckets in ((), (MIX_BUCKETS,), (list(MIX_BUCKETS),)):
+            self.assertEqual([[mix_geometry(sha, index, *buckets) for index in range(6)] for sha in shas], golden)
+        # On the fixture, an explicit default list writes the same data as no list.
+        default, explicit = self.prepare('a'), self.prepare('b', mix_buckets=list(MIX_BUCKETS))
+        self.assertEqual(default, explicit)
+        for path in (self.root / 'a' / 'pages').glob('*.xml'):
+            self.assertEqual(path.read_bytes(), (self.root / 'b' / 'pages' / path.name).read_bytes())
+
+    def test_eight_buckets(self):
+        self.assertEqual(mix_shares(R3H_BUCKETS), {'kraken': 0.75, 'sidecar': 0.125, 'rect': 0.125})
+        self.assertEqual(mix_assignment(R3H_BUCKETS), "sha256('<page_sha256>\\0<line_index>'), first 8 bytes "
+                                                      "big-endian mod 8: 0-5 kraken, 6 sidecar, 7 rect")
+        self.assertEqual(mix_assignment(('kraken', 'rect', 'kraken')).split(': ')[1], '0 kraken, 1 rect, 2 kraken')
+        counts = dict.fromkeys(MIX_GEOMETRIES, 0)
+        for page in range(400):
+            sha = hashlib.sha256(f'page {page}'.encode()).hexdigest()
+            for line in range(25):
+                counts[mix_geometry(sha, line, R3H_BUCKETS)] += 1
+        for name, share in mix_shares(R3H_BUCKETS).items():
+            self.assertAlmostEqual(counts[name] / 10_000, share, delta=0.015)
+        summary = self.prepare('data', mix_buckets=R3H_BUCKETS)
+        self.assertEqual(summary['line_geometry']['buckets'], list(R3H_BUCKETS))
+        self.assertEqual(summary['line_geometry']['shares'], mix_shares(R3H_BUCKETS))
+        written, source = self.lines_in(self.root / 'data'), self.source_lines()
+        for (sha, line_id), (page, line) in source.items():
+            if mix_geometry(sha, line['line_index'], R3H_BUCKETS) == 'sidecar':
+                self.assertEqual(written[sha, line_id], line['polygon'])
+        self.assertEqual(sum(summary[split]['lines_by_geometry'][name] for split in ('train', 'validation')
+                             for name in MIX_GEOMETRIES), len(source))
+
+    def test_bad_buckets_fail_closed(self):
+        for buckets in (('kraken', 'blla'), (), ('sidecar', 'rect'), ('kraken',) * 17, 'kraken', ('kraken', 3)):
+            with self.subTest(buckets=buckets), self.assertRaises(EngineError):
+                self.prepare('x', mix_buckets=buckets)
+            self.assertFalse((self.root / 'x').exists())
+        with self.assertRaisesRegex(EngineError, 'for --line-polygons mix'):
+            self.prepare('x', line_polygons='kraken', mix_buckets=R3H_BUCKETS)
+        for value in ('kraken,blla', '', 'sidecar,rect'):
+            with self.subTest(cli=value), patch('sys.stderr', io.StringIO()):
+                self.assertEqual(main(['prepare-kraken-data', str(self.annotations), str(self.manifest),
+                                       str(self.root / 'z'), '--line-polygons', 'mix', '--mix-buckets', value]), 1)
 
     def test_bad_mode_or_pad_fails_closed(self):
         for options in ({'line_polygons': 'mixed'}, {'line_polygons': 'mix', 'task': 'segmentation'},
@@ -539,6 +594,24 @@ class TrainKrakenTests(TrainingTestCase):
                 for key in ('line_geometry', 'polygonizer'):
                     if key in broken and broken[key] is None:
                         bad['data'].pop(key)
+                self.assertTrue(validate_training_run(bad))
+
+    def test_mix_buckets_are_recorded_and_checked(self):
+        with patch('heocr_engine.training.kraken_polygonizer', return_value=(FakePolygonizer(), '7.0.2')):
+            record = self.train(line_polygons='mix', rect_pad=-0.14, mix_buckets=R3H_BUCKETS)
+        self.assertEqual(validate_training_run(record), [])
+        geometry = record['data']['line_geometry']
+        self.assertEqual((geometry['buckets'], geometry['shares']), (list(R3H_BUCKETS), mix_shares(R3H_BUCKETS)))
+        # An R3g record, made before `buckets` existed, reads as the default list and still validates.
+        r3g = {**record, 'data': {**record['data'], 'line_geometry': {
+            key: value for key, value in {**geometry, 'shares': MIX_SHARES, 'assignment': MIX_ASSIGNMENT}.items()
+            if key != 'buckets'}}}
+        self.assertEqual(validate_training_run(r3g), [])
+        for broken in ({'buckets': ['kraken', 'blla']}, {'buckets': []}, {'buckets': ['sidecar', 'rect']},
+                       {'buckets': ['kraken'] * 17}, {'shares': MIX_SHARES}, {'assignment': MIX_ASSIGNMENT},
+                       {'buckets': list(MIX_BUCKETS)}):
+            with self.subTest(broken=broken):
+                bad = {**record, 'data': {**record['data'], 'line_geometry': {**geometry, **broken}}}
                 self.assertTrue(validate_training_run(bad))
 
     def test_prepare_cli(self):
