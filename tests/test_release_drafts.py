@@ -76,6 +76,9 @@ class ReleaseDraftTests(unittest.TestCase):
                 self.assertIn('  - name: HeOCR maintainers\n    type: organizational', text)
                 self.assertIn('    type: personal', text)
                 self.assertIn('  - ocr_models', zenodo)
+                self.assertIn('  - heocr', zenodo)
+                self.assertIn('    orcid: https://orcid.org/0000-0002-1459-9320', zenodo)
+                self.assertNotIn('DRAFT', text)
             with self.subTest(model=model, check='hugging face repository'):
                 self.assertEqual(hf[0].split()[:4], ['#', 'Hugging', 'Face', 'repository:'])
                 self.assertTrue(hf[0].split()[4].startswith('HeOCR/heocr-'))
