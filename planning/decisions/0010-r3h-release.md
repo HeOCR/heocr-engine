@@ -29,7 +29,7 @@ The maintainer decided these sign-offs on 2026-11-06. Item numbers are those of 
   - Until they are released, decision 0008's licence and publication clauses still apply to R4d and A1.
 - **Item 7, venues.**
   - Publish in as many venues as make sense, starting with both:
-    - Zenodo, through `ketos publish`, with a version DOI;
+    - Zenodo, with a version DOI;
     - Hugging Face Hub.
   - The maintainer explicitly accepts that a Zenodo deposit is permanent. He has no intention of deleting or changing deposits.
   - More venues may be added later.
@@ -57,3 +57,9 @@ The maintainer decided these sign-offs on 2026-11-06. Item numbers are those of 
   - one licensor name across all files;
   - citation by version DOI, never by concept DOI (decision 0006).
 - **Later releases.** A release of R4d, A1 or a later recognizer gets its own record. That record can adopt this one's licence and venue terms.
+
+## Note (2026-11-06, team lead): the Zenodo tool
+
+The first version of this record said Zenodo "through `ketos publish`". That wording was the team lead's; it was not part of the maintainer's decision.
+
+On 2026-11-06 the team lead chose **`htrmopo publish` with the release directory**. `ketos publish` uploads only the weights and a generated `metadata.json`, and the deposit must also include LICENSE, NOTICE and the sanitised training record (`release/r3h/`). The maintainer's decision itself is unchanged: Zenodo with a version DOI, and Hugging Face Hub.
