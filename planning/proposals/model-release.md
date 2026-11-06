@@ -82,14 +82,15 @@ Every candidate's training batch draws only these two fonts:
 
 Overlap against eval corpora and against hocrgen's `bidi-synthetic-corpus.txt` is checked and recorded in each card. The hocrgen corpus is not vendored, only hashed. Batch manifests tag every sample `PROJECT-SYNTHETIC`: 3,000/3,000 for R3h, 1,800/1,800 for R4d and 2,400/2,400 for R3d.
 
-- ⚑ **The provider's terms for AI-authored text.** The corpora are outputs of Anthropic's Claude, and the governing terms depend on the account the sessions ran under. This proposal does not establish which, and does not interpret either clause.
+- **The provider's terms for AI-authored text: resolved by maintainer decision, 2026-11-06.** The corpora are outputs of Anthropic's Claude, and the governing terms depend on the account the sessions ran under.
+  - **Decision (maintainer, 2026-11-06):** "a hebrew OCR model does not count as competing." The competing-model restriction in either set of terms below does not apply to a Hebrew OCR model, so which set governed the authoring sessions no longer matters for this release.
   - [Consumer Terms](https://www.anthropic.com/legal/consumer-terms) (effective 2025-10-08):
     - §4 assigns Outputs to the user, "Subject to your compliance with our Terms".
     - §3(2) bars using the Services "to develop any products or services that compete with our Services, including to develop or train any artificial intelligence or machine learning algorithms or models".
   - [Commercial Terms](https://www.anthropic.com/legal/commercial-terms) (effective 2025-06-17):
     - §B assigns Outputs to the customer.
     - §D.4 bars accessing the Services "to build a competing product or service, including to train competing AI models".
-  - **For the maintainer:** which terms applied, and whether a Hebrew OCR recognizer trained on these outputs falls inside either restriction.
+  - **Was for the maintainer:** which terms applied, and whether a Hebrew OCR recognizer trained on these outputs falls inside either restriction. Answered by the decision above.
 - ⚑ **Copyright in AI-authored text.** Whether text written by AI agents carries copyright at all varies by jurisdiction. The cards' "MIT" grant may therefore cover less than it says. That does not restrict a weights release, but the model card should not overstate the corpus's licence.
 - ⚑ **The S13a card's Provenance section.** It lists, among material the brief forbade copying, a category of non-public source material. A release card should cite the corpora's licence and authorship lines only, not that list.
 
@@ -208,7 +209,7 @@ Each step is a separate go-ahead from the maintainer.
 
 ## 7. What the maintainer must sign off
 
-1. **The provider's terms for the AI-authored corpora (§2.3):** which terms governed the authoring sessions, and whether training and releasing these weights is consistent with them. This gates everything below.
+1. **The provider's terms for the AI-authored corpora (§2.3):** which terms governed the authoring sessions, and whether training and releasing these weights is consistent with them. **Decided 2026-11-06:** "a hebrew OCR model does not count as competing", so the competing-model restriction in either set of terms does not apply. This item no longer gates the rest; items 2–8 stay open.
 2. **The weights licence (§3),** recorded in a new decision record that supersedes 0007's and 0008's licence clauses.
 3. **The font position (§2.2):** that weights trained on OFL-rendered images can be released under that licence, and the attribution wording.
 4. **The licensor name (§2.4)** and the NOTICE text.
