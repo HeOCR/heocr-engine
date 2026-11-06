@@ -18,7 +18,7 @@ It is a research baseline. All of its evaluation is on synthetic pages; no revie
 
 | | |
 |---|---|
-| File | `best_0.8618.safetensors`, 5,056,800 bytes |
+| File | `heocr-r4d-segmentation.safetensors` (trained as `best_0.8618.safetensors`), 5,056,800 bytes |
 | sha256 | `d32cd1a8efe7354445ccfea76551cc9943ca05792c332b5865f9bec985fe7bf7` |
 | Model type | segmentation (baselines and regions) |
 | Format | kraken safetensors; trained and tested with kraken / ketos 7.0.2 |
@@ -30,9 +30,19 @@ It is a research baseline. All of its evaluation is on synthetic pages; no revie
 
 | Step | Model | Record |
 |---|---|---|
-| Segmentation: baselines, line polygons, typed regions | R4d, this model | <!-- DRAFT: R4d version DOI --> |
-| Reading order: line order from each line's region type | A1, `best_0.0000.safetensors` (`69aa1946…`) | <!-- DRAFT: A1 version DOI --> |
-| Recognition | R3h, `best_0.9959.safetensors` (`f76affa8…`) | <!-- DRAFT: R3h version DOI --> |
+| Segmentation: baselines, line polygons, typed regions | R4d, this model | <!-- DRAFT: R4d's reserved version DOI (release/README.md, plan step 2) --> |
+| Reading order: line order from each line's region type | A1, `heocr-a1-reading-order.safetensors` (`69aa1946…`) | <!-- DRAFT: A1's reserved version DOI (release/README.md, plan step 2) --> |
+| Recognition | R3h, `heocr-r3h-recognition.safetensors` (`f76affa8…`) | <!-- DRAFT: R3h's reserved version DOI (release/README.md, plan step 2) --> |
+
+> **A1 needs heocr-engine.** kraken 7.0.2 cannot run A1 by itself, for two reasons:
+> - its neural reading order passes the segmenter's line types to A1, while A1 was trained on region types. kraken rejects the class-mapping mismatch;
+> - its text output ignores a learned line order ([mittagessen/kraken#820](https://github.com/mittagessen/kraken/issues/820)).
+>
+> Run the whole pipeline from a [heocr-engine](https://github.com/HeOCR/heocr-engine) checkout (`pip install '.[kraken]'`):
+>
+> ```sh
+> heocr-engine kraken --api python --segmentation-model heocr-r4d-segmentation.safetensors --reading-order-model heocr-a1-reading-order.safetensors --reading-order-classes region --recognition-model heocr-r3h-recognition.safetensors page.jpg page.json
+> ```
 
 ## Architecture
 
@@ -67,9 +77,9 @@ These are hocrsyngen's region names.
 
 ```sh
 heocr-engine kraken --api python \
-  --segmentation-model best_0.8618.safetensors \
-  --reading-order-model best_0.0000.safetensors --reading-order-classes region \
-  --recognition-model best_0.9959.safetensors \
+  --segmentation-model heocr-r4d-segmentation.safetensors \
+  --reading-order-model heocr-a1-reading-order.safetensors --reading-order-classes region \
+  --recognition-model heocr-r3h-recognition.safetensors \
   page.jpg page.json
 ```
 
@@ -78,8 +88,8 @@ Tested end to end with kraken 7.0.2 on CPU, one seed-101 page in about 8 s. The 
 **kraken alone** (no A1; kraken's heuristic line order):
 
 ```sh
-kraken -i page.jpg page.txt segment -bl -d horizontal-rl -i best_0.8618.safetensors \
-  ocr -m best_0.9959.safetensors --reorder --base-dir R
+kraken -i page.jpg page.txt segment -bl -d horizontal-rl -i heocr-r4d-segmentation.safetensors \
+  ocr -m heocr-r3h-recognition.safetensors --reorder --base-dir R
 ```
 
 - kraken 7.0.2 cannot use A1, for two reasons:
@@ -185,4 +195,4 @@ Report problems and questions as issues on [HeOCR/heocr-engine](https://github.c
 
 ## Citation
 
-Cite this model by its version DOI. <!-- DRAFT: add the version DOI after the deposit. Never cite the concept DOI. -->
+Cite this model by its version DOI. <!-- DRAFT: the reserved version DOI (release/README.md, plan step 2). Never cite the concept DOI. -->

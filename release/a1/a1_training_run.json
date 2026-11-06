@@ -429,7 +429,8 @@
     "bytes": 8492,
     "file_name": "best_0.0000.safetensors",
     "weights_format": "safetensors",
-    "byte_reproducible": false
+    "byte_reproducible": false,
+    "release_file_name": "heocr-a1-reading-order.safetensors"
   },
   "model_licence": {
     "status": "Apache-2.0",

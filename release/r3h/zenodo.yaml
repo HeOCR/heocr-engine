@@ -1,8 +1,8 @@
-# HTRMoPo v1 front matter for the Zenodo deposit, published with `htrmopo publish`
-# (team lead, 2026-11-06; decision 0010's note). The deposit card is this front matter
-# between `---` lines, followed by card_body.md. htrmopo fills id with the pre-reserved
-# DOI and keeps everything else as written. software_hints are the values `ketos publish`
-# would compute from the model's kraken_meta; metrics are the pipeline's CER in percent.
+# HTRMoPo v1 front matter for this model's Zenodo deposit, in htrmopo 0.5's format.
+# The deposit card is this front matter between `---` lines, followed by card_body.md.
+# `id` is added at plan step 2 (release/README.md): the version DOI reserved for this
+# record's draft. software_hints are the values `ketos publish` would compute from the
+# model's kraken_meta. metrics are the pipeline's CER in percent.
 summary: Modern Hebrew document line recognition (printed and handwriting-style), trained from scratch on synthetic pages; recognizer of the HeOCR R4d + A1 + R3h pipeline
 authors:
   - name: HeOCR maintainers

@@ -13,7 +13,7 @@ It is a research baseline, not a production transcriber. All of its evaluation i
 
 | | |
 |---|---|
-| File | `best_0.9959.safetensors`, 16,167,536 bytes |
+| File | `heocr-r3h-recognition.safetensors` (trained as `best_0.9959.safetensors`), 16,167,536 bytes |
 | sha256 | `f76affa84e29536aa1d41f89d3507183c104f1620ca953fdfa5dd4b7a00ba6be` |
 | Model type | recognition (line-level, CTC) |
 | Format | kraken safetensors; trained and tested with kraken / ketos 7.0.2 |
@@ -25,9 +25,19 @@ It is a research baseline, not a production transcriber. All of its evaluation i
 
 | Step | Model | Record |
 |---|---|---|
-| Segmentation: baselines, line polygons, typed regions | R4d, `best_0.8618.safetensors` (`d32cd1a8…`) | <!-- DRAFT: R4d version DOI --> |
-| Reading order: line order from each line's region type | A1, `best_0.0000.safetensors` (`69aa1946…`) | <!-- DRAFT: A1 version DOI --> |
-| Recognition | R3h, this model | <!-- DRAFT: R3h version DOI --> |
+| Segmentation: baselines, line polygons, typed regions | R4d, `heocr-r4d-segmentation.safetensors` (`d32cd1a8…`) | <!-- DRAFT: R4d's reserved version DOI (release/README.md, plan step 2) --> |
+| Reading order: line order from each line's region type | A1, `heocr-a1-reading-order.safetensors` (`69aa1946…`) | <!-- DRAFT: A1's reserved version DOI (release/README.md, plan step 2) --> |
+| Recognition | R3h, this model | <!-- DRAFT: R3h's reserved version DOI (release/README.md, plan step 2) --> |
+
+> **A1 needs heocr-engine.** kraken 7.0.2 cannot run A1 by itself, for two reasons:
+> - its neural reading order passes the segmenter's line types to A1, while A1 was trained on region types. kraken rejects the class-mapping mismatch;
+> - its text output ignores a learned line order ([mittagessen/kraken#820](https://github.com/mittagessen/kraken/issues/820)).
+>
+> Run the whole pipeline from a [heocr-engine](https://github.com/HeOCR/heocr-engine) checkout (`pip install '.[kraken]'`):
+>
+> ```sh
+> heocr-engine kraken --api python --segmentation-model heocr-r4d-segmentation.safetensors --reading-order-model heocr-a1-reading-order.safetensors --reading-order-classes region --recognition-model heocr-r3h-recognition.safetensors page.jpg page.json
+> ```
 
 ## Architecture
 
@@ -74,9 +84,9 @@ There is no niqqud (vowel points) and no cantillation.
 
 ```sh
 heocr-engine kraken --api python \
-  --segmentation-model best_0.8618.safetensors \
-  --reading-order-model best_0.0000.safetensors --reading-order-classes region \
-  --recognition-model best_0.9959.safetensors \
+  --segmentation-model heocr-r4d-segmentation.safetensors \
+  --reading-order-model heocr-a1-reading-order.safetensors --reading-order-classes region \
+  --recognition-model heocr-r3h-recognition.safetensors \
   page.jpg page.json
 ```
 
@@ -90,8 +100,8 @@ heocr-engine kraken --api python \
 With kraken alone, R4d + R3h runs in kraken's heuristic line order. No figure is reported here for that configuration.
 
 ```sh
-kraken -i page.jpg page.txt segment -bl -d horizontal-rl -i best_0.8618.safetensors \
-  ocr -m best_0.9959.safetensors --reorder --base-dir R
+kraken -i page.jpg page.txt segment -bl -d horizontal-rl -i heocr-r4d-segmentation.safetensors \
+  ocr -m heocr-r3h-recognition.safetensors --reorder --base-dir R
 ```
 
 - `-d horizontal-rl` reads lines that share a row right to left.
@@ -222,4 +232,4 @@ Report problems and questions as issues on [HeOCR/heocr-engine](https://github.c
 
 ## Citation
 
-Cite this model by its version DOI. <!-- DRAFT: add the version DOI after the deposit. Never cite the concept DOI. -->
+Cite this model by its version DOI. <!-- DRAFT: the reserved version DOI (release/README.md, plan step 2). Never cite the concept DOI. -->

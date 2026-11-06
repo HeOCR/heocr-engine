@@ -1,7 +1,8 @@
 HeOCR R4d Hebrew document segmentation model
 Copyright (c) 2026 HeOCR maintainers
 
-This model (best_0.8618.safetensors, sha256
+This model (heocr-r4d-segmentation.safetensors, trained as
+best_0.8618.safetensors, sha256
 d32cd1a8efe7354445ccfea76551cc9943ca05792c332b5865f9bec985fe7bf7) is
 licensed under the Apache License, Version 2.0. See LICENSE.
 

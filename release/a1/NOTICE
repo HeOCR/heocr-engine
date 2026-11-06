@@ -1,7 +1,8 @@
 HeOCR A1 Hebrew document reading-order model
 Copyright (c) 2026 HeOCR maintainers
 
-This model (best_0.0000.safetensors, sha256
+This model (heocr-a1-reading-order.safetensors, trained as
+best_0.0000.safetensors, sha256
 69aa1946583bb68ddf13ef20860582f4aa982a46b2f79e38bd7d9ae20535fb56) is
 licensed under the Apache License, Version 2.0. See LICENSE.
 

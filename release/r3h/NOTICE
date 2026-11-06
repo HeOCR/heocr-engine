@@ -1,7 +1,8 @@
 HeOCR R3h Hebrew line recognition model
 Copyright (c) 2026 HeOCR maintainers
 
-This model (best_0.9959.safetensors, sha256
+This model (heocr-r3h-recognition.safetensors, trained as
+best_0.9959.safetensors, sha256
 f76affa84e29536aa1d41f89d3507183c104f1620ca953fdfa5dd4b7a00ba6be) is
 licensed under the Apache License, Version 2.0. See LICENSE.
 

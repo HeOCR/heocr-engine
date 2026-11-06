@@ -20,6 +20,10 @@ MODELS = {
            'planning/decisions/0011-first-release-adds-r4d-and-a1.md'),
 }
 LOCAL_PATH = r'/Users/|/home/|/private/|[A-Z]:\\'
+# release name: training name (the bytes and sha256 are the same)
+RELEASE_NAMES = {'r3h': ('heocr-r3h-recognition.safetensors', 'best_0.9959.safetensors'),
+                 'r4d': ('heocr-r4d-segmentation.safetensors', 'best_0.8618.safetensors'),
+                 'a1': ('heocr-a1-reading-order.safetensors', 'best_0.0000.safetensors')}
 
 
 class ReleaseDraftTests(unittest.TestCase):
@@ -38,6 +42,24 @@ class ReleaseDraftTests(unittest.TestCase):
             for other_sha, _, _ in MODELS.values():
                 with self.subTest(model=model, pipeline=other_sha[:8]):
                     self.assertIn(other_sha[:8], body)
+
+    def test_release_names_and_a1_note(self):
+        release_names = [name for name, _ in RELEASE_NAMES.values()]
+        for model, (name, trained) in RELEASE_NAMES.items():
+            body = (RELEASE / model / 'card_body.md').read_text(encoding='utf-8')
+            record = json.loads((RELEASE / model / f'{model}_training_run.json').read_text(encoding='utf-8'))
+            with self.subTest(model=model):
+                self.assertIn(f'`{name}` (trained as `{trained}`)', body)
+                self.assertEqual((record['output']['file_name'], record['output']['release_file_name']),
+                                 (trained, name))
+                # the training names appear only beside the release name
+                for _, other in RELEASE_NAMES.values():
+                    self.assertEqual(body.count(other), int(other == trained))
+                # every card says up front that A1 needs heocr-engine, with the one-line command
+                self.assertIn('> **A1 needs heocr-engine.**', body)
+                command = next(line for line in body.splitlines() if line.startswith('> heocr-engine kraken'))
+                self.assertTrue(all(n in command for n in release_names))
+                self.assertIn('mittagessen/kraken#820', body)
 
     def test_front_matter_licences_and_hints(self):
         for model, (_, hints, _) in MODELS.items():

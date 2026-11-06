@@ -541,7 +541,8 @@
     "bytes": 5056800,
     "file_name": "best_0.8618.safetensors",
     "weights_format": "safetensors",
-    "byte_reproducible": false
+    "byte_reproducible": false,
+    "release_file_name": "heocr-r4d-segmentation.safetensors"
   },
   "model_licence": {
     "status": "Apache-2.0",
