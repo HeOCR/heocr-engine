@@ -7,6 +7,10 @@ name = "heocr-engine"
 version = "0.2.0"
 description = "Local, inspectable OCR baseline for Hebrew and other scripts"
 requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [
+  { name = "HeOCR maintainers" },
+]
 dependencies = ["Pillow>=10,<12"]
 
 [project.optional-dependencies]
