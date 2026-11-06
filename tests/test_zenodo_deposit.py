@@ -330,6 +330,83 @@ class StepTests(unittest.TestCase):
             zd.publish(zd.Api(zd.SANDBOX, TOKEN, FakeZenodo()), {'api': zd.SANDBOX, 'records': {}}, 'r3h', [])
 
 
+HEOCR_SANDBOX = 'c261ed63-f520-48a3-90c2-c64ed1cc0395'
+OCR_MODELS = 'a980b106-f79b-4681-ae4c-d42737701217'
+
+
+class Requests(FakeZenodo):
+    """A record with inclusion requests; `current` overrides what GET /requests/{id} returns."""
+
+    def __init__(self, hits, current=None):
+        super().__init__()
+        self.hits, self.current = hits, current or {}
+
+    def __call__(self, request, timeout=None):
+        url, method = request.full_url, request.get_method()
+        path = url.split('/api', 1)[1]
+        self.requests.append({'method': method, 'url': url, 'headers': dict(request.header_items()),
+                              'data': request.data})
+        if path.endswith('/requests'):
+            body = {'hits': {'hits': self.hits}}
+        elif path.startswith('/requests/') and method == 'GET':
+            rid = path.split('/')[2]
+            body = self.current.get(rid) or next(h for h in self.hits if h['id'] == rid)
+        elif path.endswith('/actions/accept'):
+            body = {'status': 'accepted', 'is_closed': True}
+        else:
+            body = {}
+        return FakeResponse(json.dumps(body).encode())
+
+
+def inclusion(rid, community, status='submitted'):
+    return {'id': rid, 'type': 'community-inclusion', 'status': status, 'receiver': {'community': community}}
+
+
+class AcceptTests(unittest.TestCase):
+    STATE = {'api': zd.SANDBOX, 'records': {'r4d': {'id': 'rec1', 'doi': '10.5072/zenodo.100'}}}
+
+    def test_accepts_only_the_owned_community(self):
+        fake = Requests([inclusion('q-ocr', OCR_MODELS), inclusion('q-heocr', HEOCR_SANDBOX)])
+        lines = zd.accept_owned(zd.Api(zd.SANDBOX, TOKEN, fake), self.STATE, 'r4d', zd.OWNED_COMMUNITIES[zd.SANDBOX])
+        self.assertEqual([(l['request'], l['action']) for l in lines],
+                         [('q-ocr', 'left for its moderators'), ('q-heocr', 'accepted')])
+        self.assertEqual(fake.calls(), [('GET', '/records/rec1/requests'), ('GET', '/requests/q-heocr'),
+                                        ('POST', '/requests/q-heocr/actions/accept')])
+        self.assertNotIn('q-ocr', ' '.join(path for _, path in fake.calls()[1:]))
+
+    def test_skips_what_is_not_still_a_submitted_owned_request(self):
+        changed = {**inclusion('q-moved', HEOCR_SANDBOX), 'receiver': {'community': OCR_MODELS}}
+        fake = Requests([inclusion('q-done', HEOCR_SANDBOX, 'accepted'), inclusion('q-moved', HEOCR_SANDBOX)],
+                        current={'q-moved': changed})
+        lines = zd.accept_owned(zd.Api(zd.SANDBOX, TOKEN, fake), self.STATE, 'r4d', zd.OWNED_COMMUNITIES[zd.SANDBOX])
+        self.assertEqual([l['action'] for l in lines], ['skipped', 'skipped'])
+        self.assertFalse([p for m, p in fake.calls() if p.endswith('/actions/accept')])
+
+    def test_each_target_has_its_own_owned_community(self):
+        production = zd.OWNED_COMMUNITIES[zd.PRODUCTION]['heocr']
+        self.assertEqual(production, 'febfcbcf-2444-4a84-8699-04cd1c44c8a7')
+        # the sandbox heocr id is not owned on production, so nothing is accepted there
+        fake = Requests([inclusion('q-heocr', HEOCR_SANDBOX)])
+        lines = zd.accept_owned(zd.Api(zd.PRODUCTION, TOKEN, fake), self.STATE, 'r4d',
+                                zd.OWNED_COMMUNITIES[zd.PRODUCTION])
+        self.assertEqual(lines[0]['action'], 'left for its moderators')
+        self.assertEqual(len(fake.requests), 1)
+
+    def test_accept_command(self):
+        with outside_repository() as directory:
+            state = directory / 'state.json'
+            zd.save_state(state, self.STATE)
+            fake = Requests([inclusion('q-ocr', OCR_MODELS), inclusion('q-heocr', HEOCR_SANDBOX)])
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                code = zd.main(['--models', 'r4d', '--state', str(state), 'accept'],
+                               {'ZENODO_SANDBOX_TOKEN': TOKEN}, fake)
+            self.assertEqual(code, 0)
+            actions = [json.loads(line)['action'] for line in out.getvalue().splitlines()]
+            self.assertEqual(actions, ['left for its moderators', 'accepted'])
+            self.assertNotIn(TOKEN, out.getvalue())
+
+
 class ReleaseFrontMatterTests(unittest.TestCase):
     def test_release_front_matter_maps_cleanly(self):
         try:
