@@ -43,6 +43,9 @@ MODELS = ("r4d", "a1", "r3h")
 # htrmopo 0.5 files models as legacy `upload_type: publication`, `publication_type: other`.
 RESOURCE_TYPE = {"id": "publication-other"}
 MAX_RESPONSE_BYTES = 10_000_000
+# Zenodo answers `application/json` on /api/records with its legacy serialization (no `pids`, the DOI at the top
+# level); InvenioRDM's own JSON needs its media type (found on the sandbox, 2026-11-06).
+RDM_JSON = "application/vnd.inveniordm.v1+json"
 
 
 class DepositError(Exception):
@@ -73,7 +76,7 @@ class Api:
             data = json.dumps(body).encode("utf-8")
         request = urllib.request.Request(f"{self.base}{path}", data=data, method=method)
         request.add_header("Authorization", f"Bearer {self._token}")
-        request.add_header("Accept", "application/json")
+        request.add_header("Accept", RDM_JSON)
         if data is not None:
             request.add_header("Content-Type", content_type)
         try:
@@ -156,24 +159,35 @@ def save_state(path: Path, state: dict) -> None:
 
 def _draft(state: dict, model: str) -> dict:
     record = state["records"].get(model)
-    if not record:
+    if not record or not record.get("doi"):
         raise DepositError(f"No reserved draft for {model}; run `reserve` first (plan step 1)")
     return record
 
 
 def reserve(api: Api, state: dict, fronts: dict, state_path: Path, today: str) -> dict:
-    """Step 1: one draft per model, each with its DOI reserved. Resumable: reserved models are skipped."""
+    """Step 1: one draft per model, each with its DOI reserved.
+
+    Crash-safe and resumable: a new draft's id is saved before its DOI is reserved, so a draft is never lost, and
+    a rerun reserves the DOI of a saved draft that has none and skips models that are done.
+    """
     for model in MODELS:
-        if model in state["records"]:
+        record = state["records"].get(model)
+        if record and record.get("doi"):
             continue
-        front = fronts[model]
-        draft = api.request("POST", "/records", {
-            "metadata": {"resource_type": RESOURCE_TYPE, "title": front["summary"],
-                         "publication_date": today, "creators": creators(front["authors"])},
-            "files": {"enabled": True}, "access": {"record": "public", "files": "public"}})
-        reserved = api.request("POST", f"/records/{draft['id']}/draft/pids/doi")
-        doi = reserved["pids"]["doi"]["identifier"]
-        state["records"][model] = {"id": draft["id"], "doi": doi}
+        if not record:
+            front = fronts[model]
+            draft = api.request("POST", "/records", {
+                "metadata": {"resource_type": RESOURCE_TYPE, "title": front["summary"],
+                             "publication_date": today, "creators": creators(front["authors"])},
+                "files": {"enabled": True}, "access": {"record": "public", "files": "public"}})
+            record = state["records"][model] = {"id": draft["id"]}
+            save_state(state_path, state)
+        reserved = api.request("POST", f"/records/{record['id']}/draft/pids/doi")
+        doi = ((reserved or {}).get("pids") or {}).get("doi", {}).get("identifier")
+        if not doi:
+            raise DepositError(f"{model}: no pids.doi.identifier in the DOI reservation response "
+                               f"(keys: {sorted(reserved or {})}); draft {record['id']} is saved without a DOI")
+        record["doi"] = doi
         save_state(state_path, state)
     return state
 
@@ -301,7 +315,7 @@ def main(argv=None, environ=os.environ, opener=None) -> int:
             elif args.command == "publish":
                 publish(api, state, model, fronts[model].get("communities", []))
                 save_state(args.state, state)
-        print(json.dumps({m: r["doi"] for m, r in state["records"].items()}, indent=2))
+        print(json.dumps({m: {"id": r["id"], "doi": r.get("doi")} for m, r in state["records"].items()}, indent=2))
         return 0
     except DepositError as error:
         print(f"error: {error}", file=sys.stderr)
