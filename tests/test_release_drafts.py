@@ -70,6 +70,14 @@ class ReleaseDraftTests(unittest.TestCase):
                          *(f'  - {hint}' for hint in hints)):
                 with self.subTest(model=model, line=line):
                     self.assertIn(line, zenodo)
+            with self.subTest(model=model, check='creators and communities (item 7)'):
+                text = '\n'.join(zenodo)
+                self.assertIn('  - name: HeOCR maintainers\n    type: organizational', text)
+                self.assertIn('    type: personal', text)
+                self.assertIn('  - ocr_models', zenodo)
+            with self.subTest(model=model, check='hugging face repository'):
+                self.assertEqual(hf[0].split()[:4], ['#', 'Hugging', 'Face', 'repository:'])
+                self.assertTrue(hf[0].split()[4].startswith('HeOCR/heocr-'))
             with self.subTest(model=model, check='metrics'):
                 self.assertTrue(any(re.fullmatch(r'  cer_seed101: [0-9.]+', line) for line in zenodo))
             with self.subTest(model=model, check='hugging face licence'):

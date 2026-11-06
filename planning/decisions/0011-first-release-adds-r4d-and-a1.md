@@ -64,4 +64,13 @@ On 2026-11-06 the maintainer approved the three model cards as they stand on mai
 | `release/a1/card_body.md` | `1b5d7439fd3ea58605570bf135a03442e28f28aa25315888f5fbf8af39b35b4a` |
 
 - **The one planned change:** the reserved version DOIs go into each card's pipeline table and Citation section (`release/README.md`, plan step 2). Any other change to a card needs the maintainer's review again.
-- **Still open:** item 7's accounts, and item 8, a separate go-ahead for each publishing action.
+- **Still open:** item 8, a separate go-ahead for each publishing action.
+
+## Note (2026-11-06): item 7's accounts decided
+
+The maintainer decided the publishing accounts on 2026-11-06:
+- **Hugging Face:** a new HeOCR organisation, which he creates, with the repositories `HeOCR/heocr-r3h-recognition`, `HeOCR/heocr-r4d-segmentation` and `HeOCR/heocr-a1-reading-order`.
+- **Zenodo:** deposits from his personal Zenodo account, into a new HeOCR community that he creates.
+- **Zenodo creators:** Shay Palachy Affek, as a person (with his ORCID iD, if he has one), and "HeOCR maintainers", as an organisation.
+
+How this is carried out, and the tokens he creates and keeps outside every repository, are in `release/README.md` ("Before step 1" and the plan for item 8). Item 8 stays open: each publishing action gets its own go-ahead.

@@ -55,54 +55,95 @@ A card for either venue is its front matter between `---` lines, followed by `ca
 
 ## Deposits
 
-**Zenodo: three records,** one per model, in htrmopo's deposit format. The team lead chose htrmopo's route on 2026-11-06 (decision 0010's note). Because the DOIs are reserved first, the deposit runs htrmopo's steps against a reserved draft; see the plan below.
-- **Contents:** each record holds the card as `README.md`, plus four files:
+**Accounts (item 7, maintainer, 2026-11-06):**
+- **Zenodo:** deposited from Shay's personal Zenodo account, into a new HeOCR community that Shay creates. Each record is also submitted to `ocr_models`, the kraken/HTRMoPo model community that `kraken list` and `htrmopo list` read. Without it the models stay findable by DOI but are not listed there. Inclusion is a request that the community's administrators approve.
+- **Zenodo creators:**
+  - Shay Palachy Affek, as a person. His ORCID iD is a DRAFT placeholder in each `zenodo.yaml`, and the family/given split is to be confirmed.
+  - "HeOCR maintainers", as an organisation.
+- **Hugging Face:** a new HeOCR organisation that Shay creates, with three repositories: `HeOCR/heocr-r3h-recognition`, `HeOCR/heocr-r4d-segmentation` and `HeOCR/heocr-a1-reading-order`. They are named like the release files.
+
+**Zenodo: three records,** one per model, in htrmopo's deposit format: the card as `README.md`, plus four files.
+- **The files:**
   - the weights, under their release name;
   - `LICENSE`;
   - `NOTICE`;
   - the training record.
 - **Assembly:** the deposit directory is assembled outside the repository, since the weights never enter git.
 - **Front matter:** it keeps `metrics` and `software_hints` as written. `ketos publish` would replace both, and would upload only the weights and a generated `metadata.json`, so it is not used.
-- **Validation:** validate each card locally against the HTRMoPo v1 schema before any upload. htrmopo itself validates only after it has created a deposition.
+- **Validation:** validate each card locally against the HTRMoPo v1 schema before any upload.
 
-**Hugging Face: three repositories,** one per model, mirroring the Zenodo records. Each holds:
-- `README.md` (`huggingface.yaml` front matter plus `card_body.md`);
+**Why not `htrmopo publish` itself.** htrmopo 0.5 (`publish_model`) does every step in one call:
+1. it creates a new deposition through Zenodo's legacy deposit API;
+2. it takes that deposition's pre-reserved DOI as `id`;
+3. it uploads the card as `README.md`, then the files;
+4. it sets the metadata;
+5. it publishes.
+
+Two things it cannot do:
+- **Publish into an existing draft.** `update_model` (`htrmopo publish -d`) only versions a record that is already published. Reserving the DOIs first needs drafts that exist before any card is final.
+- **Mark a creator as an organisation.** htrmopo passes `authors` unchanged as the legacy API's `creators`, and those have only `name`, `affiliation`, `orcid` and `gnd`, with names as "Family, Given". There is no creator type, so "HeOCR maintainers" would be filed as a person. HTRMoPo's own `authors` items also have only `name`, `affiliation` and `orcid`.
+
+Zenodo's InvenioRDM records API has both. A draft can reserve its DOI before anything is final, and a creator's `person_or_org.type` is `personal` (with `given_name` and `family_name`) or `organizational` (with `name`), with an ORCID under `identifiers`. So the deposit uses a short script against the records API.
+- It reads the HTRMoPo front matter.
+- It maps `authors` by their `type` key, which is an extra key that the HTRMoPo schema allows and htrmopo ignores.
+- It uploads the same card and files that htrmopo would, so htrmopo's readers see the usual HTRMoPo record.
+- Its metadata otherwise follows htrmopo's mapping: the title from `summary`, the description from the card body, and the licence, keywords and `isDerivedFrom` links to the `datasets`.
+
+**Hugging Face: three repositories,** mirroring the Zenodo records. Each holds:
+- `README.md`, made of the `huggingface.yaml` front matter plus `card_body.md`;
 - the weights, `LICENSE`, `NOTICE` and the training record.
 
-The alternative is one repository with all three models and one card. It is simpler to download, but its card and versions would differ from Zenodo's three records.
+## Before step 1
+
+Shay does these himself. None of them is an agent action.
+- **Create the Hugging Face organisation** `HeOCR`.
+- **Create the Zenodo community** for HeOCR. Its identifier then replaces `DRAFT-heocr-community-identifier` in the three `zenodo.yaml` files.
+- **Create the tokens:**
+  - a **Zenodo sandbox** token (on sandbox.zenodo.org) and a **Zenodo production** token, each with the scopes `deposit:write` (create and edit drafts) and `deposit:actions` (publish);
+  - a **Hugging Face** write token for the HeOCR organisation.
+- **Store the tokens outside every repository,** for example:
+  - in the macOS Keychain;
+  - or in `~/.config/heocr/release.env` with `chmod 600`.
+
+  They go into no repository, no task folder and no record.
+- **Scripts read the tokens from the environment only:** `ZENODO_TOKEN`, `ZENODO_SANDBOX_TOKEN` and `HF_TOKEN`. They never write a token to a log, a file, a command line, an error message or a commit, and they never pass it in a URL. Zenodo's legacy API accepts `?access_token=`; the script sends an `Authorization: Bearer` header instead.
 
 ## Plan for item 8: reserve the DOIs first (team lead, 2026-11-06)
 
-The cards cross-link the three models by version DOI, so all three DOIs must exist before any card is final. Zenodo gives a draft deposition a pre-reserved DOI (`metadata.prereserve_doi`) as soon as the draft is created.
+The cards cross-link the three models by version DOI, so all three DOIs must exist before any card is final.
 
-**htrmopo cannot publish into an existing draft.** In htrmopo 0.5, `publish_model` (`htrmopo publish`) always does everything in one call:
-1. creates a new deposition;
-2. takes that deposition's pre-reserved DOI as `id`;
-3. uploads the card as `README.md`, then the files;
-4. sets the Zenodo metadata;
-5. publishes.
+Each step needs its own go-ahead from the maintainer (item 8). The whole plan runs first on the Zenodo sandbox (`https://sandbox.zenodo.org/api/`, with the sandbox token), and then on production. Paths are InvenioRDM's records API under `/api/`. The community-review and inclusion calls are to be confirmed on the sandbox before production.
 
-`update_model` (`htrmopo publish -d`) only makes a new version of a record that is already published. So the reserve step is done through the Zenodo deposit API. The upload and publish then repeat htrmopo's own steps against that draft.
+1. **Reserve.** Create three drafts, `POST /api/records`, one each for R4d, A1 and R3h, with the creators mapped as above. Reserve each draft's DOI with `POST /api/records/{id}/draft/pids/doi`, and note it. Nothing is public yet, and an unpublished draft can still be deleted.
+2. **Fill the cards.**
+   - Put the three reserved DOIs into each card's pipeline table and Citation section, and into each front matter's `id`.
+   - Rebuild each card as `---`, then the front matter, then `---`, then `card_body.md`.
+   - Validate each card against the HTRMoPo v1 schema with htrmopo's validator.
+   - These DOIs are the only change to the approved cards (decision 0011's note).
+3. **Upload into each draft.** For each file:
+   - start it: `POST /api/records/{id}/draft/files`;
+   - upload its content: `PUT …/files/{name}/content`;
+   - commit it: `POST …/files/{name}/commit`.
 
-Each step below needs its own go-ahead from the maintainer (item 8), and runs on the Zenodo sandbox first (`https://sandbox.zenodo.org/api/`, as htrmopo's `MODEL_REPO_URL`).
+   The files are the card as `README.md`, then the weights under their release name, `LICENSE`, `NOTICE` and the training record.
+4. **Set the metadata,** following htrmopo's mapping:
+   - the title from `summary`;
+   - the description from the card body;
+   - the creators;
+   - the licence;
+   - keywords from `tags`;
+   - `isDerivedFrom` links to the `datasets` URLs.
 
-1. **Reserve.** Create three empty drafts: `POST deposit/depositions` with `{}`, one each for R4d, A1 and R3h. Note each draft's id and `metadata.prereserve_doi.doi`. Nothing is public yet, and an unpublished draft can still be deleted.
-2. **Fill the cards.** Put the three reserved DOIs into each card's pipeline table and Citation section, and into each front matter's `id`. Rebuild each card as `---` + front matter + `---` + `card_body.md`. Validate it against the HTRMoPo v1 schema with htrmopo's own validator before any upload.
-3. **Upload into each draft.** For each draft, through its bucket URL:
-   - the card as `README.md`;
-   - the four deposit files: the weights under their release name, `LICENSE`, `NOTICE` and the training record.
-4. **Set the metadata.** Set it exactly as htrmopo 0.5 does: `title` from `summary`; `upload_type: publication`, `publication_type: other`; `description` from the card body rendered as HTML; `creators` from `authors`; `access_right: open`; `license`; `keywords` from `tags`; `related_identifiers` as `isDerivedFrom` the `datasets` URLs; and the `ocr_models` community. Community inclusion is a request that the repository's administrators approve.
+   Then submit each draft to the HeOCR community, which Shay accepts.
 5. **Check the drafts** in Zenodo's preview. This is the last point at which a deposit can be withdrawn.
-6. **Publish** each draft (`POST deposit/depositions/<id>/actions/publish`). After this a deposit is permanent, which the maintainer has accepted (decision 0010).
-7. **Mirror to Hugging Face:** three repositories, one per model. Each holds the Hugging Face card with the same DOIs, and the same four files.
+6. **Publish** each draft: `POST /api/records/{id}/draft/actions/publish`. After this a deposit is permanent, which the maintainer has accepted (decision 0010). Then request inclusion in `ocr_models`.
+7. **Mirror to Hugging Face:** the three repositories above. Each gets the Hugging Face card, with the same DOIs, and the same four files.
 
-Steps 1, 3, 4 and 6 call the API directly. A short script can reuse htrmopo's validator and metadata mapping, passing the draft's id instead of creating a new deposition.
-
-The alternative would be to propose that change upstream: an option for htrmopo to publish into an existing deposition. It is not needed for this release.
+An upstream htrmopo change would remove the need for the script: publishing into an existing draft, and creator types. It is not needed for this release.
 
 ## Before any deposit
 
 - **Cards:** approved on 2026-11-06 (item 6). Plan step 2 adds the reserved DOIs; any other edit needs the maintainer's review again.
-- **The accounts** (item 7).
+- **Accounts:** decided on 2026-11-06 (item 7). See "Before step 1" for what Shay sets up.
 - **Check the training records again** for local paths at deposit time (proposal §4).
 - **The reserved version DOIs** in each card's Citation section and pipeline table (plan step 2).
