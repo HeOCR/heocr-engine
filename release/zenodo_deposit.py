@@ -1,0 +1,312 @@
+"""Deposit the first release's three models on Zenodo, one plan step at a time (release/README.md, item 8).
+
+Each subcommand is one step of the plan and needs its own go-ahead from the maintainer:
+
+  reserve   step 1: create the three drafts and reserve their DOIs; writes the state file
+  upload    step 3: upload each card (as README.md) and its four files into its draft
+  metadata  step 4: set each draft's metadata from its front matter and card body
+  publish   step 6: publish each draft, then request inclusion in its communities
+  status    print the drafts and DOIs in the state file (no network)
+
+Step 2 (putting the reserved DOIs into the cards, by PR) and step 5 (checking the previews) are done by hand.
+
+- **Target:** the Zenodo sandbox, unless `--production` is given.
+- **Tokens:** read only from the environment (`ZENODO_SANDBOX_TOKEN`, or `ZENODO_TOKEN` with `--production`). A token
+  is sent only in an `Authorization: Bearer` header. It never goes into a URL, an argument list, the state file or
+  any output, and it is redacted from error messages.
+- **The state file:** it holds only draft ids and DOIs, and it must live outside the repository.
+- **API:** Zenodo's InvenioRDM records API, because the legacy deposit API that htrmopo uses cannot reserve a DOI for
+  an existing draft or mark an organisational creator. The community-inclusion call is to be confirmed on the
+  sandbox before production.
+- **Dependencies:** the core is the standard library only. Reading the cards needs PyYAML, rendering the description
+  needs Markdown, and validating against HTRMoPo v1 needs htrmopo. They are imported only when used.
+"""
+from __future__ import annotations
+
+import argparse
+import datetime
+import hashlib
+import json
+import os
+from pathlib import Path
+import sys
+import urllib.error
+import urllib.request
+
+RELEASE = Path(__file__).resolve().parent
+ROOT = RELEASE.parent
+SANDBOX = "https://sandbox.zenodo.org/api"
+PRODUCTION = "https://zenodo.org/api"
+TOKEN_VARIABLES = {SANDBOX: "ZENODO_SANDBOX_TOKEN", PRODUCTION: "ZENODO_TOKEN"}
+# Deposit order: the pipeline order of the cards' tables.
+MODELS = ("r4d", "a1", "r3h")
+# htrmopo 0.5 files models as legacy `upload_type: publication`, `publication_type: other`.
+RESOURCE_TYPE = {"id": "publication-other"}
+MAX_RESPONSE_BYTES = 10_000_000
+
+
+class DepositError(Exception):
+    """A step cannot go ahead; the message never contains a token."""
+
+
+def read_token(base: str, environ=os.environ) -> str:
+    name = TOKEN_VARIABLES[base]
+    value = environ.get(name, "")
+    if not value.strip():
+        raise DepositError(f"Set {name} in the environment (see release/README.md, 'Before step 1')")
+    return value.strip()
+
+
+class Api:
+    """InvenioRDM records API with a Bearer token. `opener` is urllib's by default; tests pass a fake."""
+
+    def __init__(self, base: str, token: str, opener=None):
+        self.base, self._token = base.rstrip("/"), token
+        self._open = opener or urllib.request.urlopen
+
+    def _redact(self, text: str) -> str:
+        return text.replace(self._token, "<token>") if self._token else text
+
+    def request(self, method: str, path: str, body=None, *, data: bytes | None = None,
+                content_type: str = "application/json"):
+        if body is not None:
+            data = json.dumps(body).encode("utf-8")
+        request = urllib.request.Request(f"{self.base}{path}", data=data, method=method)
+        request.add_header("Authorization", f"Bearer {self._token}")
+        request.add_header("Accept", "application/json")
+        if data is not None:
+            request.add_header("Content-Type", content_type)
+        try:
+            with self._open(request, timeout=300) as response:
+                raw = response.read(MAX_RESPONSE_BYTES + 1)
+        except urllib.error.HTTPError as error:
+            detail = error.read(2000).decode("utf-8", "replace")
+            raise DepositError(self._redact(f"{method} {path}: HTTP {error.code}: {detail}")) from None
+        except urllib.error.URLError as error:
+            raise DepositError(self._redact(f"{method} {path}: {error.reason}")) from None
+        if len(raw) > MAX_RESPONSE_BYTES:
+            raise DepositError(f"{method} {path}: response too large")
+        return json.loads(raw) if raw.strip() else None
+
+
+def creators(authors: list[dict]) -> list[dict]:
+    """HTRMoPo `authors` (with the extra `type` key) to InvenioRDM creators (release/README.md)."""
+    result = []
+    for author in authors:
+        kind = author.get("type")
+        if kind == "personal":
+            family, sep, given = author["name"].partition(",")
+            if not sep or not family.strip() or not given.strip():
+                raise DepositError(f"Person name must be 'Family, Given': {author['name']!r}")
+            person = {"type": "personal", "family_name": family.strip(), "given_name": given.strip()}
+            if author.get("orcid"):
+                person["identifiers"] = [{"scheme": "orcid",
+                                          "identifier": author["orcid"].rstrip("/").rsplit("/", 1)[-1]}]
+            result.append({"person_or_org": person})
+        elif kind == "organizational":
+            result.append({"person_or_org": {"type": "organizational", "name": author["name"]}})
+        else:
+            raise DepositError(f"Author {author.get('name')!r} needs type personal or organizational")
+    return result
+
+
+def record_metadata(front: dict, description_html: str, publication_date: str) -> dict:
+    """InvenioRDM metadata following htrmopo 0.5's mapping: title, description, creators, licence, keywords, data."""
+    metadata = {"resource_type": RESOURCE_TYPE, "title": front["summary"], "publication_date": publication_date,
+                "creators": creators(front["authors"]), "description": description_html,
+                # SPDX ids, lower case in InvenioRDM's licence vocabulary
+                "rights": [{"id": front["license"].lower()}]}
+    if front.get("tags"):
+        metadata["subjects"] = [{"subject": tag} for tag in front["tags"]]
+    if front.get("datasets"):
+        metadata["related_identifiers"] = [{"identifier": url, "scheme": "url",
+                                            "relation_type": {"id": "isderivedfrom"},
+                                            "resource_type": {"id": "dataset"}} for url in front["datasets"]]
+    return metadata
+
+
+def _inside_repository(path: Path) -> bool:
+    try:
+        path.resolve().relative_to(ROOT)
+        return True
+    except ValueError:
+        return False
+
+
+def load_state(path: Path, base: str) -> dict:
+    if _inside_repository(path):
+        raise DepositError("The state file must be outside the repository")
+    if not path.exists():
+        return {"api": base, "records": {}}
+    state = json.loads(path.read_text(encoding="utf-8"))
+    if state.get("api") != base:
+        raise DepositError(f"The state file is for {state.get('api')}, not {base}")
+    return state
+
+
+def save_state(path: Path, state: dict) -> None:
+    if _inside_repository(path):
+        raise DepositError("The state file must be outside the repository")
+    path.parent.mkdir(parents=True, exist_ok=True)
+    temporary = path.with_name(path.name + ".tmp")
+    temporary.write_text(json.dumps(state, indent=2) + "\n", encoding="utf-8")
+    temporary.chmod(0o600)
+    temporary.replace(path)
+
+
+def _draft(state: dict, model: str) -> dict:
+    record = state["records"].get(model)
+    if not record:
+        raise DepositError(f"No reserved draft for {model}; run `reserve` first (plan step 1)")
+    return record
+
+
+def reserve(api: Api, state: dict, fronts: dict, state_path: Path, today: str) -> dict:
+    """Step 1: one draft per model, each with its DOI reserved. Resumable: reserved models are skipped."""
+    for model in MODELS:
+        if model in state["records"]:
+            continue
+        front = fronts[model]
+        draft = api.request("POST", "/records", {
+            "metadata": {"resource_type": RESOURCE_TYPE, "title": front["summary"],
+                         "publication_date": today, "creators": creators(front["authors"])},
+            "files": {"enabled": True}, "access": {"record": "public", "files": "public"}})
+        reserved = api.request("POST", f"/records/{draft['id']}/draft/pids/doi")
+        doi = reserved["pids"]["doi"]["identifier"]
+        state["records"][model] = {"id": draft["id"], "doi": doi}
+        save_state(state_path, state)
+    return state
+
+
+def build_card(front: dict, body: str, doi: str, validate=None) -> str:
+    """The deposit's README.md: front matter with `id`, then the card body, which must cite its DOI (step 2)."""
+    if doi not in body:
+        raise DepositError(f"The card body does not cite {doi}; put the reserved DOIs in the cards first (step 2)")
+    front = {**front, "id": doi}
+    (validate or validate_htrmopo)(front)
+    import yaml  # noqa: PLC0415  (only needed for a real deposit)
+    return "---\n" + yaml.safe_dump(front, sort_keys=False, allow_unicode=True) + "---\n" + body
+
+
+def validate_htrmopo(front: dict) -> None:
+    from jsonschema import validate  # noqa: PLC0415
+    from htrmopo.util import _v1_schema  # noqa: PLC0415
+    from htrmopo.publish import format_checker  # noqa: PLC0415
+    validate(front, _v1_schema, format_checker=format_checker)
+
+
+def deposit_files(model: str, weights: Path, release: Path = RELEASE) -> dict[str, Path]:
+    """The four files beside the card, under their deposit names; the weights must match the record's sha256."""
+    record_path = release / model / f"{model}_training_run.json"
+    output = json.loads(record_path.read_text(encoding="utf-8"))["output"]
+    digest = hashlib.sha256()
+    with weights.open("rb") as handle:
+        for chunk in iter(lambda: handle.read(1 << 20), b""):
+            digest.update(chunk)
+    if digest.hexdigest() != output["model_sha256"]:
+        raise DepositError(f"{model}: {weights.name} does not match the record's model_sha256")
+    return {output["release_file_name"]: weights, "LICENSE": release / model / "LICENSE",
+            "NOTICE": release / model / "NOTICE", record_path.name: record_path}
+
+
+def upload(api: Api, state: dict, model: str, card: str, files: dict[str, Path]) -> None:
+    """Step 3: start, upload and commit the card (README.md) and each file into the model's draft."""
+    record_id = _draft(state, model)["id"]
+    contents = {"README.md": card.encode("utf-8"), **{name: path.read_bytes() for name, path in files.items()}}
+    api.request("POST", f"/records/{record_id}/draft/files", [{"key": name} for name in contents])
+    for name, data in contents.items():
+        api.request("PUT", f"/records/{record_id}/draft/files/{name}/content", data=data,
+                    content_type="application/octet-stream")
+        api.request("POST", f"/records/{record_id}/draft/files/{name}/commit")
+
+
+def set_metadata(api: Api, state: dict, model: str, metadata: dict) -> None:
+    """Step 4: replace the draft's metadata, keeping its reserved DOI."""
+    record_id = _draft(state, model)["id"]
+    draft = api.request("GET", f"/records/{record_id}/draft")
+    if draft.get("pids", {}).get("doi", {}).get("identifier") != state["records"][model]["doi"]:
+        raise DepositError(f"{model}: the draft's DOI is not the reserved one")
+    api.request("PUT", f"/records/{record_id}/draft", {
+        "metadata": metadata, "pids": draft["pids"], "files": {"enabled": True},
+        "access": {"record": "public", "files": "public"}})
+
+
+def publish(api: Api, state: dict, model: str, communities: list[str]) -> None:
+    """Step 6: publish (permanent), then request inclusion in each community (heocr, ocr_models)."""
+    record_id = _draft(state, model)["id"]
+    published = api.request("POST", f"/records/{record_id}/draft/actions/publish")
+    state["records"][model]["published"] = bool(published)
+    ids = [api.request("GET", f"/communities/{slug}")["id"] for slug in communities]
+    if ids:
+        # InvenioRDM inclusion requests for a published record; to be confirmed on the sandbox.
+        api.request("POST", f"/records/{record_id}/communities", {"communities": [{"id": i} for i in ids]})
+
+
+def read_front(model: str, release: Path = RELEASE) -> dict:
+    import yaml  # noqa: PLC0415
+    return yaml.safe_load((release / model / "zenodo.yaml").read_text(encoding="utf-8"))
+
+
+def description_html(body: str) -> str:
+    import markdown  # noqa: PLC0415
+    return markdown.markdown(body, extensions=["tables", "fenced_code"])
+
+
+def _weights(values: list[str]) -> dict[str, Path]:
+    weights = {}
+    for value in values:
+        model, sep, path = value.partition("=")
+        if not sep or model not in MODELS:
+            raise DepositError(f"--weights takes MODEL=PATH with MODEL in {', '.join(MODELS)}")
+        weights[model] = Path(path)
+    return weights
+
+
+def main(argv=None, environ=os.environ, opener=None) -> int:
+    parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--production", action="store_true", help="zenodo.org instead of the sandbox (default)")
+    parser.add_argument("--state", type=Path, required=True, help="state file outside the repository")
+    parser.add_argument("--models", nargs="+", choices=MODELS, default=list(MODELS))
+    commands = parser.add_subparsers(dest="command", required=True)
+    commands.add_parser("reserve")
+    upload_parser = commands.add_parser("upload")
+    upload_parser.add_argument("--weights", nargs="+", required=True, metavar="MODEL=PATH")
+    commands.add_parser("metadata")
+    commands.add_parser("publish")
+    commands.add_parser("status")
+    args = parser.parse_args(argv)
+    base = PRODUCTION if args.production else SANDBOX
+    try:
+        state = load_state(args.state, base)
+        if args.command == "status":
+            print(json.dumps(state, indent=2))
+            return 0
+        api = Api(base, read_token(base, environ), opener)
+        print(f"target: {base}", file=sys.stderr)
+        fronts = {model: read_front(model) for model in MODELS}
+        if args.command == "reserve":
+            reserve(api, state, fronts, args.state, datetime.date.today().isoformat())
+        for model in args.models if args.command != "reserve" else ():
+            body = (RELEASE / model / "card_body.md").read_text(encoding="utf-8")
+            doi = _draft(state, model)["doi"]
+            if args.command == "upload":
+                weights = _weights(args.weights)
+                if model not in weights:
+                    raise DepositError(f"--weights has no path for {model}")
+                upload(api, state, model, build_card(fronts[model], body, doi), deposit_files(model, weights[model]))
+            elif args.command == "metadata":
+                build_card(fronts[model], body, doi)
+                set_metadata(api, state, model, record_metadata(fronts[model], description_html(body),
+                                                                datetime.date.today().isoformat()))
+            elif args.command == "publish":
+                publish(api, state, model, fronts[model].get("communities", []))
+                save_state(args.state, state)
+        print(json.dumps({m: r["doi"] for m, r in state["records"].items()}, indent=2))
+        return 0
+    except DepositError as error:
+        print(f"error: {error}", file=sys.stderr)
+        return 1
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
