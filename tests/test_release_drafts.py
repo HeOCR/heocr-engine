@@ -1,6 +1,9 @@
+import json
 import re
 import unittest
 from pathlib import Path
+
+from heocr_engine.training import validate_training_run
 
 ROOT = Path(__file__).resolve().parent.parent
 R3H = ROOT / 'release' / 'r3h'
@@ -28,6 +31,25 @@ class ReleaseDraftTests(unittest.TestCase):
         self.assertRegex(zenodo, re.compile(r'^  - name: HeOCR maintainers$', re.M))
         self.assertRegex(hf, re.compile(r'^license: apache-2\.0$', re.M))
         self.assertTrue((R3H / 'LICENSE').read_text(encoding='utf-8').lstrip().startswith('Apache License'))
+
+    def test_r3h_zenodo_front_matter_carries_ketos_hints(self):
+        zenodo = (R3H / 'zenodo.yaml').read_text(encoding='utf-8')
+        # htrmopo publish keeps these as written; ketos publish would have computed them (decision 0010's note).
+        for line in ('software_name: kraken', '  - kind=safetensors', '  - version>=5.0.0', '  - seg_type=baselines',
+                     '  - one_channel_mode=L', '  - legacy_polygons=False', 'metrics:'):
+            with self.subTest(line=line):
+                self.assertIn(line, zenodo.splitlines())
+
+    def test_r3h_training_record_is_sanitised(self):
+        text = (R3H / 'r3h_training_run.json').read_text(encoding='utf-8')
+        record = json.loads(text)
+        self.assertEqual(validate_training_run(record), [])
+        self.assertEqual(record['output']['model_sha256'], R3H_SHA256)
+        self.assertEqual(record['model_licence'], {'status': 'Apache-2.0', 'owner': 'maintainer',
+                                                   'basis': 'planning/decisions/0010-r3h-release.md',
+                                                   'published': False})
+        self.assertTrue((ROOT / record['model_licence']['basis']).is_file())
+        self.assertNotRegex(text, r'/Users/|/home/|/private/|[A-Z]:\\')
 
     def test_no_weights_in_release_drafts(self):
         suffixes = {'.safetensors', '.ckpt', '.mlmodel', '.pt', '.pth'}

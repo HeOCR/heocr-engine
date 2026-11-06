@@ -165,7 +165,7 @@ The metric is CER under hocrgen's `primary.v1` normalisation profile, pooled ove
 | Training text | `7c2a62b83d3be29ab796c30b3e3272576c1f7e9c4302f7003fc6829f97984573`, the concatenation of hocrsyngen `hebrew_lines_train_v1.txt`, `hebrew_mixed_lines_train_v1.txt` and `hebrew_typographic_lines_train_v1.txt` |
 | Split | per page by hash, 5% validation; assignment `ade60b77ed8ecd23f67cf9876bd85c01db8ac589f8d709a6533eb9960c36cc20` |
 | Training code | heocr-engine `55b0f7d`, ketos and kraken 7.0.2 |
-| Training record | `heocr_engine_training_run.v1` <!-- DRAFT: ship the sanitised record beside the weights (proposal §4) and name its file here. --> |
+| Training record | `r3h_training_run.json` (`heocr_engine_training_run.v1`), in this deposit |
 | Scoring | hocrgen `2d3efb0` (seed-101, held-out) and `c8fb74e` (other batches); heocr-engine `55b0f7d` |
 
 ## Contact
