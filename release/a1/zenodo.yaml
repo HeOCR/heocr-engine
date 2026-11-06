@@ -4,8 +4,15 @@
 # record's draft. software_hints are the values `ketos publish` would compute from the
 # model's kraken_meta. metrics are the pipeline's CER in percent.
 summary: Line reading order from region types for modern Hebrew document pages, trained from scratch on synthetic pages; reading-order model of the HeOCR R4d + A1 + R3h pipeline
+# Creators (item 7, maintainer, 2026-11-06). HTRMoPo's author items have name, affiliation
+# and orcid only; `type` is the InvenioRDM creator type, which the deposit script maps
+# (release/README.md). Person names are "Family, Given".
 authors:
+  - name: Palachy Affek, Shay  # DRAFT: confirm the family/given split
+    type: personal
+    # orcid: DRAFT, Shay's ORCID iD if he has one, e.g. https://orcid.org/0000-0000-0000-0000
   - name: HeOCR maintainers
+    type: organizational
 license: Apache-2.0
 software_name: kraken
 software_hints:
@@ -33,3 +40,9 @@ metrics:  # percent CER, hocrgen primary.v1, pipeline R4d + A1 + R3h (see the ca
   cer_hocrgen_fixture: 13.0
 datasets:
   - https://github.com/HeOCR/hocrsyngen/tree/bb14cd0/src/hocrsyngen/data/synthetic/texts
+# Zenodo communities, not part of the HTRMoPo schema; the deposit script reads them.
+# heocr: the HeOCR community Shay creates (item 7); its identifier is set once it exists.
+# ocr_models: the kraken/HTRMoPo model repository, which `kraken list` and `htrmopo list` read.
+communities:
+  - DRAFT-heocr-community-identifier
+  - ocr_models
