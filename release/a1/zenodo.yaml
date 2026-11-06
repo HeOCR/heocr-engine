@@ -1,0 +1,35 @@
+# HTRMoPo v1 front matter for this model's Zenodo deposit, in htrmopo 0.5's format.
+# The deposit card is this front matter between `---` lines, followed by card_body.md.
+# `id` is added at plan step 2 (release/README.md): the version DOI reserved for this
+# record's draft. software_hints are the values `ketos publish` would compute from the
+# model's kraken_meta. metrics are the pipeline's CER in percent.
+summary: Line reading order from region types for modern Hebrew document pages, trained from scratch on synthetic pages; reading-order model of the HeOCR R4d + A1 + R3h pipeline
+authors:
+  - name: HeOCR maintainers
+license: Apache-2.0
+software_name: kraken
+software_hints:
+  - kind=safetensors
+  - version>=5.0.0
+  - ro_level=baselines
+language:
+  - heb
+script:
+  - Hebr
+tags:
+  - kraken_pytorch
+  - hebrew
+  - reading order
+  - synthetic training data
+  - HeOCR
+model_type:
+  - reading_order
+metrics:  # percent CER, hocrgen primary.v1, pipeline R4d + A1 + R3h (see the card body)
+  cer_seed101: 2.0
+  cer_heldout: 1.0
+  cer_eval_mixed_heldout: 1.7
+  cer_eval_typo_heldout: 0.9
+  cer_eval_layout_heldout: 12.4
+  cer_hocrgen_fixture: 13.0
+datasets:
+  - https://github.com/HeOCR/hocrsyngen/tree/bb14cd0/src/hocrsyngen/data/synthetic/texts

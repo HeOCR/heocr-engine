@@ -1,0 +1,40 @@
+HeOCR R3h Hebrew line recognition model
+Copyright (c) 2026 HeOCR maintainers
+
+This model (heocr-r3h-recognition.safetensors, trained as
+best_0.9959.safetensors, sha256
+f76affa84e29536aa1d41f89d3507183c104f1620ca953fdfa5dd4b7a00ba6be) is
+licensed under the Apache License, Version 2.0. See LICENSE.
+
+It was trained from scratch. No third-party model weights were loaded.
+
+Software
+--------
+
+The model was trained with, and runs in, kraken / ketos 7.0.2
+(https://github.com/mittagessen/kraken), licensed under the Apache License,
+Version 2.0. The model file uses kraken's safetensors format and records
+ketos's default recognition network definition (VGSL). It contains no kraken
+code.
+
+Training data
+-------------
+
+The training data is synthetic: page images rendered by hocrsyngen
+(https://github.com/HeOCR/hocrsyngen, MIT License).
+
+Fonts. The page images were rendered in these two fonts. The model contains
+no font data, and the fonts are not distributed with it. They are credited
+here:
+
+- Alef, Copyright (c) 2012, HaGilda & Mushon Zer-Aviv, with Reserved Font
+  Name Alef. Licensed under the SIL Open Font License, Version 1.1.
+- Gveret Levin, Copyright 2024 The Gveret Levin Project Authors. Licensed
+  under the SIL Open Font License, Version 1.1.
+
+Text. The rendered text is original text authored by AI agents (Claude Opus
+5.5 sessions run in Claude Code) for HeOCR. It is the hocrsyngen corpora
+S10b, S13a and S13b. No third-party text is included. The corpora are
+dedicated to the public domain under CC0 1.0 Universal (see hocrsyngen
+src/hocrsyngen/data/synthetic/texts/LICENSE-CC0-1.0.txt and hocrsyngen
+ADR 0008).

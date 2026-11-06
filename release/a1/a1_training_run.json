@@ -1,0 +1,461 @@
+{
+  "schema_version": "heocr_engine_training_run.v1",
+  "engine": {
+    "name": "heocr-engine",
+    "version": "0.2.0"
+  },
+  "trainer": {
+    "name": "ketos",
+    "version": "7.0.2",
+    "executable_sha256": "3577cee841bd53cc58c1deb640715b593574e782ab77272d354726590e5e141b",
+    "kraken_version": null,
+    "kraken_executable_sha256": null
+  },
+  "task": "reading_order",
+  "init": "from_scratch",
+  "data": {
+    "annotation_schema": "hocrsyngen_line_annotations.v1",
+    "sources": [
+      {
+        "name": "R4d training batch",
+        "batch": "hocrsyngen 8698895 (s10c-gold-complete-v1), seed 5101, with region polygons",
+        "prepared_with": "heocr-engine 5294ca5 prepare-kraken-data --task segmentation, with --line-type REGION=REGION for all 8 region names",
+        "annotations_sha256": "871355fdecb36fd561c1ee9832d8b6aec221685cca6ff3f13cad6b60cd6f36bf",
+        "generation_manifest_sha256": "29dffcca283770c56dedb4e53b57ccae289ec37124fd4399d968d93a3dd9295a",
+        "region_geometry": "sidecar",
+        "line_type_map": {
+          "body": "body",
+          "footer": "footer",
+          "identifier_area": "identifier_area",
+          "margin": "margin",
+          "signature_area": "signature_area",
+          "stamp_area": "stamp_area",
+          "table_cells": "table_cells",
+          "title": "title"
+        },
+        "split": {
+          "unit": "sample",
+          "method": "sha256_rank",
+          "split_seed": 0,
+          "validation_fraction": 0.05,
+          "assignment_sha256": "db008ecd67b41f221ef3ab0379a674a9d2a50611f4b8c779b2134197907e3215"
+        },
+        "corpus_sha256": "a3f2f0db1bf48d8cdd618579af42ca36710cadf81cdc4d5e89d2dc6c192e6611",
+        "train": {
+          "pages": 1710,
+          "pages_by_template": {
+            "archive_card": 250,
+            "archive_card_faded_scan": 245,
+            "handwritten_note": 246,
+            "handwritten_note_heavy_wear": 245,
+            "ledger": 242,
+            "printed_letter": 239,
+            "printed_letter_heavy_scan": 243
+          }
+        },
+        "validation": {
+          "pages": 90,
+          "pages_by_template": {
+            "archive_card": 7,
+            "archive_card_faded_scan": 12,
+            "handwritten_note": 11,
+            "handwritten_note_heavy_wear": 12,
+            "ledger": 15,
+            "printed_letter": 19,
+            "printed_letter_heavy_scan": 14
+          }
+        }
+      },
+      {
+        "name": "R3d training batch",
+        "batch": "hocrsyngen db3f73c (s11b-ledger-fit-v1), seed 7101",
+        "prepared_with": "heocr-engine 5294ca5 prepare-kraken-data --task segmentation, with --line-type REGION=REGION for all 8 region names",
+        "annotations_sha256": "51cab2f331607035f8a697ca3ffdcbff40241a65821fb4634dd80412b4e59c43",
+        "generation_manifest_sha256": "e8098844b7dfb7027913d7a04e4a5d35100ab551d41bb759ec92f0f685c2ec73",
+        "region_geometry": "sidecar",
+        "line_type_map": {
+          "body": "body",
+          "footer": "footer",
+          "identifier_area": "identifier_area",
+          "margin": "margin",
+          "signature_area": "signature_area",
+          "stamp_area": "stamp_area",
+          "table_cells": "table_cells",
+          "title": "title"
+        },
+        "split": {
+          "unit": "sample",
+          "method": "sha256_rank",
+          "split_seed": 0,
+          "validation_fraction": 0.05,
+          "assignment_sha256": "4e25eaa2a307d98b1141690c48c731317818202f853b9fbb20b3f98b431fad9e"
+        },
+        "corpus_sha256": "e4384322e167f81252f28703206f180d1757e789c3ef7bd97484eef6978b1cf4",
+        "train": {
+          "pages": 2280,
+          "pages_by_template": {
+            "archive_card": 321,
+            "archive_card_faded_scan": 327,
+            "handwritten_note": 324,
+            "handwritten_note_heavy_wear": 328,
+            "ledger": 328,
+            "printed_letter": 326,
+            "printed_letter_heavy_scan": 326
+          }
+        },
+        "validation": {
+          "pages": 120,
+          "pages_by_template": {
+            "archive_card": 22,
+            "archive_card_faded_scan": 15,
+            "handwritten_note": 19,
+            "handwritten_note_heavy_wear": 15,
+            "ledger": 15,
+            "printed_letter": 17,
+            "printed_letter_heavy_scan": 17
+          }
+        }
+      }
+    ],
+    "corpora": [
+      {
+        "sha256": "a3f2f0db1bf48d8cdd618579af42ca36710cadf81cdc4d5e89d2dc6c192e6611",
+        "bytes": 439596
+      },
+      {
+        "sha256": "e4384322e167f81252f28703206f180d1757e789c3ef7bd97484eef6978b1cf4",
+        "bytes": 698207
+      }
+    ],
+    "train": {
+      "pages": 3990,
+      "line_pairs": 2181264,
+      "lines_by_type": {
+        "default": 0,
+        "title": 3990,
+        "body": 12455,
+        "stamp_area": 2277,
+        "signature_area": 3402,
+        "footer": 4560,
+        "margin": 1143,
+        "identifier_area": 3426,
+        "table_cells": 34562
+      }
+    },
+    "validation": {
+      "pages": 210
+    },
+    "excluded": "No page of seed-101, held-out, eval-mixed-heldout, eval-typo-heldout, eval-layout-heldout or the hocrgen fixture: the two sources are training batches with their own manifests"
+  },
+  "reading_order": {
+    "level": "baselines",
+    "class_mapping": {
+      "default": 0,
+      "title": 1,
+      "body": 2,
+      "stamp_area": 3,
+      "signature_area": 4,
+      "footer": 5,
+      "margin": 6,
+      "identifier_area": 7,
+      "table_cells": 8
+    },
+    "class_source": "each line's hocrsyngen region name, as its kraken line type (--line-type REGION=REGION); `default` is unused",
+    "inference": {
+      "command": "heocr-engine kraken --api python --reading-order-model <a1> --reading-order-classes region",
+      "reading_order_classes": "region",
+      "segmentation_model_sha256": "d32cd1a8efe7354445ccfea76551cc9943ca05792c332b5865f9bec985fe7bf7",
+      "note": "kraken 7.0.2's own CLI does not apply a learned line order to its text output (mittagessen/kraken#820); heocr-engine's python API applies it"
+    }
+  },
+  "commands": {
+    "train": [
+      "<ketos>",
+      "-v",
+      "-d",
+      "mps",
+      "-s",
+      "42",
+      "--workers",
+      "0",
+      "--threads",
+      "8",
+      "--config",
+      "<work>/rotrain_config.yaml",
+      "rotrain",
+      "-f",
+      "page",
+      "--level",
+      "baselines",
+      "-o",
+      "<work>/checkpoints",
+      "-q",
+      "early",
+      "--lag",
+      "10",
+      "--min-epochs",
+      "30",
+      "-t",
+      "<work>/train.txt",
+      "-e",
+      "<work>/validation.txt"
+    ]
+  },
+  "hyperparameters": {
+    "level": "baselines",
+    "quit": "early",
+    "lag": 10,
+    "min_epochs": 30,
+    "other": "ketos 7.0.2 rotrain defaults otherwise; not passed and not logged",
+    "config": {
+      "rotrain": {
+        "class_mapping": [
+          [
+            "default",
+            0
+          ],
+          [
+            "title",
+            1
+          ],
+          [
+            "body",
+            2
+          ],
+          [
+            "stamp_area",
+            3
+          ],
+          [
+            "signature_area",
+            4
+          ],
+          [
+            "footer",
+            5
+          ],
+          [
+            "margin",
+            6
+          ],
+          [
+            "identifier_area",
+            7
+          ],
+          [
+            "table_cells",
+            8
+          ]
+        ]
+      }
+    },
+    "learning_rate": 0.001
+  },
+  "run": {
+    "seed": 42,
+    "deterministic": null,
+    "device": "mps",
+    "precision": null,
+    "workers": 0,
+    "threads": 8,
+    "environment": null
+  },
+  "outcome": {
+    "quit": "early",
+    "stopped_by": "unknown",
+    "best_epoch": null,
+    "validation_runs": 30,
+    "epochs_completed": 30,
+    "validation_metric": {
+      "name": "val_spearman",
+      "best": 0.0,
+      "definition": "ketos rotrain's validation metric on the validation pages (lower is better; 0 is a perfect order), kraken-internal; not a hocrgen score"
+    },
+    "validation_history": [
+      {
+        "run": 0,
+        "val_spearman": 0.020085155963897705,
+        "val_loss": 0.2018715739250183
+      },
+      {
+        "run": 1,
+        "val_spearman": 0.01382286287844181,
+        "val_loss": 0.11324656009674072
+      },
+      {
+        "run": 2,
+        "val_spearman": 0.010923991911113262,
+        "val_loss": 0.08348117768764496
+      },
+      {
+        "run": 3,
+        "val_spearman": 0.01085833553224802,
+        "val_loss": 0.06636175513267517
+      },
+      {
+        "run": 4,
+        "val_spearman": 0.01085833553224802,
+        "val_loss": 0.054981671273708344
+      },
+      {
+        "run": 5,
+        "val_spearman": 0.01085833553224802,
+        "val_loss": 0.047049082815647125
+      },
+      {
+        "run": 6,
+        "val_spearman": 0.01085833553224802,
+        "val_loss": 0.041415706276893616
+      },
+      {
+        "run": 7,
+        "val_spearman": 0.01085833553224802,
+        "val_loss": 0.037314318120479584
+      },
+      {
+        "run": 8,
+        "val_spearman": 0.01085833553224802,
+        "val_loss": 0.0341179221868515
+      },
+      {
+        "run": 9,
+        "val_spearman": 0.01085833553224802,
+        "val_loss": 0.03177836909890175
+      },
+      {
+        "run": 10,
+        "val_spearman": 0.01085833553224802,
+        "val_loss": 0.02989024482667446
+      },
+      {
+        "run": 11,
+        "val_spearman": 0.01085833553224802,
+        "val_loss": 0.02862272970378399
+      },
+      {
+        "run": 12,
+        "val_spearman": 0.01085833553224802,
+        "val_loss": 0.027233226224780083
+      },
+      {
+        "run": 13,
+        "val_spearman": 0.01085833553224802,
+        "val_loss": 0.026263896375894547
+      },
+      {
+        "run": 14,
+        "val_spearman": 0.01085833553224802,
+        "val_loss": 0.025470959022641182
+      },
+      {
+        "run": 15,
+        "val_spearman": 0.01085833553224802,
+        "val_loss": 0.024716991931200027
+      },
+      {
+        "run": 16,
+        "val_spearman": 0.010943369939923286,
+        "val_loss": 0.02019871212542057
+      },
+      {
+        "run": 17,
+        "val_spearman": 0.0071493699215352535,
+        "val_loss": 0.016402574256062508
+      },
+      {
+        "run": 18,
+        "val_spearman": 0.00022398590226657689,
+        "val_loss": 0.013479162007570267
+      },
+      {
+        "run": 19,
+        "val_spearman": 0.0001700680295471102,
+        "val_loss": 0.011218843050301075
+      },
+      {
+        "run": 20,
+        "val_spearman": 0.0001700680295471102,
+        "val_loss": 0.009489460848271847
+      },
+      {
+        "run": 21,
+        "val_spearman": 0.0001700680295471102,
+        "val_loss": 0.00813506543636322
+      },
+      {
+        "run": 22,
+        "val_spearman": 0.0001700680295471102,
+        "val_loss": 0.007066759746521711
+      },
+      {
+        "run": 23,
+        "val_spearman": 0.0001700680295471102,
+        "val_loss": 0.006209150422364473
+      },
+      {
+        "run": 24,
+        "val_spearman": 8.50340147735551e-05,
+        "val_loss": 0.005528650246560574
+      },
+      {
+        "run": 25,
+        "val_spearman": 8.50340147735551e-05,
+        "val_loss": 0.004970669746398926
+      },
+      {
+        "run": 26,
+        "val_spearman": 0.0,
+        "val_loss": 0.0045032380148768425
+      },
+      {
+        "run": 27,
+        "val_spearman": 0.0,
+        "val_loss": 0.004107319284230471
+      },
+      {
+        "run": 28,
+        "val_spearman": 0.0,
+        "val_loss": 0.003768594702705741
+      },
+      {
+        "run": 29,
+        "val_spearman": 0.0,
+        "val_loss": 0.0034761475399136543
+      }
+    ]
+  },
+  "output": {
+    "model_sha256": "69aa1946583bb68ddf13ef20860582f4aa982a46b2f79e38bd7d9ae20535fb56",
+    "bytes": 8492,
+    "file_name": "best_0.0000.safetensors",
+    "weights_format": "safetensors",
+    "byte_reproducible": false,
+    "release_file_name": "heocr-a1-reading-order.safetensors"
+  },
+  "model_licence": {
+    "status": "Apache-2.0",
+    "owner": "maintainer",
+    "basis": "planning/decisions/0011-first-release-adds-r4d-and-a1.md",
+    "published": false
+  },
+  "reconstruction": {
+    "written": "2026-11-06",
+    "run": "2026-11-04 04:52–05:11 IST",
+    "evidence": [
+      "run_a1_ro/command.txt and rotrain_config.yaml (command, class mapping)",
+      "run_a1_ro/ketos.log (line types and counts, line pairs, 30 validation runs)",
+      "data/r4d_train.summary.json and data/r3d_train.summary.json (batch pins, splits, page counts)",
+      "run_a1_ro/train.txt and validation.txt (3990 and 210 pages, matching the two splits)",
+      "the model file's kraken_meta (class mapping, level) and sha256",
+      "the R4d and R3d training records (corpus pins for the two batches)",
+      "ketos executable sha256: the same file is recorded by R4d (2026-11-03) and R3h (2026-11-05)",
+      "heocr-engine docs/baselines.md (R4d run identities; R4e RO-v2 and A1 settings): rotrain lr 0.001, the default, for R4d's settings, which RO-v2 and A1 reuse"
+    ],
+    "not_recorded": [
+      "hyperparameters other than level, quit, lag, min_epochs and the learning rate (ketos defaults were used and not logged)",
+      "run.deterministic, run.precision and run.environment (not passed, not logged)",
+      "outcome.stopped_by: 30 runs completed with --min-epochs 30 and --lag 10; the log gives no reason",
+      "outcome.best_epoch: val_spearman is 0.0 at runs 26–29, and which of them ketos kept is not recorded"
+    ]
+  }
+}
