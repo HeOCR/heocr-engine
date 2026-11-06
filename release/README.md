@@ -58,7 +58,7 @@ A card for either venue is its front matter between `---` lines, followed by `ca
 **Accounts (item 7, maintainer, 2026-11-06):**
 - **Zenodo:** deposited from Shay's personal Zenodo account, into a new HeOCR community that Shay creates. Each record is also submitted to `ocr_models`, the kraken/HTRMoPo model community that `kraken list` and `htrmopo list` read. Without it the models stay findable by DOI but are not listed there. Inclusion is a request that the community's administrators approve.
 - **Zenodo creators:**
-  - Shay Palachy Affek, as a person. His ORCID iD is a DRAFT placeholder in each `zenodo.yaml`, and the family/given split is to be confirmed.
+  - Shay Palachy Affek, as a person: family name "Palachy Affek", given name "Shay", ORCID iD [0000-0002-1459-9320](https://orcid.org/0000-0002-1459-9320). The name split and the iD are as on his ORCID record (2026-11-06).
   - "HeOCR maintainers", as an organisation.
 - **Hugging Face:** a new HeOCR organisation that Shay creates, with three repositories: `HeOCR/heocr-r3h-recognition`, `HeOCR/heocr-r4d-segmentation` and `HeOCR/heocr-a1-reading-order`. They are named like the release files.
 
@@ -85,7 +85,9 @@ Two things it cannot do:
 
 Zenodo's InvenioRDM records API has both. A draft can reserve its DOI before anything is final, and a creator's `person_or_org.type` is `personal` (with `given_name` and `family_name`) or `organizational` (with `name`), with an ORCID under `identifiers`. So the deposit uses a short script against the records API.
 - It reads the HTRMoPo front matter.
-- It maps `authors` by their `type` key, which is an extra key that the HTRMoPo schema allows and htrmopo ignores.
+- It maps `authors` by their `type` key, which is an extra key that the HTRMoPo schema allows and htrmopo ignores:
+  - **`personal`:** `{"person_or_org": {"type": "personal", "family_name": "Palachy Affek", "given_name": "Shay", "identifiers": [{"scheme": "orcid", "identifier": "0000-0002-1459-9320"}]}}`. The family and given names are split at the comma in `name`. The ORCID goes under `person_or_org.identifiers` as the bare iD; `zenodo.yaml` holds the `https://orcid.org/` URL, because HTRMoPo's `orcid` is a URI.
+  - **`organizational`:** `{"person_or_org": {"type": "organizational", "name": "HeOCR maintainers"}}`.
 - It uploads the same card and files that htrmopo would, so htrmopo's readers see the usual HTRMoPo record.
 - Its metadata otherwise follows htrmopo's mapping: the title from `summary`, the description from the card body, and the licence, keywords and `isDerivedFrom` links to the `datasets`.
 
@@ -96,8 +98,9 @@ Zenodo's InvenioRDM records API has both. A draft can reserve its DOI before any
 ## Before step 1
 
 Shay does these himself. None of them is an agent action.
-- **Create the Hugging Face organisation** `HeOCR`.
-- **Create the Zenodo community** for HeOCR. Its identifier then replaces `DRAFT-heocr-community-identifier` in the three `zenodo.yaml` files.
+- **Create the Zenodo community** for HeOCR. **Done:** `heocr` (https://zenodo.org/communities/heocr): public, with an open record submission policy and a closed review policy. It is set in the three `zenodo.yaml` files.
+- **Create the Hugging Face organisation.** **Done:** https://huggingface.co/HeOCR.
+- **Confirm the name split and ORCID iD.** **Done** from his ORCID record: "Palachy Affek, Shay", 0000-0002-1459-9320.
 - **Create the tokens:**
   - a **Zenodo sandbox** token (on sandbox.zenodo.org) and a **Zenodo production** token, each with the scopes `deposit:write` (create and edit drafts) and `deposit:actions` (publish);
   - a **Hugging Face** write token for the HeOCR organisation.
