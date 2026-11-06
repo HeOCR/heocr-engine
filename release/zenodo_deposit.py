@@ -246,12 +246,23 @@ def set_metadata(api: Api, state: dict, model: str, metadata: dict) -> None:
         "access": {"record": "public", "files": "public"}})
 
 
+def community_ids(api: Api, slugs: list[str]) -> list[str]:
+    """Each community slug's id; a missing community fails here, before anything is published."""
+    ids = []
+    for slug in slugs:
+        try:
+            ids.append(api.request("GET", f"/communities/{slug}")["id"])
+        except DepositError as error:
+            raise DepositError(f"Community {slug!r} not found on {api.base}; nothing was published ({error})") from None
+    return ids
+
+
 def publish(api: Api, state: dict, model: str, communities: list[str]) -> None:
-    """Step 6: publish (permanent), then request inclusion in each community (heocr, ocr_models)."""
+    """Step 6: resolve the communities, publish (permanent), then request inclusion in each community."""
     record_id = _draft(state, model)["id"]
+    ids = community_ids(api, communities)
     published = api.request("POST", f"/records/{record_id}/draft/actions/publish")
     state["records"][model]["published"] = bool(published)
-    ids = [api.request("GET", f"/communities/{slug}")["id"] for slug in communities]
     if ids:
         # InvenioRDM inclusion requests for a published record; to be confirmed on the sandbox.
         api.request("POST", f"/records/{record_id}/communities", {"communities": [{"id": i} for i in ids]})
@@ -315,6 +326,10 @@ def main(argv=None, environ=os.environ, opener=None) -> int:
         fronts = {model: read_front(model, release) for model in MODELS}
         if args.command == "reserve":
             reserve(api, state, fronts, args.state, datetime.date.today().isoformat())
+        if args.command == "publish":
+            for model in args.models:
+                _draft(state, model)
+                community_ids(api, fronts[model].get("communities", []))
         for model in args.models if args.command != "reserve" else ():
             body = (release / model / "card_body.md").read_text(encoding="utf-8")
             doi = _draft(state, model)["doi"]
