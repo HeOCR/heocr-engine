@@ -16,6 +16,8 @@ Train HeOCR's own Kraken recognition model from scratch on governed synthetic ho
 | R3c | Retrain R3b's recipe on line polygons rebuilt from the gold baselines by Kraken's polygonizer at the inference height (`--line-polygons kraken --polygonizer-height 1800`); score it with `blla -d horizontal-rl` and Tesseract lines, the oracle paths (d) and (e), hocrgen E2c6 paired accounting against R3b, and hocrgen's mixed-script evaluation fixture; results in `docs/baselines.md` | done (data path PR #13; results in `docs/baselines.md`) |
 | R3d | Retrain R3c's recipe on a mixed Hebrew/Latin batch (S10b + S13a train text, seven templates, seed 7101); score it on seed-101, held-out, hocrgen's mixed-script fixture and the held-out eval-mixed-heldout batch (never trained on), with per-script CER and E2c6 paired accounting against R3c; results in `docs/baselines.md` | done (results in `docs/baselines.md`) |
 
+| R3e | Bounded local fine-tune diagnostic on public-authored printed synthetic lines; fixed text/font split, held-out line comparison and offline reproducibility receipt in `research/printed_line_transfer/` | proposed (review pending) |
+
 ## Boundaries
 
 - Trained from scratch; no third-party weights are loaded (decision 0007).
