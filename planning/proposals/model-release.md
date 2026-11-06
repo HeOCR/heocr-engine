@@ -107,7 +107,7 @@ Overlap against eval corpora and against hocrgen's `bidi-synthetic-corpus.txt` i
 | Training stack | Runtime only | torch 2.10.0 BSD-3-Clause; lightning 2.6.1 Apache-2.0; safetensors 0.7.0 Apache-2.0; shapely 2.1.2 BSD-3-Clause; Pillow 11.3.0 MIT-CMU; pyarrow 22.0.0 Apache-2.0; python-bidi 0.6.10 LGPL | Installed package metadata, 2026-11-06 | No. The LGPL python-bidi only reorders labels at training time and is not embedded. |
 
 - ⚑ **The copyright holder is named differently.** heocr-engine and hocrsyngen say "HeOCR", hocrgen says "HeOCR maintainers". A release needs one licensor name. **Decided 2026-11-06 (decision 0010):** "HeOCR maintainers", everywhere.
-- **GitHub's licence detection.** All three repositories are public. `gh repo view` reports no detected SPDX licence for them, although each `LICENSE` file is MIT text. That is cosmetic, but worth fixing before a release links to them.
+- **GitHub's licence detection.** GitHub detects MIT for all three repositories (`gh api repos/HeOCR/<repo>/license` gives `spdx_id: MIT`, checked 2026-11-06). An earlier version of this note said no licence was detected. That came from `gh repo view --json licenseInfo`, which has no `spdxId` field. Nothing needs fixing.
 
 ### 2.5 Evaluation inputs (not training)
 
