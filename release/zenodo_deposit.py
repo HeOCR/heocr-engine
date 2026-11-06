@@ -43,6 +43,9 @@ TOKEN_VARIABLES = {SANDBOX: "ZENODO_SANDBOX_TOKEN", PRODUCTION: "ZENODO_TOKEN"}
 MODELS = ("r4d", "a1", "r3h")
 # htrmopo 0.5 files models as legacy `upload_type: publication`, `publication_type: other`.
 RESOURCE_TYPE = {"id": "publication-other"}
+# DOI registration needs a publisher (sandbox, 2026-11-06: "Missing publisher field required for DOI registration");
+# the legacy deposit API that htrmopo uses sets "Zenodo" itself.
+PUBLISHER = "Zenodo"
 MAX_RESPONSE_BYTES = 10_000_000
 # Zenodo answers `application/json` on /api/records with its legacy serialization (no `pids`, the DOI at the top
 # level); InvenioRDM's own JSON needs its media type (found on the sandbox, 2026-11-06).
@@ -117,6 +120,7 @@ def creators(authors: list[dict]) -> list[dict]:
 def record_metadata(front: dict, description_html: str, publication_date: str) -> dict:
     """InvenioRDM metadata following htrmopo 0.5's mapping: title, description, creators, licence, keywords, data."""
     metadata = {"resource_type": RESOURCE_TYPE, "title": front["summary"], "publication_date": publication_date,
+                "publisher": PUBLISHER,
                 "creators": creators(front["authors"]), "description": description_html,
                 # SPDX ids, lower case in InvenioRDM's licence vocabulary
                 "rights": [{"id": front["license"].lower()}]}

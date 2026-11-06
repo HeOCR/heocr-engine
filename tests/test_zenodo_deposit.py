@@ -188,6 +188,7 @@ class MappingTests(unittest.TestCase):
         self.assertEqual(metadata['title'], 'A model')
         self.assertEqual(metadata['resource_type'], {'id': 'publication-other'})
         self.assertEqual(metadata['rights'], [{'id': 'apache-2.0'}])
+        self.assertEqual(metadata['publisher'], 'Zenodo')  # required for DOI registration
         self.assertEqual(metadata['subjects'], [{'subject': 'hebrew'}, {'subject': 'kraken_pytorch'}])
         self.assertEqual(metadata['related_identifiers'][0]['relation_type'], {'id': 'isderivedfrom'})
         self.assertEqual(metadata['description'], '<p>card</p>')
