@@ -57,11 +57,11 @@ As in decision 0010, now for all three models:
 
 On 2026-11-06 the maintainer approved the three model cards as they stand on main at `952e5b5`. This closes sign-off item 6. The approved files are:
 
-| Card | sha256 at `952e5b5` |
+| Card | sha256, with the production DOIs (plan step 2) |
 |---|---|
-| `release/r3h/card_body.md` | `8a068719ed4176f43bd188ca23961f00457fbef642fad65c29722534bc94a948` |
-| `release/r4d/card_body.md` | `ff7d7a89d9106fb0df27bbe5f4edd09e3f10b7859f7c4d1a65f5ee0232aab9d6` |
-| `release/a1/card_body.md` | `1b5d7439fd3ea58605570bf135a03442e28f28aa25315888f5fbf8af39b35b4a` |
+| `release/r3h/card_body.md` | `da8b4e84920b8617bde6d1f6d74d89fde2334aca11d7f4156c6dba0769ddaa31` |
+| `release/r4d/card_body.md` | `0b4c4313e86e261f7a4ab6209fe394d3d4bac7ec33f2477f4b7c880874080e9a` |
+| `release/a1/card_body.md` | `6a03f50b204aec9d20ac84ee3e268225021ea2ae5322a0a0b7372ee41948dbfb` |
 
 In a separate approval the same day, the maintainer approved the three NOTICE files. That decides item 4's NOTICE text. The approval came with one change, a grammar fix in R4d's NOTICE: it names one corpus, so "The corpus is dedicated" replaces "The corpora are dedicated". The approved files, after that fix, are:
 
@@ -72,6 +72,11 @@ In a separate approval the same day, the maintainer approved the three NOTICE fi
 | `release/a1/NOTICE` | `c8b3ca662a59dfbc39a1df08a2f2589b174104ba9122fe0bb0f6822522349fae` (unchanged from `952e5b5`) |
 
 - **The one planned change:** the reserved version DOIs go into each card's pipeline table and Citation section (`release/README.md`, plan step 2). Any other change to a card or a NOTICE needs the maintainer's review again.
+- **2026-11-06, plan step 2, pending the maintainer's approval of the diff:** only the DOI lines changed, four per card:
+  - three pipeline-table rows, each with that model's production version DOI and its `https://doi.org/` link;
+  - the Citation line.
+
+  The DOIs, reserved on zenodo.org, are R4d `10.5281/zenodo.24023070`, A1 `10.5281/zenodo.24023072` and R3h `10.5281/zenodo.24023074`. The approved cards at `952e5b5` had the sha256s r3h `8a068719…`, r4d `ff7d7a89…` and a1 `1b5d7439…`. The NOTICEs are unchanged.
 - **Still open:** item 8, a separate go-ahead for each publishing action.
 
 ## Note (2026-11-06): item 7's accounts decided
