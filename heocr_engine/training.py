@@ -34,7 +34,12 @@ BASE_DIR = "R"
 DEFAULT_SPEC = ("[1,120,0,1 Cr3,13,32 Do0.1,2 Mp2,2 Cr3,13,32 Do0.1,2 Mp2,2 Cr3,9,64 Do0.1,2 Mp2,2 "
                 "Cr3,9,64 Do0.1,2 S1(1x0)1,3 Lbx200 Do0.1,2 Lbx200 Do0.1,2 Lbx200 Do]")
 LICENCE_STATUS = "Needs verification"
-TASKS = ("recognition", "segmentation")
+TASKS = ("recognition", "segmentation", "reading_order")
+# The task-specific record field: a recognizer records its bidi handling, a segmenter its classes and inference
+# reading order, a reading-order model (ketos rotrain, written from its run's evidence) its level and classes.
+TASK_KEYS = {"recognition": "text_order", "segmentation": "segmentation", "reading_order": "reading_order"}
+# ketos 7.0.2 rotrain orders lines (`baselines`) or regions (`regions`).
+READING_ORDER_LEVELS = ("baselines", "regions")
 # Region names become kraken region types through PAGE `custom="structure {type:…;}"`, which kraken
 # splits on braces, colons, semicolons and spaces.
 REGION_TYPE = re.compile(r"[A-Za-z0-9_-]{1,64}\Z")
@@ -446,7 +451,7 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
     `line_types` (segmentation only) maps region names to kraken line types, such as {"stamp_area": "stamp"};
     lines of other regions keep the `default` type.
     """
-    if task not in TASKS:
+    if task not in ("recognition", "segmentation"):  # reading-order records are written from a run's evidence
         raise EngineError("Invalid training task")
     if line_polygons not in LINE_POLYGONS or (task == "segmentation" and line_polygons != "sidecar"):
         raise EngineError("Line polygons must be sidecar, kraken or mix, and sidecar for segmentation")
@@ -732,8 +737,7 @@ def validate_training_run(record: dict) -> list[str]:
     task = record.get("task", "recognition")
     if task not in TASKS:
         return ["task must be one of " + ", ".join(TASKS)]
-    # A recognizer records its bidi handling; a segmenter records its classes and inference reading order.
-    task_key = "text_order" if task == "recognition" else "segmentation"
+    task_key = TASK_KEYS[task]
     for key in ("engine", "trainer", "init", "data", task_key, "commands", "hyperparameters",
                 "run", "outcome", "output", "model_licence"):
         if key not in record:
@@ -743,8 +747,14 @@ def validate_training_run(record: dict) -> list[str]:
     if record["init"] != "from_scratch":
         problems.append("init must be from_scratch")
     data, output = record["data"], record["output"]
-    for name, value in (("data.annotations_sha256", data.get("annotations_sha256")),
-                        ("data.generation_manifest_sha256", data.get("generation_manifest_sha256")),
+    # A reading-order model may be trained on pages from several batches; each source pins its own batch.
+    sources = data.get("sources") if task == "reading_order" else [data]
+    if not isinstance(sources, list) or not sources or not all(isinstance(s, dict) for s in sources):
+        problems.append("data.sources must list the training batches")
+        sources = []
+    prefix = "data.sources[{}]." if task == "reading_order" else "data."
+    for name, value in (*((prefix.format(i) + key, source.get(key)) for i, source in enumerate(sources)
+                          for key in ("annotations_sha256", "generation_manifest_sha256")),
                         ("output.model_sha256", output.get("model_sha256")),
                         *((f"data.corpora[{i}].sha256", c.get("sha256") if isinstance(c, dict) else None)
                           for i, c in enumerate(data.get("corpora", [])))):
@@ -767,6 +777,12 @@ def validate_training_run(record: dict) -> list[str]:
                 or order.get("base_dir") not in BASE_DIRS
                 or order.get("inference_base_dir") != order.get("base_dir")):
             problems.append("text_order must reorder logical ground truth with the inference base direction")
+    elif task == "reading_order":
+        order = record["reading_order"]
+        if (not isinstance(order, dict) or order.get("level") not in READING_ORDER_LEVELS
+                or not isinstance(order.get("class_mapping"), dict)
+                or not isinstance(order.get("inference"), dict)):
+            problems.append("reading_order must state the level, class mapping and inference use")
     else:
         segmentation = record["segmentation"]
         if (not isinstance(segmentation, dict) or segmentation.get("line_location") != "baseline"

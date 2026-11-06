@@ -1,6 +1,6 @@
 # Training-run contract: `heocr_engine_training_run.v1`
 
-One JSON object per training run (a recognizer, or a baseline segmenter with `task: "segmentation"`), UTF-8, written without NaN or infinity by `heocr-engine train-kraken` or `heocr-engine train-kraken-seg`. It records what a model was trained on and how, so that a score can be traced to a model hash and the model to its data. It makes no accuracy claim, and it contains no local paths.
+One JSON object per training run (a recognizer, a baseline segmenter with `task: "segmentation"`, or a reading-order model with `task: "reading_order"`), UTF-8, written without NaN or infinity by `heocr-engine train-kraken` or `heocr-engine train-kraken-seg`. Reading-order records are written from the run's evidence (see [Reading-order runs](#reading-order-runs)). It records what a model was trained on and how, so that a score can be traced to a model hash and the model to its data. It makes no accuracy claim, and it contains no local paths.
 
 ## Input: `hocrsyngen_line_annotations.v1`
 
@@ -67,7 +67,7 @@ Ground truth is in Unicode logical order. Kraken 7.0.2 trains on display (left-t
 | `schema_version` | `"heocr_engine_training_run.v1"`. |
 | `engine` | `{name: "heocr-engine", version}` that wrote the record. |
 | `trainer` | `name` (`ketos`), `version` (from `ketos --version`), `executable_sha256`, and `kraken_version` and `kraken_executable_sha256` when `--kraken` is given (otherwise `null`). |
-| `task` | `"recognition"` (a record without `task` is read as recognition), or `"segmentation"` (see [Segmentation runs](#segmentation-runs)). |
+| `task` | `"recognition"` (a record without `task` is read as recognition), `"segmentation"` (see [Segmentation runs](#segmentation-runs)), or `"reading_order"` (see [Reading-order runs](#reading-order-runs)). |
 | `init` | `"from_scratch"`. No weights are loaded (`-i`, `--load` and `--resume` are rejected). See decision 0007. |
 | `data` | `annotation_schema`, `annotations_sha256`, `generation_manifest_sha256`; `corpora[]` as `{sha256, bytes}` for each `--corpus` text file; `split` (`unit: "sample"`, `method: "sha256_rank"`, `split_seed`, `validation_fraction`, and `assignment_sha256`, the sha256 of the canonical JSON of the per-page rows in `dataset.json`); `train` and `validation` as `{samples, pages, lines, lines_outside_logical_order, occluded_lines, pages_by_template}`; for recognition, `line_polygons` (`sidecar`, `kraken` or `mix`; absent in records made before it existed, meaning `sidecar`), and with `kraken` or `mix` the `polygonizer` object and each split's `lines_dropped_by_polygonizer`; with `mix`, also `line_geometry` and each split's `lines_by_geometry`. `lines` counts the lines written, after any drops. |
 | `text_order` | `ground_truth: "logical"`, `training_reorder: true`, `base_dir`, `inference_reorder: true`, `inference_base_dir`. |
@@ -76,7 +76,7 @@ Ground truth is in Unicode logical order. Kraken 7.0.2 trains on display (left-t
 | `run` | `seed` (ketos `-s`), `deterministic`, `device`, `precision`, `workers`, `threads`, and `environment`, the variables set for ketos that can affect training (`PYTORCH_ENABLE_MPS_FALLBACK=1` on `mps`, because PyTorch has no MPS kernel for CTC loss). |
 | `outcome` | `quit`; `stopped_by` (`early_stopping`, `stopping_threshold` or `epoch_limit` as reported by the trainer log; `epoch_limit` for `quit: fixed`. ketos 7.0.2 builds Lightning's `EarlyStopping` without `verbose`, so a real run logs no stop message: the reason is then inferred by replaying that rule on `validation_history`, giving `early_stopping` when the last `lag` runs did not beat the best before them, or `epoch_limit` when `epochs` runs completed; else `unknown`); `best_epoch` (earliest retained checkpoint at the best score); `validation_runs`, and `epochs_completed` when validation runs once per epoch; `validation_metric` (`name: "val_accuracy"`, `best`, `definition`); `validation_history` (`run`, `chars`, `errors`, `val_accuracy` for every validation run, read from the ketos log because kraken 7.0.2 does not keep metrics in the converted weights); `ketos_reported_lines` and `lines_dropped_by_ketos` (lines ketos loaded versus lines converted; `null` if the log has no count). |
 | `output` | `model_sha256`, `bytes`, `file_name` (bare name of `best_<score>.safetensors`), `weights_format: "safetensors"`, `byte_reproducible: false` (kraken writes random module prefixes, so a rerun does not give identical bytes). |
-| `model_licence` | `status` (`"Needs verification"`), `owner` (`maintainer`), `basis` (the decision record), `published: false`. |
+| `model_licence` | `status` (`"Needs verification"`, as `train-kraken` writes it, or the licence id set by a superseding decision record, e.g. `"Apache-2.0"` for R3h under decision 0010), `owner` (`maintainer`), `basis` (the decision record), `published: false` until a deposit actually happens. |
 
 `validation_metric` is kraken's own character accuracy on the validation split, computed in display order. It selects checkpoints. It is not a hocrgen score and is not comparable to `primary.v1` numbers; report models through hocrgen.
 
@@ -142,3 +142,19 @@ heocr-engine train-kraken-seg batch/line_annotations.json batch/generation_manif
 ```
 
 `work/` receives `data/`, `checkpoints/` and `ketos.log`; keep it out of the repository.
+
+## Reading-order runs
+
+A `ketos rotrain` reading-order model, such as A1, has no `heocr-engine` training command. It is trained with ketos directly, on PAGE XML from `prepare-kraken-data --task segmentation`. Its record is written by hand from the run's evidence, and `validate_training_run` checks it like any other record. `prepare-kraken-data` and the training commands have no `reading_order` task.
+
+The record has the same fields as a segmentation record, with these differences:
+
+| Field | Meaning |
+|---|---|
+| `reading_order` | Replaces `segmentation`. `level` (`baselines` or `regions`, ketos `--level`); `class_mapping`, the line or region classes the model was trained on, as in its metadata; `inference`, how `heocr-engine kraken` uses it: `command` (`heocr-engine kraken --api python --reading-order-model …`), `reading_order_classes` (`segmenter` or `region`), and the segmenter it was evaluated with. |
+| `data` | `annotation_schema`, and `sources`: one entry per training batch, each with its own `annotations_sha256`, `generation_manifest_sha256`, `split` and per-split page counts, because the training pages may come from several batches. `corpora` lists every batch's text corpus. |
+| `commands` | `train` only: the `ketos … rotrain …` argument list, with `<ketos>` and `<work>` placeholders. |
+| `outcome` | As for recognition, with ketos's reading-order metric (`val_spearman`, lower is better; 0 is a perfect order on the validation pages) and `val_loss` per validation run. |
+| `reconstruction` | Optional. For a record written after the run: the date, the evidence each field came from, and `not_recorded`, the fields that evidence cannot supply. Those fields hold `null` or `"unknown"` instead of a guess. |
+
+The validator requires `task: "reading_order"`, `init: "from_scratch"`, a non-empty `data.sources` with a sha256 pin for each batch, the `reading_order` level, class mapping and inference, no weight-loading flag in the train command, and no local paths.
