@@ -1,6 +1,6 @@
-# Hugging Face model-card front matter. The repository's README.md is this
-# front matter between `---` lines, followed by card_body.md. LICENSE and
-# NOTICE go beside the weights.
+# Hugging Face model-card front matter. The repository's README.md is this front
+# matter between `---` lines, followed by card_body.md. LICENSE, NOTICE and the
+# training record go beside the weights.
 license: apache-2.0
 language:
   - he

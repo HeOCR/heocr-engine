@@ -1,6 +1,13 @@
 # HeOCR R3h: Hebrew document line recognition (kraken)
 
-R3h is a [kraken](https://kraken.re) 7 text recognition model for lines of modern Hebrew documents. It reads printed and handwriting-style lines, including digits, Latin letters and typographic punctuation. HeOCR trained it from scratch on synthetic pages only.
+R3h is a [kraken](https://kraken.re) text recognition model for lines of modern Hebrew documents. It reads printed and handwriting-style lines, including digits, Latin letters and typographic punctuation. HeOCR trained it from scratch on synthetic pages only.
+
+R3h is the recognition step of HeOCR's three-model pipeline:
+- **R4d** finds the lines (segmentation);
+- **A1** puts them in reading order;
+- **R3h** reads them.
+
+The three are released together, as separate records that link to each other (see [The pipeline](#the-pipeline)).
 
 It is a research baseline, not a production transcriber. All of its evaluation is on synthetic pages; no reviewed evaluation on real scans exists yet.
 
@@ -11,7 +18,16 @@ It is a research baseline, not a production transcriber. All of its evaluation i
 | Model type | recognition (line-level, CTC) |
 | Format | kraken safetensors; trained and tested with kraken / ketos 7.0.2 |
 | Licence | Apache-2.0, Copyright (c) 2026 HeOCR maintainers (see LICENSE and NOTICE) |
+| Training record | `r3h_training_run.json` (`heocr_engine_training_run.v1`) |
 | Code | [HeOCR/heocr-engine](https://github.com/HeOCR/heocr-engine) |
+
+## The pipeline
+
+| Step | Model | Record |
+|---|---|---|
+| Segmentation: baselines, line polygons, typed regions | R4d, `best_0.8618.safetensors` (`d32cd1a8…`) | <!-- DRAFT: R4d version DOI --> |
+| Reading order: line order from each line's region type | A1, `best_0.0000.safetensors` (`69aa1946…`) | <!-- DRAFT: A1 version DOI --> |
+| Recognition | R3h, this model | <!-- DRAFT: R3h version DOI --> |
 
 ## Architecture
 
@@ -34,7 +50,7 @@ There is no niqqud (vowel points) and no cantillation.
 
 ## Uses
 
-- **Line recognition in a kraken baseline-segmentation pipeline,** for modern Hebrew documents: letters, notes, archive cards, ledgers, forms and notices, in print or handwriting-style fonts.
+- **Line recognition for modern Hebrew documents:** letters, notes, archive cards, ledgers, forms and notices, in print or handwriting-style fonts. It is best used in the R4d + A1 pipeline.
 - **A research baseline** for Hebrew OCR: comparing segmenters, line geometries and later HeOCR models.
 
 ### Out of scope
@@ -54,18 +70,34 @@ There is no niqqud (vowel points) and no cantillation.
 
 ## How to get started with the model
 
-With the kraken CLI (7.x) and a baseline segmenter. kraken's default `blla` is shown here:
+**The full pipeline (R4d + A1 + R3h).** This is the configuration the headline figures below come from. A1's order is applied by heocr-engine's in-process kraken stage. In a checkout of [heocr-engine](https://github.com/HeOCR/heocr-engine), run `pip install '.[kraken]'`, then:
 
 ```sh
-kraken -i page.png page.txt segment -bl -d horizontal-rl ocr -m best_0.9959.safetensors --reorder --base-dir R
+heocr-engine kraken --api python \
+  --segmentation-model best_0.8618.safetensors \
+  --reading-order-model best_0.0000.safetensors --reading-order-classes region \
+  --recognition-model best_0.9959.safetensors \
+  page.jpg page.json
+```
+
+- `page.json` is a prediction record. Its `text` holds the page in logical order, one line per row.
+- Tested end to end with kraken 7.0.2 on CPU (about 8 s for one seed-101 page). The text matched the scored prediction for that page exactly.
+
+**kraken alone.** Kraken 7.0.2 cannot use A1:
+- A1's classes are region types, and kraken's own pipeline gives it the segmenter's line types instead, so kraken rejects the pair.
+- kraken's text output also ignores a learned line order ([mittagessen/kraken#820](https://github.com/mittagessen/kraken/issues/820)).
+
+With kraken alone, R4d + R3h runs in kraken's heuristic line order. No figure is reported here for that configuration.
+
+```sh
+kraken -i page.jpg page.txt segment -bl -d horizontal-rl -i best_0.8618.safetensors \
+  ocr -m best_0.9959.safetensors --reorder --base-dir R
 ```
 
 - `-d horizontal-rl` reads lines that share a row right to left.
 - `--reorder --base-dir R` returns logical-order text.
-
-From a checkout of heocr-engine (`pip install '.[kraken]'`), `heocr-engine kraken` runs the same steps and writes a prediction record that hocrgen can score. See the heocr-engine README.
-
-**Note:** the evaluation below used HeOCR's own segmenter (R4d) with a learned reading order (A1). Those models are not part of this release. No figure is reported here for R3h with `blla`.
+- With `segment -bl` and no `-i`, kraken uses its default `blla` segmenter instead (see below).
+- kraken 7.0.2 sometimes aborts on exit ("recursive_mutex lock failed") after writing its output. Retrying works.
 
 ## Training details
 
@@ -110,30 +142,44 @@ All synthetic. Nothing was scraped, and no real document or third-party text was
   - held-out;
   - eval-mixed-heldout (mixed Hebrew/Latin/digits);
   - eval-typo-heldout (typographic punctuation);
-  - eval-layout-heldout (layouts outside the training templates).
-- **hocrgen fixture:** hocrgen's fixture batch, a development set.
+  - eval-layout-heldout (archive cards and ledgers, plus the four benchmark templates).
+- **hocrgen fixture:** hocrgen's fixture batch, a development set. A1's reading order was tuned on it.
 - **Gold:** all gold is synthetic.
 
 #### Metrics
 
-The metric is CER under hocrgen's `primary.v1` normalisation profile, pooled over the pages of each batch. Each row varies the lines the recognizer is given:
+The metric is CER under hocrgen's `primary.v1` normalisation profile, pooled over the pages of each batch.
 
-- **true line polygons:** the generator's exact polygons;
-- **Tesseract lines:** line boxes from Tesseract;
-- **R4d + A1:** HeOCR's unreleased segmenter and reading order.
+**The pipeline: R4d + A1 + R3h** (the released models; headline figures):
 
-| Batch | Lines | CER |
+| Batch | CER |
+|---|---|
+| seed-101 | 0.020 |
+| held-out | 0.010 |
+| eval-mixed-heldout | 0.017 |
+| eval-typo-heldout | 0.009 (269 of 308 typographic marks kept) |
+| eval-layout-heldout | 0.124 (mostly the ledger gold convention; see below) |
+| hocrgen fixture (development set) | 0.130 |
+
+**kraken's default segmenter: `blla` + R3h** (`segment -bl -d horizontal-rl`, then `ocr --reorder --base-dir R`, kraken 7.0.2):
+
+| Batch | CER |
+|---|---|
+| seed-101 | 0.168 |
+| held-out | 0.238 |
+| eval-mixed-heldout | 0.230 |
+| eval-typo-heldout | 0.291 |
+| eval-layout-heldout | 0.498 |
+| hocrgen fixture (development set) | 0.404 |
+
+**The `blla` rows are much worse because of `blla`'s segmentation, not the recognizer.** On these layouts it splits and merges lines, and it reads them out of order. Use R4d and A1 for HeOCR's figures.
+
+**Given lines** (a diagnostic, not a pipeline: the recognizer alone, on lines it is handed):
+
+| Batch | true line polygons | Tesseract line boxes |
 |---|---|---|
-| seed-101 | true line polygons | 0.014 |
-| held-out | true line polygons | 0.004 |
-| seed-101 | Tesseract lines | 0.116 |
-| held-out | Tesseract lines | 0.088 |
-| seed-101 | R4d + A1 | 0.020 |
-| held-out | R4d + A1 | 0.010 |
-| eval-mixed-heldout | R4d + A1 | 0.017 |
-| eval-typo-heldout | R4d + A1 | 0.009 (269 of 308 typographic marks kept) |
-| eval-layout-heldout | R4d + A1 | 0.124 |
-| hocrgen fixture (development set) | R4d + A1 | 0.130 |
+| seed-101 | 0.014 | 0.116 |
+| held-out | 0.004 | 0.088 |
 
 - This is one training run. The paired intervals in heocr-engine's `docs/baselines.md` (R3h section) resample pages, not training runs.
 - A second training seed of an earlier model moved eval-mixed-heldout by about 0.005.
@@ -141,11 +187,13 @@ The metric is CER under hocrgen's `primary.v1` normalisation profile, pooled ove
 ## Bias, risks and limitations
 
 - **The synthetic gap.** The evaluation pages use the same two fonts and the same kinds of degradation as training. These scores overstate accuracy on real scans, possibly by a wide margin.
-- **Ledgers:** most errors on eval-layout-heldout, 2,432 of 2,611 edits, are on ledger pages.
+- **Ledgers on eval-layout-heldout:**
+  - Most of that batch's error, 2,432 of 2,611 edits, is on ledger pages.
+  - Most of that is a gold convention, not misreading. hocrgen's ledger gold joins a row's cells with ` | `, while the pipeline reads one cell per line ([HeOCR/hocrgen#98](https://github.com/HeOCR/hocrgen/issues/98)). hocrgen#99 later added a per-cell reference view; the figures here use the default view at `c8fb74e`.
+  - With the previous recognizer (R3d), 2,418 of the same pipeline's 2,562 edits on that batch were this convention.
 - **Worn handwriting-style notes:** on eval-layout-heldout, errors rose from 37 to 60 edits against the previous model (R3d). Latin letters account for most of the rise.
 - **Gershayim:** `״` is sometimes written as ASCII `"`. There were 8 substitutions on eval-typo-heldout, plus 11 `"` inserted where the gold has none.
 - **Rare typographic marks:** the right single quote was kept 0 of 5 times, and the en dash 20 of 26.
-- **Printed letters (seed-101, R4d + A1):** slightly behind an earlier HeOCR model.
 - **Script and language coverage:** modern Hebrew with some Latin only. No niqqud, and no historical hands.
 
 ## Licence and attribution
@@ -166,7 +214,7 @@ The metric is CER under hocrgen's `primary.v1` normalisation profile, pooled ove
 | Split | per page by hash, 5% validation; assignment `ade60b77ed8ecd23f67cf9876bd85c01db8ac589f8d709a6533eb9960c36cc20` |
 | Training code | heocr-engine `55b0f7d`, ketos and kraken 7.0.2 |
 | Training record | `r3h_training_run.json` (`heocr_engine_training_run.v1`), in this deposit |
-| Scoring | hocrgen `2d3efb0` (seed-101, held-out) and `c8fb74e` (other batches); heocr-engine `55b0f7d` |
+| Scoring | hocrgen `2d3efb0` (seed-101, held-out) and `c8fb74e` (other batches); heocr-engine `55b0f7d` (R4d + A1) and `6f6df8b` (`blla`) |
 
 ## Contact
 
