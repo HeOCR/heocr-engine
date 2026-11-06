@@ -17,6 +17,12 @@ Planned work uses `R<milestone><slice>`, for example `R1a`. `R` stands for the r
 - [R3 — First trained recognizer](milestones/r3-first-trained-recognizer.md)
 - [R4 — Trained segmentation](milestones/r4-trained-segmentation.md)
 
+## Proposals
+
+Proposals are drafts for the maintainer's decision. They decide nothing; an accepted proposal becomes a decision record.
+
+- [Releasing HeOCR's trained weights (R3h first)](proposals/model-release.md): training inputs and licences, candidate weights licence, model card outline, hosting, sign-offs
+
 ## Decisions
 
 | Record | Decision |
