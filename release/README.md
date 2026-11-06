@@ -161,7 +161,12 @@ python release/zenodo_deposit.py --state … status                             
 
 - **Step 2** (filling in the DOIs, by PR) and **step 5** (checking the previews) are done by hand.
 - **`upload` and `metadata` refuse a card that does not cite its own reserved DOI.** `upload` also refuses weights whose sha256 differs from the training record.
-- **Not yet checked against a live server:** the community-inclusion call (`POST /records/{id}/communities` after `GET /communities/{slug}`), and the `publication-other` resource type. Both are to be confirmed on the sandbox.
+- **Checked on the sandbox (step 1, 2026-11-06):**
+  - draft creation and DOI reservation work;
+  - the typed creators (person with ORCID, organisation) and `publication-other` are kept as sent;
+  - Zenodo returns InvenioRDM's own JSON only for `Accept: application/vnd.inveniordm.v1+json`. With `application/json` it returns its legacy serialization, which has no `pids`. The script sends the InvenioRDM type.
+- **`reserve` is crash-safe:** it saves each draft's id before reserving its DOI, and a rerun reserves the missing DOI instead of creating a second draft.
+- **Not yet checked against a live server:** the community-inclusion call, `POST /records/{id}/communities` after `GET /communities/{slug}`.
 
 ## Before any deposit
 

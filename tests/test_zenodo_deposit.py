@@ -80,6 +80,8 @@ class TokenAndTargetTests(unittest.TestCase):
         zd.Api(zd.SANDBOX, TOKEN, fake).request('GET', '/records/rec1/draft')
         sent = fake.requests[0]
         self.assertEqual(sent['headers']['Authorization'], f'Bearer {TOKEN}')
+        # InvenioRDM's own JSON; Zenodo answers plain application/json with its legacy serialization
+        self.assertEqual(sent['headers']['Accept'], 'application/vnd.inveniordm.v1+json')
         self.assertNotIn(TOKEN, sent['url'])
         self.assertNotIn('access_token', sent['url'])
 
@@ -189,6 +191,46 @@ class StepTests(unittest.TestCase):
             zd.reserve(api, state, {m: FRONT for m in zd.MODELS}, path, '2026-11-06')
             self.assertEqual(len(fake.requests), 6)
             self.assertTrue(all(r['url'].startswith(zd.SANDBOX) for r in fake.requests))
+
+    def test_reserve_survives_a_crash_between_draft_and_doi(self):
+        fronts = {m: FRONT for m in zd.MODELS}
+        with outside_repository() as directory:
+            path = directory / 'state.json'
+            crashing = FakeZenodo(fail='/pids/doi')
+            with self.assertRaises(zd.DepositError):
+                zd.reserve(zd.Api(zd.SANDBOX, TOKEN, crashing), {'api': zd.SANDBOX, 'records': {}}, fronts, path,
+                           '2026-11-06')
+            # the draft was saved before the DOI call, so it is not lost
+            saved = json.loads(path.read_text())
+            self.assertEqual(saved['records'], {'r4d': {'id': 'rec1'}})
+            fake = FakeZenodo()
+            fake.next_id = 1
+            state = zd.reserve(zd.Api(zd.SANDBOX, TOKEN, fake), zd.load_state(path, zd.SANDBOX), fronts, path,
+                               '2026-11-06')
+            # the resume reserves rec1's DOI without creating a second r4d draft, then does a1 and r3h
+            self.assertEqual(fake.calls(), [('POST', '/records/rec1/draft/pids/doi'),
+                                            ('POST', '/records'), ('POST', '/records/rec2/draft/pids/doi'),
+                                            ('POST', '/records'), ('POST', '/records/rec3/draft/pids/doi')])
+            self.assertEqual({m: r['id'] for m, r in state['records'].items()},
+                             {'r4d': 'rec1', 'a1': 'rec2', 'r3h': 'rec3'})
+            self.assertTrue(all(r.get('doi') for r in json.loads(path.read_text())['records'].values()))
+
+    def test_a_legacy_shaped_doi_response_is_a_clear_error(self):
+        class Legacy(FakeZenodo):
+            def __call__(self, request, timeout=None):
+                if request.full_url.endswith('/pids/doi'):
+                    self.requests.append({'method': 'POST', 'url': request.full_url, 'headers': {}, 'data': None})
+                    return FakeResponse(json.dumps({'id': 635063, 'doi': '10.5072/zenodo.635063'}).encode())
+                return super().__call__(request, timeout)
+        with outside_repository() as directory:
+            path = directory / 'state.json'
+            with self.assertRaisesRegex(zd.DepositError, r'no pids\.doi\.identifier.*saved without a DOI'):
+                zd.reserve(zd.Api(zd.SANDBOX, TOKEN, Legacy()), {'api': zd.SANDBOX, 'records': {}},
+                           {m: FRONT for m in zd.MODELS}, path, '2026-11-06')
+            self.assertEqual(json.loads(path.read_text())['records'], {'r4d': {'id': 'rec1'}})
+            # later steps refuse a draft that has no DOI yet
+            with self.assertRaisesRegex(zd.DepositError, 'step 1'):
+                zd.publish(zd.Api(zd.SANDBOX, TOKEN, FakeZenodo()), zd.load_state(path, zd.SANDBOX), 'r4d', [])
 
     def test_upload_starts_uploads_and_commits_each_file(self):
         fake = FakeZenodo()
