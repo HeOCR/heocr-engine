@@ -7,6 +7,7 @@ Each subcommand is one step of the plan and needs its own go-ahead from the main
   metadata  step 4: set each draft's metadata from its front matter and card body
   publish   step 6: publish each draft, then request inclusion in its communities
   status    print the drafts and DOIs in the state file (no network)
+  requests  list each record's requests, e.g. community inclusion, with their status (read-only)
 
 Step 2 (putting the reserved DOIs into the cards, by PR) and step 5 (checking the previews) are done by hand.
 
@@ -281,6 +282,9 @@ def main(argv=None, environ=os.environ, opener=None) -> int:
     parser.add_argument("--production", action="store_true", help="zenodo.org instead of the sandbox (default)")
     parser.add_argument("--state", type=Path, required=True, help="state file outside the repository")
     parser.add_argument("--models", nargs="+", choices=MODELS, default=list(MODELS))
+    parser.add_argument("--release-dir", type=Path, default=RELEASE,
+                        help="folder with r4d/, a1/, r3h/ (default: this repository's release/). Sandbox only: a "
+                             "production deposit uses the approved, pinned files in the repository")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("reserve")
     upload_parser = commands.add_parser("upload")
@@ -288,26 +292,37 @@ def main(argv=None, environ=os.environ, opener=None) -> int:
     commands.add_parser("metadata")
     commands.add_parser("publish")
     commands.add_parser("status")
+    commands.add_parser("requests")
     args = parser.parse_args(argv)
     base = PRODUCTION if args.production else SANDBOX
+    release = args.release_dir.resolve()
     try:
+        if args.production and release != RELEASE:
+            raise DepositError("--release-dir is for the sandbox only; production uses the repository's release/")
         state = load_state(args.state, base)
         if args.command == "status":
             print(json.dumps(state, indent=2))
             return 0
         api = Api(base, read_token(base, environ), opener)
         print(f"target: {base}", file=sys.stderr)
-        fronts = {model: read_front(model) for model in MODELS}
+        if args.command == "requests":
+            for model in args.models:
+                listing = api.request("GET", f"/records/{_draft(state, model)['id']}/requests")
+                for item in (listing or {}).get("hits", {}).get("hits", []):
+                    print(json.dumps({"model": model, "type": item.get("type"), "status": item.get("status"),
+                                      "receiver": item.get("receiver"), "id": item.get("id")}))
+            return 0
+        fronts = {model: read_front(model, release) for model in MODELS}
         if args.command == "reserve":
             reserve(api, state, fronts, args.state, datetime.date.today().isoformat())
         for model in args.models if args.command != "reserve" else ():
-            body = (RELEASE / model / "card_body.md").read_text(encoding="utf-8")
+            body = (release / model / "card_body.md").read_text(encoding="utf-8")
             doi = _draft(state, model)["doi"]
             if args.command == "upload":
                 weights = _weights(args.weights)
                 if model not in weights:
                     raise DepositError(f"--weights has no path for {model}")
-                upload(api, state, model, build_card(fronts[model], body, doi), deposit_files(model, weights[model]))
+                upload(api, state, model, build_card(fronts[model], body, doi), deposit_files(model, weights[model], release))
             elif args.command == "metadata":
                 build_card(fronts[model], body, doi)
                 set_metadata(api, state, model, record_metadata(fronts[model], description_html(body),

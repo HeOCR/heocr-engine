@@ -107,6 +107,55 @@ class TokenAndTargetTests(unittest.TestCase):
             self.assertIn('not https://zenodo.org/api', err.getvalue())
 
 
+class ReleaseDirTests(unittest.TestCase):
+    def test_release_dir_is_sandbox_only(self):
+        with outside_repository() as directory:
+            err = io.StringIO()
+            with contextlib.redirect_stderr(err):
+                code = zd.main(['--production', '--release-dir', str(directory), '--state',
+                                str(directory / 'state.json'), 'reserve'], {'ZENODO_TOKEN': TOKEN}, FakeZenodo())
+            self.assertEqual(code, 1)
+            self.assertIn('sandbox only', err.getvalue())
+
+    def test_reserve_reads_the_given_release_dir(self):
+        try:
+            import yaml  # noqa: F401
+        except ImportError:
+            self.skipTest('PyYAML is not installed')
+        with outside_repository() as directory:
+            release = directory / 'sandbox-release'
+            for model in zd.MODELS:
+                (release / model).mkdir(parents=True)
+                front = dict(FRONT, summary=f'copy of {model}')
+                (release / model / 'zenodo.yaml').write_text(json.dumps(front))  # JSON is valid YAML
+            fake = FakeZenodo()
+            with contextlib.redirect_stdout(io.StringIO()), contextlib.redirect_stderr(io.StringIO()):
+                code = zd.main(['--release-dir', str(release), '--state', str(directory / 'state.json'), 'reserve'],
+                               {'ZENODO_SANDBOX_TOKEN': TOKEN}, fake)
+            self.assertEqual(code, 0)
+            titles = [json.loads(r['data'])['metadata']['title'] for r in fake.requests if r['url'].endswith('/records')]
+            self.assertEqual(titles, ['copy of r4d', 'copy of a1', 'copy of r3h'])
+
+    def test_requests_lists_each_records_requests(self):
+        class WithRequests(FakeZenodo):
+            def __call__(self, request, timeout=None):
+                if request.full_url.endswith('/requests'):
+                    self.requests.append({'method': 'GET', 'url': request.full_url, 'headers': {}, 'data': None})
+                    return FakeResponse(json.dumps({'hits': {'hits': [
+                        {'id': 'q1', 'type': 'community-inclusion', 'status': 'submitted',
+                         'receiver': {'community': 'uuid-ocr_models'}}]}}).encode())
+                return super().__call__(request, timeout)
+        with outside_repository() as directory:
+            state = directory / 'state.json'
+            zd.save_state(state, {'api': zd.SANDBOX, 'records': {'r3h': {'id': 'rec3', 'doi': '10.5072/zenodo.300'}}})
+            out = io.StringIO()
+            with contextlib.redirect_stdout(out), contextlib.redirect_stderr(io.StringIO()):
+                code = zd.main(['--models', 'r3h', '--state', str(state), 'requests'],
+                               {'ZENODO_SANDBOX_TOKEN': TOKEN}, WithRequests())
+            self.assertEqual(code, 0)
+            self.assertEqual(json.loads(out.getvalue())['status'], 'submitted')
+
+
 class StateTests(unittest.TestCase):
     def test_state_file_must_be_outside_the_repository(self):
         for path in (ROOT / 'state.json', ROOT / 'release' / 'state.json'):
