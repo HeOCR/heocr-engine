@@ -1,6 +1,6 @@
 # First release: R4d + A1 + R3h (drafts)
 
-**Status: not published. The maintainer approved the three cards and the three NOTICE files on 2026-11-06.**
+**Status: published on Zenodo on 2026-11-07** (R4d [10.5281/zenodo.24023070](https://doi.org/10.5281/zenodo.24023070), A1 [10.5281/zenodo.24023072](https://doi.org/10.5281/zenodo.24023072), R3h [10.5281/zenodo.24023074](https://doi.org/10.5281/zenodo.24023074)). **The Hugging Face mirror is pending.** The maintainer approved the three cards and the three NOTICE files on 2026-11-06, and the DOI lines on 2026-11-07.
 - That approval closes sign-off item 6 in [the release proposal](../planning/proposals/model-release.md) §7, for the cards as they stand at `952e5b5` (decision 0011's note).
 - The accounts (item 7) and each publishing step (item 8) are still open.
 

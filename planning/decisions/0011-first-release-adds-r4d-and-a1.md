@@ -77,7 +77,27 @@ In a separate approval the same day, the maintainer approved the three NOTICE fi
   - the Citation line.
 
   The DOIs, reserved on zenodo.org, are R4d `10.5281/zenodo.24023070`, A1 `10.5281/zenodo.24023072` and R3h `10.5281/zenodo.24023074`. The approved cards at `952e5b5` had the sha256s r3h `8a068719…`, r4d `ff7d7a89…` and a1 `1b5d7439…`. The NOTICEs are unchanged.
-- **Still open:** item 8, a separate go-ahead for each publishing action.
+- **2026-11-07, the DOI diff approved:** the maintainer approved the plan-step-2 diff (#51, four DOI lines per card), and it was merged as `8d4bb03`. The card pins above are the approved cards.
+- **2026-11-07, published on Zenodo** (plan steps 3–6), each with its own go-ahead from the maintainer:
+  - **Deposits:** from main at `8d4bb03`, with the repository's `release/` files and the original training weights.
+  - **Checks:** every file was downloaded and checked before publishing:
+    - each weights file matches its record's `model_sha256`;
+    - each NOTICE matches its pin;
+    - each `README.md` body matches its pinned card and cites its own DOI.
+  - **Records:**
+
+    | Model | Record | Version DOI |
+    |---|---|---|
+    | R4d | https://zenodo.org/records/24023070 | `10.5281/zenodo.24023070` |
+    | A1 | https://zenodo.org/records/24023072 | `10.5281/zenodo.24023072` |
+    | R3h | https://zenodo.org/records/24023074 | `10.5281/zenodo.24023074` |
+
+  - **DOIs:** registered with DataCite, and resolving through https://doi.org.
+  - **Communities:**
+    - each record is in the `heocr` community; the maintainer's account accepted those requests with `zenodo_deposit.py accept`;
+    - each record's inclusion request to `ocr_models` was submitted and waits for that community's moderators.
+  - **Discovery:** `kraken list` and `htrmopo show` do not find the records yet, which is expected while `ocr_models` inclusion is pending. Check again later.
+- **Still open:** item 8's Hugging Face mirror (plan step 7), with its own go-ahead.
 
 ## Note (2026-11-06): item 7's accounts decided
 
