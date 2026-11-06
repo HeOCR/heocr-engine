@@ -68,11 +68,13 @@ Every candidate's training batch draws only these two fonts:
 
 **R3h's corpus.** `7c2a62b8…` (932,130 bytes) is the byte concatenation, in this order, of three packaged hocrsyngen files at `88ba5e6`. This was checked by hashing all six orders; only this one matches.
 
-| Corpus | File (`src/hocrsyngen/data/synthetic/texts/`) | Bytes | Card (hocrsyngen `docs/`) | Card's stated licence |
+| Corpus | File (`src/hocrsyngen/data/synthetic/texts/`) | Bytes | Card (hocrsyngen `docs/`) | Licence |
 |---|---|---|---|---|
-| S10b train | `hebrew_lines_train_v1.txt` (`a3f2f0db…`) | 439,596 | `training_text_corpus_card.md` | "Project-authored synthetic text, covered by the repository license (MIT) … No third-party text is included" |
-| S13a train (mixed script) | `hebrew_mixed_lines_train_v1.txt` (`203df9e8…`) | 258,611 | `mixed_script_text_corpus_card.md` | Project-authored, MIT; "No third-party text is included" |
-| S13b train (typographic) | `hebrew_typographic_lines_train_v1.txt` (`5c385b41…`) | 233,923 | `typographic_text_corpus_card.md` | Project-authored, MIT; "No third-party text is included" |
+| S10b train | `hebrew_lines_train_v1.txt` (`a3f2f0db…`) | 439,596 | `training_text_corpus_card.md` | CC0-1.0, project-authored; "No third-party text is included" |
+| S13a train (mixed script) | `hebrew_mixed_lines_train_v1.txt` (`203df9e8…`) | 258,611 | `mixed_script_text_corpus_card.md` | CC0-1.0, project-authored; "No third-party text is included" |
+| S13b train (typographic) | `hebrew_typographic_lines_train_v1.txt` (`5c385b41…`) | 233,923 | `typographic_text_corpus_card.md` | CC0-1.0, project-authored; "No third-party text is included" |
+
+At `88ba5e6` the cards stated MIT, the repository licence. Since [HeOCR/hocrsyngen#91](https://github.com/HeOCR/hocrsyngen/pull/91) (2026-11-06, [ADR 0008](https://github.com/HeOCR/hocrsyngen/blob/main/docs/decisions/0008-cc0-for-project-authored-text-corpora.md)) the three corpora are dedicated to the public domain under CC0-1.0, and `texts/LICENSE-CC0-1.0.txt` lists the files covered. The corpus bytes are unchanged, so the sha256s above still hold. The hocrsyngen code stays MIT.
 
 **Other candidates' corpora.** R4d trained on S10b train alone (`a3f2f0db…`). R3d, whose pages A1 also used, trained on S10b + S13a (`e4384322…`, 698,207 bytes; the same concatenation check).
 
@@ -91,14 +93,14 @@ Overlap against eval corpora and against hocrgen's `bidi-synthetic-corpus.txt` i
     - §B assigns Outputs to the customer.
     - §D.4 bars accessing the Services "to build a competing product or service, including to train competing AI models".
   - **Was for the maintainer:** which terms applied, and whether a Hebrew OCR recognizer trained on these outputs falls inside either restriction. Answered by the decision above.
-- ⚑ **Copyright in AI-authored text.** Whether text written by AI agents carries copyright at all varies by jurisdiction. The cards' "MIT" grant may therefore cover less than it says. That does not restrict a weights release, but the model card should not overstate the corpus's licence.
+- ⚑ **Copyright in AI-authored text.** Whether text written by AI agents carries copyright at all varies by jurisdiction. The cards now dedicate the text under CC0-1.0, which waives whatever rights the project holds without claiming any exist. That does not restrict a weights release, but the model card should not overstate the corpus's licence.
 - ⚑ **The S13a card's Provenance section.** It lists, among material the brief forbade copying, a category of non-public source material. A release card should cite the corpora's licence and authorship lines only, not that list.
 
 ### 2.4 Code that produced the data and the models
 
 | Component | Role | Licence | Evidence | Reaches the weights? |
 |---|---|---|---|---|
-| hocrsyngen `88ba5e6` | Renders pages, line sidecars and degradations. Degradations are procedural; the package ships no textures or images, only the two fonts and the text files | MIT | `LICENSE` ("Copyright (c) 2026 HeOCR"); `pyproject.toml` `license = { text = "MIT" }` | Indirectly, as training images |
+| hocrsyngen `88ba5e6` | Renders pages, line sidecars and degradations. Degradations are procedural; the package ships no textures or images, only the two fonts and the text files | MIT (code); the S10b, S13a and S13b text is CC0-1.0 since hocrsyngen #91 | `LICENSE` ("Copyright (c) 2026 HeOCR"); `pyproject.toml` `license = { text = "MIT" }` | Indirectly, as training images |
 | heocr-engine (`55b0f7d` for R3h training) | `prepare-kraken-data`, `train-kraken`, records | MIT | `LICENSE` ("Copyright (c) 2026 HeOCR") | No code is embedded |
 | Kraken / ketos 7.0.2 | Trainer; defines the network (VGSL) and the file format | Apache-2.0 | [mittagessen/kraken `LICENSE`](https://github.com/mittagessen/kraken/blob/main/LICENSE); PyPI metadata `License-Expression: Apache-2.0`; decision 0006 | ⚑ The file embeds ketos's default VGSL network *string* and kraken's metadata layout, not kraken code. Probably no obligation follows, but the maintainer should confirm whether to credit kraken in a NOTICE. |
 | hocrgen (`2d3efb0`, `c8fb74e`) | Scoring only; its fixture batch is a development set, never trained on | MIT | `LICENSE` ("Copyright (c) 2026 HeOCR maintainers") | No |
