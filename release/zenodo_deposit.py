@@ -8,6 +8,7 @@ Each subcommand is one step of the plan and needs its own go-ahead from the main
   publish   step 6: publish each draft, then request inclusion in its communities
   status    print the drafts and DOIs in the state file (no network)
   requests  list each record's requests, e.g. community inclusion, with their status (read-only)
+  accept    accept pending inclusion requests to the maintainer's own communities (heocr) only
 
 Step 2 (putting the reserved DOIs into the cards, by PR) and step 5 (checking the previews) are done by hand.
 
@@ -39,6 +40,10 @@ ROOT = RELEASE.parent
 SANDBOX = "https://sandbox.zenodo.org/api"
 PRODUCTION = "https://zenodo.org/api"
 TOKEN_VARIABLES = {SANDBOX: "ZENODO_SANDBOX_TOKEN", PRODUCTION: "ZENODO_TOKEN"}
+# Communities the maintainer owns on each target, by slug and id. `accept` acts only on requests to these; requests
+# to any other community (ocr_models) are left to that community's moderators.
+OWNED_COMMUNITIES = {SANDBOX: {"heocr": "c261ed63-f520-48a3-90c2-c64ed1cc0395"},
+                     PRODUCTION: {"heocr": "febfcbcf-2444-4a84-8699-04cd1c44c8a7"}}
 # Deposit order: the pipeline order of the cards' tables.
 MODELS = ("r4d", "a1", "r3h")
 # htrmopo 0.5 files models as legacy `upload_type: publication`, `publication_type: other`.
@@ -272,6 +277,32 @@ def publish(api: Api, state: dict, model: str, communities: list[str]) -> None:
         api.request("POST", f"/records/{record_id}/communities", {"communities": [{"id": i} for i in ids]})
 
 
+def accept_owned(api: Api, state: dict, model: str, owned: dict[str, str]) -> list[dict]:
+    """Accept the record's submitted inclusion requests to owned communities; leave every other request alone.
+
+    Each request is read again just before it is accepted, and accepted only if its receiver is still an owned
+    community and it is still a submitted community-inclusion request.
+    """
+    owned_ids = {community_id: slug for slug, community_id in owned.items()}
+    record_id = _draft(state, model)["id"]
+    listing = api.request("GET", f"/records/{record_id}/requests")
+    done = []
+    for item in (listing or {}).get("hits", {}).get("hits", []):
+        receiver = (item.get("receiver") or {}).get("community")
+        line = {"model": model, "request": item.get("id"), "community": owned_ids.get(receiver, receiver)}
+        if item.get("type") != "community-inclusion" or receiver not in owned_ids:
+            done.append({**line, "action": "left for its moderators", "status": item.get("status")})
+            continue
+        current = api.request("GET", f"/requests/{item['id']}")
+        if ((current.get("receiver") or {}).get("community") != receiver
+                or current.get("type") != "community-inclusion" or current.get("status") != "submitted"):
+            done.append({**line, "action": "skipped", "status": current.get("status")})
+            continue
+        accepted = api.request("POST", f"/requests/{item['id']}/actions/accept", {})
+        done.append({**line, "action": "accepted", "status": (accepted or {}).get("status")})
+    return done
+
+
 def read_front(model: str, release: Path = RELEASE) -> dict:
     import yaml  # noqa: PLC0415
     return yaml.safe_load((release / model / "zenodo.yaml").read_text(encoding="utf-8"))
@@ -308,6 +339,7 @@ def main(argv=None, environ=os.environ, opener=None) -> int:
     commands.add_parser("publish")
     commands.add_parser("status")
     commands.add_parser("requests")
+    commands.add_parser("accept")
     args = parser.parse_args(argv)
     base = PRODUCTION if args.production else SANDBOX
     release = args.release_dir.resolve()
@@ -326,6 +358,11 @@ def main(argv=None, environ=os.environ, opener=None) -> int:
                 for item in (listing or {}).get("hits", {}).get("hits", []):
                     print(json.dumps({"model": model, "type": item.get("type"), "status": item.get("status"),
                                       "receiver": item.get("receiver"), "id": item.get("id")}))
+            return 0
+        if args.command == "accept":
+            for model in args.models:
+                for line in accept_owned(api, state, model, OWNED_COMMUNITIES[base]):
+                    print(json.dumps(line))
             return 0
         fronts = {model: read_front(model, release) for model in MODELS}
         if args.command == "reserve":

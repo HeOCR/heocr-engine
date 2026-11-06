@@ -138,7 +138,7 @@ Each step needs its own go-ahead from the maintainer (item 8). The whole plan ru
    - `isDerivedFrom` links to the `datasets` URLs.
 
 5. **Check the drafts** in Zenodo's preview. This is the last point at which a deposit can be withdrawn.
-6. **Publish** each draft: `POST /api/records/{id}/draft/actions/publish`. After this a deposit is permanent, which the maintainer has accepted (decision 0010). Then request inclusion in both communities, `heocr` and `ocr_models` (`POST /api/records/{id}/communities`). Shay accepts `heocr`'s request; `ocr_models` needs that community's approval. The team lead confirmed on 2026-11-06 that the records go to `ocr_models` as well as HeOCR, for `kraken list` discovery.
+6. **Publish** each draft: `POST /api/records/{id}/draft/actions/publish`. After this a deposit is permanent, which the maintainer has accepted (decision 0010). Then request inclusion in both communities, `heocr` and `ocr_models` (`POST /api/records/{id}/communities`). Shay's account accepts `heocr`'s requests through the API: the script's `accept` command, which re-reads each request and accepts only requests to `heocr`, by its id on that target. It was checked on the sandbox on 2026-11-06. `ocr_models` needs that community's approval, and `accept` never touches its requests. The team lead confirmed on 2026-11-06 that the records go to `ocr_models` as well as HeOCR, for `kraken list` discovery.
 7. **Mirror to Hugging Face:** the three repositories above. Each gets the Hugging Face card, with the same DOIs, and the same four files.
 
 An upstream htrmopo change would remove the need for the script: publishing into an existing draft, and creator types. It is not needed for this release.
@@ -156,6 +156,7 @@ python release/zenodo_deposit.py --state ~/.config/heocr/zenodo-sandbox-state.js
 python release/zenodo_deposit.py --state … upload --weights r4d=… a1=… r3h=…                   # step 3
 python release/zenodo_deposit.py --state … metadata                                            # step 4
 python release/zenodo_deposit.py --state … publish                                             # step 6
+python release/zenodo_deposit.py --state … accept                                              # step 6: heocr's requests
 python release/zenodo_deposit.py --state … status                                              # no network
 ```
 
