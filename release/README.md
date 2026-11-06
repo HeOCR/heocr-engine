@@ -137,12 +137,31 @@ Each step needs its own go-ahead from the maintainer (item 8). The whole plan ru
    - keywords from `tags`;
    - `isDerivedFrom` links to the `datasets` URLs.
 
-   Then submit each draft to the HeOCR community, which Shay accepts.
 5. **Check the drafts** in Zenodo's preview. This is the last point at which a deposit can be withdrawn.
-6. **Publish** each draft: `POST /api/records/{id}/draft/actions/publish`. After this a deposit is permanent, which the maintainer has accepted (decision 0010). Then request inclusion in `ocr_models`, which needs that community's approval. The team lead confirmed on 2026-11-06 that the records go to `ocr_models` as well as HeOCR, for `kraken list` discovery.
+6. **Publish** each draft: `POST /api/records/{id}/draft/actions/publish`. After this a deposit is permanent, which the maintainer has accepted (decision 0010). Then request inclusion in both communities, `heocr` and `ocr_models` (`POST /api/records/{id}/communities`). Shay accepts `heocr`'s request; `ocr_models` needs that community's approval. The team lead confirmed on 2026-11-06 that the records go to `ocr_models` as well as HeOCR, for `kraken list` discovery.
 7. **Mirror to Hugging Face:** the three repositories above. Each gets the Hugging Face card, with the same DOIs, and the same four files.
 
 An upstream htrmopo change would remove the need for the script: publishing into an existing draft, and creator types. It is not needed for this release.
+
+### The deposit script
+
+`release/zenodo_deposit.py` runs the API steps. Each run is one step, and each step needs its go-ahead.
+- **Target:** the sandbox, unless `--production` is given.
+- **Token:** read from `ZENODO_SANDBOX_TOKEN`, or from `ZENODO_TOKEN` with `--production`. It is sent only as a Bearer header and redacted from errors.
+- **State file:** holds only draft ids and DOIs, kept private (`chmod 600`). It must be outside the repository, and one file serves one target.
+- **Requirements:** PyYAML, Markdown and htrmopo, to read, render and validate the cards. Its offline tests (`tests/test_zenodo_deposit.py`) mock the HTTP layer and need none of them.
+
+```sh
+python release/zenodo_deposit.py --state ~/.config/heocr/zenodo-sandbox-state.json reserve     # step 1
+python release/zenodo_deposit.py --state … upload --weights r4d=… a1=… r3h=…                   # step 3
+python release/zenodo_deposit.py --state … metadata                                            # step 4
+python release/zenodo_deposit.py --state … publish                                             # step 6
+python release/zenodo_deposit.py --state … status                                              # no network
+```
+
+- **Step 2** (filling in the DOIs, by PR) and **step 5** (checking the previews) are done by hand.
+- **`upload` and `metadata` refuse a card that does not cite its own reserved DOI.** `upload` also refuses weights whose sha256 differs from the training record.
+- **Not yet checked against a live server:** the community-inclusion call (`POST /records/{id}/communities` after `GET /communities/{slug}`), and the `publication-other` resource type. Both are to be confirmed on the sandbox.
 
 ## Before any deposit
 
