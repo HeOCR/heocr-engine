@@ -1,0 +1,25 @@
+# HTRMoPo v1 front matter for the Zenodo deposit (ketos publish -i).
+# The deposit card is this front matter between `---` lines, followed by
+# card_body.md. ketos fills id (the pre-reserved DOI), software_name,
+# software_hints and model_type, and replaces metrics with the values stored
+# in the model file (none for R3h). So the CER figures live in the card body.
+summary: Modern Hebrew document line recognition (printed and handwriting-style), trained from scratch on synthetic pages (HeOCR R3h)
+authors:
+  - name: HeOCR maintainers
+license: Apache-2.0
+language:
+  - heb
+script:
+  - Hebr
+  - Latn
+tags:
+  - kraken_pytorch
+  - hebrew
+  - printed
+  - handwriting-style
+  - synthetic training data
+  - HeOCR
+model_type:
+  - recognition
+datasets:
+  - https://github.com/HeOCR/hocrsyngen/tree/bb14cd0/src/hocrsyngen/data/synthetic/texts
