@@ -1,6 +1,6 @@
 # Proposal: releasing HeOCR's trained weights (R3h first)
 
-- Status: **proposal**, for the maintainer's decision. It decides nothing. The maintainer decided §7 items 1–5 and 7 on 2026-11-06; [decision 0010](../decisions/0010-r3h-release.md) records them, and [decision 0011](../decisions/0011-first-release-adds-r4d-and-a1.md) widens the scope to R3h + R4d + A1.
+- Status: **proposal**, for the maintainer's decision. It decides nothing. The maintainer decided §7 items 1–5 and 7 on 2026-11-06; [decision 0010](../decisions/0010-r3h-release.md) records them, and [decision 0011](../decisions/0011-first-release-adds-r4d-and-a1.md) widens the scope to R3h + R4d + A1. The maintainer approved the three model cards (item 6) on 2026-11-06; decision 0011's note records it.
 - Date: 2026-11-06
 - Written by: R4b (agent contributor) at the HeOCR team lead's request; reviewed by the lead. Approval is the maintainer's.
 - Scope: the R3h recognizer, and possibly the R4d segmenter with the A1 reading-order model (the deployed R4d + A1 pipeline).
@@ -216,8 +216,8 @@ Each step is a separate go-ahead from the maintainer.
 3. **The font position (§2.2):** that weights trained on OFL-rendered images can be released under that licence, and the attribution wording. **Decided 2026-11-06:** OFL-1.1 does not reach the weights, which contain no font data. Both fonts are credited in the model card and the NOTICE: Alef (HaGilda & Mushon Zer-Aviv) and Gveret Levin (The Gveret Levin Project Authors).
 4. **The licensor name (§2.4)** and the NOTICE text. **Decided 2026-11-06:** "HeOCR maintainers", everywhere. The NOTICE text is drafted for the maintainer's review.
 5. **Scope:** R3h alone, or with R4d + A1. If A1 is included, it first needs a proper training record (§4). **Decided 2026-11-06:** R3h alone for the first release. R4d + A1 come later, and A1 first needs a proper training record. **Changed 2026-11-06 ([decision 0011](../decisions/0011-first-release-adds-r4d-and-a1.md)):** after R3h was scored with `blla` (CER 0.168–0.498 against 0.009–0.130 with R4d + A1), the maintainer widened the first release to R3h + R4d + A1, under the same terms. A1 gets a proper training record first.
-6. **The model card text,** with its evaluation numbers and weak spots, reviewed by a human. Agents do not stand in for human reviewers.
+6. **The model card text,** with its evaluation numbers and weak spots, reviewed by a human. Agents do not stand in for human reviewers. **Decided 2026-11-06:** the maintainer approved the three cards (`release/{r3h,r4d,a1}/card_body.md`) as they stand on main at `952e5b5`; decision 0011's note pins them by sha256. Only the reserved DOIs are added later.
 7. **The hosting venue and account (§6),** accepting that a Zenodo deposit is permanent. **Decided 2026-11-06:** as many venues as make sense, starting with both Zenodo (with a version DOI; the team lead chose `htrmopo publish` with the release directory as the tool, see decision 0010's note) and Hugging Face Hub. The maintainer accepts that the Zenodo deposit is permanent and has no intention of deleting or changing deposits. More venues may be added later. **Still open:** which accounts or organisations to publish under on Zenodo and on Hugging Face.
 8. **Each publishing action,** one by one: sandbox run, deposit, mirror.
 
-Items 6 and 8, and the accounts under item 7, stay open.
+Item 8, and the accounts under item 7, stay open.

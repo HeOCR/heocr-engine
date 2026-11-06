@@ -1,7 +1,7 @@
 # First release: R4d + A1 + R3h (drafts)
 
-**Status: drafts, for the maintainer's review. Nothing here is published.**
-- The three cards are sign-off item 6 in [the release proposal](../planning/proposals/model-release.md) §7. The maintainer reads them himself.
+**Status: not published. The maintainer approved the three cards on 2026-11-06.**
+- That approval closes sign-off item 6 in [the release proposal](../planning/proposals/model-release.md) §7, for the cards as they stand at `952e5b5` (decision 0011's note).
 - The accounts (item 7) and each publishing step (item 8) are still open.
 
 The weights are not in this repository and never will be.
@@ -102,7 +102,7 @@ The alternative would be to propose that change upstream: an option for htrmopo 
 
 ## Before any deposit
 
-- **The maintainer's review** of the three `card_body.md` and `NOTICE` files (item 6).
+- **Cards:** approved on 2026-11-06 (item 6). Plan step 2 adds the reserved DOIs; any other edit needs the maintainer's review again.
 - **The accounts** (item 7).
 - **Check the training records again** for local paths at deposit time (proposal §4).
 - **The reserved version DOIs** in each card's Citation section and pipeline table (plan step 2).

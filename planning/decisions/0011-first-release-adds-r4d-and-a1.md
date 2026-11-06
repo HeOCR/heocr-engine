@@ -52,3 +52,16 @@ As in decision 0010, now for all three models:
 - **A1's training pages** come from two hocrsyngen batches: R4d's (S10b text) and R3d's (S10b + S13a text). All of that text is CC0-1.0 (hocrsyngen ADR 0008).
 - **Nothing is published by this record.** Every training record keeps `published: false` until a deposit actually happens.
 - **Other models keep their records' terms.** Decision 0008 still applies to segmenters other than R4d and to reading-order models other than A1. Decision 0007 still applies to recognizers other than R3h.
+
+## Note (2026-11-06): item 6 decided
+
+On 2026-11-06 the maintainer approved the three model cards as they stand on main at `952e5b5`. This closes sign-off item 6. The approved files are:
+
+| Card | sha256 at `952e5b5` |
+|---|---|
+| `release/r3h/card_body.md` | `8a068719ed4176f43bd188ca23961f00457fbef642fad65c29722534bc94a948` |
+| `release/r4d/card_body.md` | `ff7d7a89d9106fb0df27bbe5f4edd09e3f10b7859f7c4d1a65f5ee0232aab9d6` |
+| `release/a1/card_body.md` | `1b5d7439fd3ea58605570bf135a03442e28f28aa25315888f5fbf8af39b35b4a` |
+
+- **The one planned change:** the reserved version DOIs go into each card's pipeline table and Citation section (`release/README.md`, plan step 2). Any other change to a card needs the maintainer's review again.
+- **Still open:** item 7's accounts, and item 8, a separate go-ahead for each publishing action.
