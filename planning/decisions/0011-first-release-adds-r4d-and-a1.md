@@ -53,7 +53,7 @@ As in decision 0010, now for all three models:
 - **Nothing is published by this record.** Every training record keeps `published: false` until a deposit actually happens.
 - **Other models keep their records' terms.** Decision 0008 still applies to segmenters other than R4d and to reading-order models other than A1. Decision 0007 still applies to recognizers other than R3h.
 
-## Note (2026-11-06): item 6 decided
+## Note (2026-11-06): item 6 and the NOTICE text decided
 
 On 2026-11-06 the maintainer approved the three model cards as they stand on main at `952e5b5`. This closes sign-off item 6. The approved files are:
 
@@ -63,7 +63,15 @@ On 2026-11-06 the maintainer approved the three model cards as they stand on mai
 | `release/r4d/card_body.md` | `ff7d7a89d9106fb0df27bbe5f4edd09e3f10b7859f7c4d1a65f5ee0232aab9d6` |
 | `release/a1/card_body.md` | `1b5d7439fd3ea58605570bf135a03442e28f28aa25315888f5fbf8af39b35b4a` |
 
-- **The one planned change:** the reserved version DOIs go into each card's pipeline table and Citation section (`release/README.md`, plan step 2). Any other change to a card needs the maintainer's review again.
+In a separate approval the same day, the maintainer approved the three NOTICE files. That decides item 4's NOTICE text. The approval came with one change, a grammar fix in R4d's NOTICE: it names one corpus, so "The corpus is dedicated" replaces "The corpora are dedicated". The approved files, after that fix, are:
+
+| NOTICE | sha256 |
+|---|---|
+| `release/r3h/NOTICE` | `9711f741296fa7ee5cbf60900864c24b52b17884be3d4f8a579bc90790f14276` (unchanged from `952e5b5`) |
+| `release/r4d/NOTICE` | `520faa889f2c9ca5f254168cea91ff017fa0f6dcc4c12054754cff8655266956` (with the fix) |
+| `release/a1/NOTICE` | `c8b3ca662a59dfbc39a1df08a2f2589b174104ba9122fe0bb0f6822522349fae` (unchanged from `952e5b5`) |
+
+- **The one planned change:** the reserved version DOIs go into each card's pipeline table and Citation section (`release/README.md`, plan step 2). Any other change to a card or a NOTICE needs the maintainer's review again.
 - **Still open:** item 8, a separate go-ahead for each publishing action.
 
 ## Note (2026-11-06): item 7's accounts decided

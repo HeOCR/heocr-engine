@@ -1,6 +1,6 @@
 # First release: R4d + A1 + R3h (drafts)
 
-**Status: not published. The maintainer approved the three cards on 2026-11-06.**
+**Status: not published. The maintainer approved the three cards and the three NOTICE files on 2026-11-06.**
 - That approval closes sign-off item 6 in [the release proposal](../planning/proposals/model-release.md) §7, for the cards as they stand at `952e5b5` (decision 0011's note).
 - The accounts (item 7) and each publishing step (item 8) are still open.
 
@@ -136,14 +136,14 @@ Each step needs its own go-ahead from the maintainer (item 8). The whole plan ru
 
    Then submit each draft to the HeOCR community, which Shay accepts.
 5. **Check the drafts** in Zenodo's preview. This is the last point at which a deposit can be withdrawn.
-6. **Publish** each draft: `POST /api/records/{id}/draft/actions/publish`. After this a deposit is permanent, which the maintainer has accepted (decision 0010). Then request inclusion in `ocr_models`.
+6. **Publish** each draft: `POST /api/records/{id}/draft/actions/publish`. After this a deposit is permanent, which the maintainer has accepted (decision 0010). Then request inclusion in `ocr_models`, which needs that community's approval. The team lead confirmed on 2026-11-06 that the records go to `ocr_models` as well as HeOCR, for `kraken list` discovery.
 7. **Mirror to Hugging Face:** the three repositories above. Each gets the Hugging Face card, with the same DOIs, and the same four files.
 
 An upstream htrmopo change would remove the need for the script: publishing into an existing draft, and creator types. It is not needed for this release.
 
 ## Before any deposit
 
-- **Cards:** approved on 2026-11-06 (item 6). Plan step 2 adds the reserved DOIs; any other edit needs the maintainer's review again.
+- **Cards and NOTICEs:** approved on 2026-11-06 (item 6, and item 4's NOTICE text), and pinned by sha256 in decision 0011's note. Plan step 2 adds the reserved DOIs to the cards. Any other edit to either needs the maintainer's review again.
 - **Accounts:** decided on 2026-11-06 (item 7). See "Before step 1" for what Shay sets up.
 - **Check the training records again** for local paths at deposit time (proposal §4).
 - **The reserved version DOIs** in each card's Citation section and pipeline table (plan step 2).

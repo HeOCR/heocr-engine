@@ -34,7 +34,7 @@ here:
 
 Text. The rendered text is original text authored by AI agents (Claude Opus
 5.5 sessions run in Claude Code) for HeOCR. It is the hocrsyngen corpus
-S10b. No third-party text is included. The corpora are
+S10b. No third-party text is included. The corpus is
 dedicated to the public domain under CC0 1.0 Universal (see hocrsyngen
 src/hocrsyngen/data/synthetic/texts/LICENSE-CC0-1.0.txt and hocrsyngen
 ADR 0008).

@@ -1,3 +1,4 @@
+import hashlib
 import json
 import re
 import unittest
@@ -97,6 +98,15 @@ class ReleaseDraftTests(unittest.TestCase):
                                                            'basis': basis, 'published': False})
                 self.assertTrue((ROOT / basis).is_file())
                 self.assertNotRegex(text, LOCAL_PATH)
+
+    def test_approved_files_match_their_pins(self):
+        # decision 0011's note pins the maintainer-approved cards and NOTICEs; an edit needs his review again
+        note = (ROOT / 'planning' / 'decisions' / '0011-first-release-adds-r4d-and-a1.md').read_text(encoding='utf-8')
+        pins = dict(re.findall(r'^\| `(release/[a-z0-9]+/(?:card_body\.md|NOTICE))` \| `([0-9a-f]{64})`', note, re.M))
+        self.assertEqual(len(pins), 6)
+        for path, sha in pins.items():
+            with self.subTest(path=path):
+                self.assertEqual(hashlib.sha256((ROOT / path).read_bytes()).hexdigest(), sha)
 
     def test_no_weights_in_release_drafts(self):
         suffixes = {'.safetensors', '.ckpt', '.mlmodel', '.pt', '.pth'}
