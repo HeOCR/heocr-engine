@@ -310,11 +310,19 @@ class StepTests(unittest.TestCase):
         fake = FakeZenodo()
         state = {'api': zd.SANDBOX, 'records': {'r3h': {'id': 'rec3', 'doi': '10.5072/zenodo.300'}}}
         zd.publish(zd.Api(zd.SANDBOX, TOKEN, fake), state, 'r3h', ['heocr', 'ocr_models'])
-        self.assertEqual(fake.calls(), [('POST', '/records/rec3/draft/actions/publish'),
-                                        ('GET', '/communities/heocr'), ('GET', '/communities/ocr_models'),
+        self.assertEqual(fake.calls(), [('GET', '/communities/heocr'), ('GET', '/communities/ocr_models'),
+                                        ('POST', '/records/rec3/draft/actions/publish'),
                                         ('POST', '/records/rec3/communities')])
         self.assertEqual(json.loads(fake.requests[3]['data']),
                          {'communities': [{'id': 'uuid-heocr'}, {'id': 'uuid-ocr_models'}]})
+
+    def test_a_missing_community_stops_before_publishing(self):
+        fake = FakeZenodo(fail='/communities/heocr')
+        state = {'api': zd.SANDBOX, 'records': {'r3h': {'id': 'rec3', 'doi': '10.5072/zenodo.300'}}}
+        with self.assertRaisesRegex(zd.DepositError, "'heocr' not found.*nothing was published"):
+            zd.publish(zd.Api(zd.SANDBOX, TOKEN, fake), state, 'r3h', ['heocr', 'ocr_models'])
+        self.assertNotIn('publish', ' '.join(path for _, path in fake.calls()))
+        self.assertNotIn('published', state['records']['r3h'])
 
     def test_steps_need_a_reserved_draft(self):
         with self.assertRaisesRegex(zd.DepositError, 'step 1'):
