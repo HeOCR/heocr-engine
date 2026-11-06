@@ -1,11 +1,11 @@
 # Proposal: releasing HeOCR's trained weights (R3h first)
 
-- Status: **proposal**, for the maintainer's decision. It decides nothing.
+- Status: **proposal**, for the maintainer's decision. It decides nothing. The maintainer decided §7 items 1–5 and 7 on 2026-11-06; [decision 0010](../decisions/0010-r3h-release.md) records them.
 - Date: 2026-11-06
 - Written by: R4b (agent contributor) at the HeOCR team lead's request; reviewed by the lead. Approval is the maintainer's.
 - Scope: the R3h recognizer, and possibly the R4d segmenter with the A1 reading-order model (the deployed R4d + A1 pipeline).
 
-Nothing here publishes, uploads or commits weights. Nothing here changes a model's licence status. Every training record keeps `model_licence.status: "Needs verification"` and `published: false` (decisions 0007 and 0008) until a new decision record supersedes those clauses.
+Nothing here publishes, uploads or commits weights. Nothing here changes a model's licence status. Every training record keeps `model_licence.status: "Needs verification"` and `published: false` (decisions 0007 and 0008) until a new decision record supersedes those clauses. [decision 0010](../decisions/0010-r3h-release.md) does so for R3h; nothing is published until each publishing step gets the maintainer's go-ahead.
 
 **How to read this:**
 - **Evidence** is a file at a commit, a local record named by its sha256, or an upstream URL read on 2026-11-06.
@@ -62,7 +62,7 @@ Every candidate's training batch draws only these two fonts:
 | Gveret Levin Regular 2.000 | `GveretLevin-Regular.ttf` (`05c44339…`) | `LICENSE-GveretLevin-OFL.txt`: "Copyright 2024 The Gveret Levin Project Authors", SIL OFL 1.1 | [AlefAlefAlef/gveret-levin](https://github.com/AlefAlefAlef/gveret-levin) (`OFL.txt`, OFL-1.1); [openfontlicense.org](https://openfontlicense.org) | The `name` table states OFL 1.1 with a licence URL. No Reserved Font Name found. `fsType` 0. |
 
 - ⚑ **The manifest records no source URL, version or licence per font,** only `id`, `file`, `style` and `notes`. Provenance rests on the licence files and the `name` tables. A release card should cite both.
-- ⚑ **Does the OFL reach the weights?** OFL 1.1 governs the Font Software and its derivatives. The weights contain no font data, only parameters learned from rendered page images. This proposal does not decide whether that puts them outside the OFL. It is common practice to treat it so, but the maintainer should confirm. Either way, credit both fonts in the model card. The Reserved Font Name "Alef" matters only for modified fonts, which a model release does not distribute.
+- ⚑ **Does the OFL reach the weights?** OFL 1.1 governs the Font Software and its derivatives. The weights contain no font data, only parameters learned from rendered page images. This proposal does not decide whether that puts them outside the OFL. It is common practice to treat it so, but the maintainer should confirm. Either way, credit both fonts in the model card. The Reserved Font Name "Alef" matters only for modified fonts, which a model release does not distribute. **Decided 2026-11-06 (decision 0010):** OFL-1.1 does not reach the weights; both fonts are credited.
 
 ### 2.3 Text corpora
 
@@ -106,8 +106,8 @@ Overlap against eval corpora and against hocrgen's `bidi-synthetic-corpus.txt` i
 | hocrgen (`2d3efb0`, `c8fb74e`) | Scoring only; its fixture batch is a development set, never trained on | MIT | `LICENSE` ("Copyright (c) 2026 HeOCR maintainers") | No |
 | Training stack | Runtime only | torch 2.10.0 BSD-3-Clause; lightning 2.6.1 Apache-2.0; safetensors 0.7.0 Apache-2.0; shapely 2.1.2 BSD-3-Clause; Pillow 11.3.0 MIT-CMU; pyarrow 22.0.0 Apache-2.0; python-bidi 0.6.10 LGPL | Installed package metadata, 2026-11-06 | No. The LGPL python-bidi only reorders labels at training time and is not embedded. |
 
-- ⚑ **The copyright holder is named differently.** heocr-engine and hocrsyngen say "HeOCR", hocrgen says "HeOCR maintainers". A release needs one licensor name.
-- **GitHub's licence detection.** All three repositories are public. `gh repo view` reports no detected SPDX licence for them, although each `LICENSE` file is MIT text. That is cosmetic, but worth fixing before a release links to them.
+- ⚑ **The copyright holder is named differently.** heocr-engine and hocrsyngen say "HeOCR", hocrgen says "HeOCR maintainers". A release needs one licensor name. **Decided 2026-11-06 (decision 0010):** "HeOCR maintainers", everywhere.
+- **GitHub's licence detection.** GitHub detects MIT for all three repositories (`gh api repos/HeOCR/<repo>/license` gives `spdx_id: MIT`, checked 2026-11-06). An earlier version of this note said no licence was detected. That came from `gh repo view --json licenseInfo`, which has no `spdxId` field. Nothing needs fixing.
 
 ### 2.5 Evaluation inputs (not training)
 
@@ -136,7 +136,7 @@ Options, with trade-offs. The choice is the maintainer's. A new decision record 
 
 The fallback is MIT, if one licence across all HeOCR artefacts matters more.
 
-The ⚑ items in §2.3, on the provider's terms, could rule out any open licence. Settle them first.
+**Decided 2026-11-06:** Apache-2.0 for the weights ([decision 0010](../decisions/0010-r3h-release.md)).
 
 ## 4. What must be fixed before any release
 
@@ -211,11 +211,13 @@ Each step is a separate go-ahead from the maintainer.
 
 ## 7. What the maintainer must sign off
 
-1. **The provider's terms for the AI-authored corpora (§2.3):** which terms governed the authoring sessions, and whether training and releasing these weights is consistent with them. **Decided 2026-11-06:** "a hebrew OCR model does not count as competing", so the competing-model restriction in either set of terms does not apply. This item no longer gates the rest; items 2–8 stay open.
-2. **The weights licence (§3),** recorded in a new decision record that supersedes 0007's and 0008's licence clauses.
-3. **The font position (§2.2):** that weights trained on OFL-rendered images can be released under that licence, and the attribution wording.
-4. **The licensor name (§2.4)** and the NOTICE text.
-5. **Scope:** R3h alone, or with R4d + A1. If A1 is included, it first needs a proper training record (§4).
+1. **The provider's terms for the AI-authored corpora (§2.3):** which terms governed the authoring sessions, and whether training and releasing these weights is consistent with them. **Decided 2026-11-06:** "a hebrew OCR model does not count as competing", so the competing-model restriction in either set of terms does not apply. This item no longer gates the rest.
+2. **The weights licence (§3),** recorded in a new decision record that supersedes 0007's and 0008's licence clauses. **Decided 2026-11-06:** Apache-2.0. [decision 0010](../decisions/0010-r3h-release.md) supersedes 0007's licence and publication clauses for R3h; 0008 still applies to R4d and A1.
+3. **The font position (§2.2):** that weights trained on OFL-rendered images can be released under that licence, and the attribution wording. **Decided 2026-11-06:** OFL-1.1 does not reach the weights, which contain no font data. Both fonts are credited in the model card and the NOTICE: Alef (HaGilda & Mushon Zer-Aviv) and Gveret Levin (The Gveret Levin Project Authors).
+4. **The licensor name (§2.4)** and the NOTICE text. **Decided 2026-11-06:** "HeOCR maintainers", everywhere. The NOTICE text is drafted for the maintainer's review.
+5. **Scope:** R3h alone, or with R4d + A1. If A1 is included, it first needs a proper training record (§4). **Decided 2026-11-06:** R3h alone for the first release. R4d + A1 come later, and A1 first needs a proper training record.
 6. **The model card text,** with its evaluation numbers and weak spots, reviewed by a human. Agents do not stand in for human reviewers.
-7. **The hosting venue and account (§6),** accepting that a Zenodo deposit is permanent.
+7. **The hosting venue and account (§6),** accepting that a Zenodo deposit is permanent. **Decided 2026-11-06:** as many venues as make sense, starting with both Zenodo (through `ketos publish`, with a version DOI) and Hugging Face Hub. The maintainer accepts that the Zenodo deposit is permanent and has no intention of deleting or changing deposits. More venues may be added later. **Still open:** which accounts or organisations to publish under on Zenodo and on Hugging Face.
 8. **Each publishing action,** one by one: sandbox run, deposit, mirror.
+
+Items 6 and 8, and the accounts under item 7, stay open.
