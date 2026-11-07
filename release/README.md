@@ -1,8 +1,8 @@
 # First release: R4d + A1 + R3h (drafts)
 
-**Status: published on Zenodo on 2026-11-07** (R4d [10.5281/zenodo.24023070](https://doi.org/10.5281/zenodo.24023070), A1 [10.5281/zenodo.24023072](https://doi.org/10.5281/zenodo.24023072), R3h [10.5281/zenodo.24023074](https://doi.org/10.5281/zenodo.24023074)). **The Hugging Face mirror is pending.** The maintainer approved the three cards and the three NOTICE files on 2026-11-06, and the DOI lines on 2026-11-07.
+**Status: published on Zenodo on 2026-11-07** (R4d [10.5281/zenodo.24023070](https://doi.org/10.5281/zenodo.24023070), A1 [10.5281/zenodo.24023072](https://doi.org/10.5281/zenodo.24023072), R3h [10.5281/zenodo.24023074](https://doi.org/10.5281/zenodo.24023074)). **Mirrored on Hugging Face on 2026-11-07** ([R4d](https://huggingface.co/HeOCR/heocr-r4d-segmentation), [A1](https://huggingface.co/HeOCR/heocr-a1-reading-order), [R3h](https://huggingface.co/HeOCR/heocr-r3h-recognition)). The maintainer approved the three cards and the three NOTICE files on 2026-11-06, and the DOI lines on 2026-11-07.
 - That approval closes sign-off item 6 in [the release proposal](../planning/proposals/model-release.md) §7, for the cards as they stand at `952e5b5` (decision 0011's note).
-- The accounts (item 7) and each publishing step (item 8) are still open.
+- The accounts (item 7) and each publishing step (item 8) are done (decision 0011's note).
 
 The weights are not in this repository and never will be.
 
@@ -139,7 +139,7 @@ Each step needs its own go-ahead from the maintainer (item 8). The whole plan ru
 
 5. **Check the drafts** in Zenodo's preview. This is the last point at which a deposit can be withdrawn.
 6. **Publish** each draft: `POST /api/records/{id}/draft/actions/publish`. After this a deposit is permanent, which the maintainer has accepted (decision 0010). Then request inclusion in both communities, `heocr` and `ocr_models` (`POST /api/records/{id}/communities`). Shay's account accepts `heocr`'s requests through the API: the script's `accept` command, which re-reads each request and accepts only requests to `heocr`, by its id on that target. It was checked on the sandbox on 2026-11-06. `ocr_models` needs that community's approval, and `accept` never touches its requests. The team lead confirmed on 2026-11-06 that the records go to `ocr_models` as well as HeOCR, for `kraken list` discovery.
-7. **Mirror to Hugging Face:** the three repositories above. Each gets the Hugging Face card, with the same DOIs, and the same four files. `release/hf_upload.py` does this.
+7. **Mirror to Hugging Face:** the three repositories above. **Done 2026-11-07** (decision 0011's note). Each gets the Hugging Face card, with the same DOIs, and the same four files. `release/hf_upload.py` does this.
    - It creates each public repository under HeOCR if it does not exist yet, then adds the card and the four files in one commit.
    - It takes each model's DOI from the production Zenodo state file, and refuses a card that does not cite it.
    - It refuses weights whose sha256 differs from the record.
