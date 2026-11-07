@@ -35,6 +35,7 @@ DEFAULT_SPEC = ("[1,120,0,1 Cr3,13,32 Do0.1,2 Mp2,2 Cr3,13,32 Do0.1,2 Mp2,2 Cr3,
                 "Cr3,9,64 Do0.1,2 S1(1x0)1,3 Lbx200 Do0.1,2 Lbx200 Do0.1,2 Lbx200 Do]")
 LICENCE_STATUS = "Needs verification"
 TASKS = ("recognition", "segmentation", "reading_order")
+FINE_TUNE_RESIZE = ("union", "new", "fail")
 # The task-specific record field: a recognizer records its bidi handling, a segmenter its classes and inference
 # reading order, a reading-order model (ketos rotrain, written from its run's evidence) its level and classes.
 TASK_KEYS = {"recognition": "text_order", "segmentation": "segmentation", "reading_order": "reading_order"}
@@ -758,6 +759,43 @@ def _mix_record_ok(data: dict) -> bool:
     return True
 
 
+def _fine_tune_problems(init: dict, task: str) -> list[str]:
+    """Problems with a fine-tune `init`: the base must be a project recognizer pinned by model and record hash."""
+    if task != "recognition":
+        return ["only a recognizer may be fine-tuned"]
+    if (set(init) != {"kind", "base_model_sha256", "base_record_sha256", "base_init", "resize"}
+            or init["kind"] != "fine_tune" or init["resize"] not in FINE_TUNE_RESIZE
+            or not all(isinstance(init[key], str) and HEX64.fullmatch(init[key])
+                       for key in ("base_model_sha256", "base_record_sha256"))
+            or not (init["base_init"] == "from_scratch" or isinstance(init["base_init"], dict))):
+        return ["init must state kind fine_tune, the base model and record sha256s, the base's init and resize"]
+    return []
+
+
+def _loads_only_base(train: list[str], init: dict) -> bool:
+    flags = [arg for arg in train if arg in ("-i", "--load", "--resume", "--resize")]
+    return (flags == ["-i", "--resize"] and train[train.index("-i") + 1] == "<base_model>"
+            and train[train.index("--resize") + 1] == init["resize"])
+
+
+def _fine_tune_init(model: Path, record: Path, resize: str) -> dict:
+    """Check that `model` is the output of the valid recognition record `record` and describe the fine-tune."""
+    if resize not in FINE_TUNE_RESIZE:
+        raise EngineError("Invalid --resize for a fine-tune")
+    raw = read_limited(record, MAX_JSON_BYTES)
+    try:
+        base = json.loads(raw.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise EngineError("Base training record is not JSON") from exc
+    if validate_training_run(base) or base.get("task", "recognition") != "recognition":
+        raise EngineError("Base training record must be a valid recognition record")
+    model_sha = digest(read_limited(model, MAX_MODEL_BYTES))
+    if model_sha != base["output"]["model_sha256"]:
+        raise EngineError("Base model does not match its training record")
+    return {"kind": "fine_tune", "base_model_sha256": model_sha, "base_record_sha256": digest(raw),
+            "base_init": base["init"], "resize": resize}
+
+
 def validate_training_run(record: dict) -> list[str]:
     """Return the problems with a heocr_engine_training_run.v1 record; empty means valid."""
     problems = []
@@ -773,8 +811,11 @@ def validate_training_run(record: dict) -> list[str]:
             problems.append(f"missing {key}")
     if problems:
         return problems
-    if record["init"] != "from_scratch":
-        problems.append("init must be from_scratch")
+    fine_tune = isinstance(record["init"], dict)
+    if fine_tune:
+        problems.extend(_fine_tune_problems(record["init"], task))
+    elif record["init"] != "from_scratch":
+        problems.append("init must be from_scratch or a fine-tune of a project recognizer")
     data, output = record["data"], record["output"]
     # A reading-order model may be trained on pages from several batches; each source pins its own batch.
     sources = data.get("sources") if task == "reading_order" else [data]
@@ -826,8 +867,10 @@ def validate_training_run(record: dict) -> list[str]:
     if not isinstance(commands, dict) or not all(isinstance(cmd, list) and all(isinstance(a, str) for a in cmd)
                                                  for cmd in commands.values()):
         problems.append("commands must map names to argument lists")
-    elif any(arg in ("-i", "--load", "--resume", "--resize") for arg in commands.get("train", [])):
+    elif not fine_tune and any(arg in ("-i", "--load", "--resume", "--resize") for arg in commands.get("train", [])):
         problems.append("a from-scratch run must not load weights")
+    elif fine_tune and not _loads_only_base(commands.get("train", []), record["init"]):
+        problems.append("a fine-tune run must load exactly <base_model> with -i and the recorded --resize")
     if not isinstance(record["model_licence"], dict) or not record["model_licence"].get("status"):
         problems.append("model_licence.status is required")
     if _has_path(record):
@@ -841,9 +884,17 @@ def train_kraken(annotations: Path, manifest: Path, work: Path, ketos: Path, *, 
                  validation_fraction: float = 0.1, split_seed: int = 0,
                  hyperparameters: Hyperparameters = Hyperparameters(), timeout: float = 172_800,
                  line_polygons: str = "sidecar", polygonizer_height: int = POLYGONIZER_HEIGHT,
-                 rect_pad: float = RECT_PAD, mix_buckets=MIX_BUCKETS) -> dict:
-    """Prepare data, compile it, train a recognizer from scratch with local ketos, and describe the run."""
+                 rect_pad: float = RECT_PAD, mix_buckets=MIX_BUCKETS, base_model: Path | None = None,
+                 base_record: Path | None = None, resize: str = "union") -> dict:
+    """Prepare data, compile it, train a recognizer with local ketos, and describe the run.
+
+    The recognizer starts from scratch, or, given `base_model` and its `base_record`, from a recognizer this
+    engine trained (decision 0013).
+    """
     hyperparameters.check()
+    if (base_model is None) != (base_record is None):
+        raise EngineError("A fine-tune needs both the base model and its training record")
+    init = "from_scratch" if base_model is None else _fine_tune_init(base_model, base_record, resize)
     if (not DEVICE.fullmatch(device) or precision not in PRECISIONS or not _is_int(seed, 0, 2**32 - 1)
             or not _is_int(workers, 0, 256) or not _is_int(threads, 1, 256)
             or not math.isfinite(timeout) or not 0 < timeout <= 30 * 86_400):
@@ -875,6 +926,7 @@ def train_kraken(annotations: Path, manifest: Path, work: Path, ketos: Path, *, 
                          *global_args, "train", "-f", "binary", "-o", str(work / "checkpoints"),
                          "--weights-format", "safetensors", "--reorder", "--base-dir", BASE_DIR,
                          *hyperparameters.ketos_args(), "-e", str(work / "validation_datasets.txt"),
+                         *([] if base_model is None else ["-i", str(base_model.resolve()), "--resize", resize]),
                          str(work / "train.arrow")]
     # PyTorch has no MPS kernel for CTC loss; the fallback runs that operator on the CPU.
     environment = {"PYTORCH_ENABLE_MPS_FALLBACK": "1"} if device == "mps" else {}
@@ -902,13 +954,14 @@ def train_kraken(annotations: Path, manifest: Path, work: Path, ketos: Path, *, 
     stopped_by = ("epoch_limit" if hyperparameters.quit == "fixed" else scanned["stopped_by"]
                   or _stop_from_history(history, hyperparameters) or "unknown")
     expected = {"train": summary["train"]["lines"], "validation": summary["validation"]["lines"]}
-    tokens = {str(ketos): "<ketos>", str(work): "<work>"}
+    tokens = {str(ketos): "<ketos>", str(work): "<work>",
+              **({} if base_model is None else {str(base_model.resolve()): "<base_model>"})}
     record = {
         "schema_version": TRAINING_SCHEMA_ID,
         "engine": {"name": "heocr-engine", "version": __version__},
         "trainer": trainer,
         "task": "recognition",
-        "init": "from_scratch",
+        "init": init,
         "data": {**summary, "corpora": corpus_records},
         "text_order": {"ground_truth": "logical", "training_reorder": True, "base_dir": BASE_DIR,
                        "inference_reorder": True, "inference_base_dir": BASE_DIR},

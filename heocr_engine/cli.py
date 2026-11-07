@@ -351,12 +351,13 @@ def _prepare_kraken_data_main(argv: list[str]) -> int:
 
 
 def _train_kraken_main(argv: list[str]) -> int:
-    from heocr_engine.training import DEFAULT_SPEC, Hyperparameters, train_kraken
+    from heocr_engine.training import DEFAULT_SPEC, FINE_TUNE_RESIZE, Hyperparameters, train_kraken
 
     defaults = Hyperparameters()
     parser = argparse.ArgumentParser(prog="heocr-engine train-kraken",
-                                     description="Train a Kraken recognizer from scratch with local ketos "
-                                                 "and write a heocr_engine_training_run.v1 record.")
+                                     description="Train a Kraken recognizer with local ketos, from scratch or "
+                                                 "from a recognizer this engine trained, and write a "
+                                                 "heocr_engine_training_run.v1 record.")
     _split_args(parser)
     parser.add_argument("work_dir", type=Path, help="New or empty directory for data, checkpoints and the log")
     parser.add_argument("record", type=Path, help="Training-run record to create")
@@ -384,6 +385,12 @@ def _train_kraken_main(argv: list[str]) -> int:
     parser.add_argument("--padding", type=int, default=defaults.padding)
     parser.add_argument("--augment", action="store_true")
     parser.add_argument("--timeout", type=float, default=172_800, help="Seconds per ketos step (default 48h)")
+    parser.add_argument("--base-model", type=Path,
+                        help="Fine-tune this recognizer instead of training from scratch (needs --base-record)")
+    parser.add_argument("--base-record", type=Path,
+                        help="The base model's valid heocr_engine_training_run.v1 record")
+    parser.add_argument("--resize", choices=FINE_TUNE_RESIZE, default="union",
+                        help="Fine-tune: ketos codec resize mode (default union)")
     _line_polygon_args(parser)
     args = parser.parse_args(argv)
     if args.record.exists():
@@ -397,7 +404,8 @@ def _train_kraken_main(argv: list[str]) -> int:
                           threads=args.threads, validation_fraction=args.validation_fraction,
                           split_seed=args.split_seed, hyperparameters=hyperparameters, timeout=args.timeout,
                           line_polygons=args.line_polygons, polygonizer_height=args.polygonizer_height,
-                          rect_pad=args.rect_pad, mix_buckets=args.mix_buckets)
+                          rect_pad=args.rect_pad, mix_buckets=args.mix_buckets, base_model=args.base_model,
+                          base_record=args.base_record, resize=args.resize)
     write_prediction(record, args.record)
     return 0
 

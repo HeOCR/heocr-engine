@@ -548,6 +548,49 @@ class TrainKrakenTests(TrainingTestCase):
         self.assertEqual(calls[-1][calls[-1].index('-s') + 1], '11')
         self.assertEqual(record['run']['environment'], {'PYTORCH_ENABLE_MPS_FALLBACK': '1'})
 
+    def fine_tune_base(self):
+        base = self.train()
+        model = self.root / 'base.safetensors'
+        model.write_bytes((self.root / 'work' / 'checkpoints' / base['output']['file_name']).read_bytes())
+        record = self.root / 'base.record.json'
+        record.write_text(json.dumps(base), encoding='utf-8')
+        shutil.rmtree(self.root / 'work')
+        return model, record
+
+    def test_fine_tune_records_its_base(self):
+        model, base = self.fine_tune_base()
+        record = self.train(base_model=model, base_record=base)
+        self.assertEqual(validate_training_run(record), [])
+        self.assertEqual(record['init'], {
+            'kind': 'fine_tune', 'base_model_sha256': hashlib.sha256(model.read_bytes()).hexdigest(),
+            'base_record_sha256': hashlib.sha256(base.read_bytes()).hexdigest(), 'base_init': 'from_scratch',
+            'resize': 'union'})
+        train = record['commands']['train']
+        self.assertEqual(train[train.index('-i') + 1:train.index('-i') + 4], ['<base_model>', '--resize', 'union'])
+        self.assertNotIn(str(self.root), json.dumps(record, ensure_ascii=False))
+        for broken in ({'init': {**record['init'], 'kind': 'resume'}},
+                       {'init': {**record['init'], 'base_model_sha256': 'x'}},
+                       {'init': {**record['init'], 'resize': 'both'}},
+                       {'commands': {**record['commands'], 'train': [a for a in train if a != '-i']}},
+                       {'commands': {**record['commands'], 'train': [*train, '--resume', 'c.ckpt']}},
+                       {'task': 'segmentation'}):
+            with self.subTest(broken=broken):
+                self.assertTrue(validate_training_run({**record, **broken}))
+
+    def test_fine_tune_fails_closed_on_its_base(self):
+        model, base = self.fine_tune_base()
+        other = self.root / 'other.safetensors'
+        other.write_bytes(model.read_bytes() + b'x')
+        bad = self.root / 'bad.record.json'
+        bad.write_text(json.dumps({**json.loads(base.read_text(encoding='utf-8')), 'init': 'pretrained'}),
+                       encoding='utf-8')
+        for options in ({'base_model': model}, {'base_record': base}, {'base_model': other, 'base_record': base},
+                        {'base_model': model, 'base_record': bad},
+                        {'base_model': model, 'base_record': base, 'resize': 'add'}):
+            with self.subTest(options=options), self.assertRaises(EngineError):
+                self.train(**options)
+            self.assertFalse((self.root / 'work').exists())
+
     def test_cli_writes_record_once(self):
         record = self.root / 'record.json'
         argv = ['train-kraken', str(self.annotations), str(self.manifest), str(self.root / 'work'), str(record),
