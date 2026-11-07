@@ -97,7 +97,18 @@ In a separate approval the same day, the maintainer approved the three NOTICE fi
     - each record is in the `heocr` community; the maintainer's account accepted those requests with `zenodo_deposit.py accept`;
     - each record's inclusion request to `ocr_models` was submitted and waits for that community's moderators.
   - **Discovery:** `kraken list` and `htrmopo show` do not find the records yet, which is expected while `ocr_models` inclusion is pending. Check again later.
-- **Still open:** item 8's Hugging Face mirror (plan step 7), with its own go-ahead.
+- **2026-11-07, mirrored on Hugging Face** (plan step 7), after the maintainer's go-ahead ("Upload"):
+  - **Upload:** `release/hf_upload.py` from main at `d2764b7`, with the same weights as the Zenodo deposits. Each repository is public and has one release commit, after the commit Hugging Face makes when it creates a repository (`.gitattributes`).
+  - **Repositories:**
+
+    | Model | Repository | Release commit |
+    |---|---|---|
+    | R4d | https://huggingface.co/HeOCR/heocr-r4d-segmentation | `8ec88ad1e43c12a1ec4dfaf6dabc6553eea07b24` |
+    | A1 | https://huggingface.co/HeOCR/heocr-a1-reading-order | `7cca82818df632236a38f27f5b16374911926688` |
+    | R3h | https://huggingface.co/HeOCR/heocr-r3h-recognition | `2b309a7ab15621225e8eee8e201f7520610bacce` |
+
+  - **Checks:** read back anonymously, with no token. Each repository is public and not gated, and holds exactly the planned files: `README.md`, the weights, `LICENSE`, `NOTICE` and the training record. Every size matches the dry run. Each downloaded file matches its sha256, and so does each weights file's LFS sha256. Each `README.md` is the `huggingface.yaml` front matter plus the approved card body, which cites its own DOI.
+- **Still open:** `ocr_models` inclusion, waiting for its moderators, and then the `kraken list` / `htrmopo show` check.
 
 ## Note (2026-11-06): item 7's accounts decided
 
