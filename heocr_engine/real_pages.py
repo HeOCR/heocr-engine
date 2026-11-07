@@ -15,6 +15,9 @@ Tesseract (psm 3, hOCR) on each page and writes a `heocr_real_pages.v1` manifest
   - plus a minimum line count. Word confidence is recorded, not filtered on.
   Rejected pages are listed with their reason.
 
+Both fail closed unless every page's book is keyed (`index_key`, or `work_key` for other sources), outside the listed
+evaluation Indexes, and admitted by hocrgen's public-domain gate (`gate.admitted: true`).
+
 `load_real_pages` checks a manifest and its images, for `prepare_kraken_data(..., real_pages=...)`. Nothing here
 calls a network; the Tesseract traineddata is user-supplied and hashed.
 """
@@ -216,6 +219,24 @@ def accept_page(lines: list[dict], ratio: float | None, rules: dict = FILTER) ->
     return None
 
 
+def source_key(source: dict) -> str:
+    """The book a page belongs to: its Wikisource `index_key`, or a `work_key` for other sources. Required."""
+    key = (source or {}).get("index_key") or (source or {}).get("work_key")
+    if not isinstance(key, str) or not key.strip():
+        raise EngineError("Every real page needs a non-empty index_key or work_key")
+    return key
+
+
+def check_source(source: dict, eval_indexes: set[str]) -> str:
+    """Fail closed unless the page's book is keyed, outside the evaluation Indexes, and admitted by the PD gate."""
+    key = source_key(source)
+    if key in eval_indexes or source.get("index_key") in eval_indexes:
+        raise EngineError(f"{key} is an evaluation Index and must not be used")
+    if source.get("gate_admitted") is not True:
+        raise EngineError(f"{key}: its public-domain gate is not admitted")
+    return key
+
+
 def _tesseract_info(tesseract: Path, tessdata: Path, language: str) -> dict:
     version = run_process([str(tesseract), "--version"], 60, name="tesseract").decode("utf-8", "replace")
     traineddata = tessdata / f"{language}.traineddata"
@@ -236,6 +257,7 @@ def pseudo_label_pages(scans: Path, tesseract: Path, tessdata: Path, *, language
     exclusions = provenance.get("exclusions") or {"eval_indexes": provenance.get("excluded_e2d3d_indexes")}
     if not exclusions.get("eval_indexes"):
         raise EngineError("The scan provenance must list the evaluation Indexes it excludes")
+    eval_indexes = set(exclusions["eval_indexes"])
     label_source = {**_tesseract_info(tesseract, tessdata, language), "psm": psm, "output": "hocr",
                     "line_classes": list(LINE_CLASSES), "line_polygon": "unpadded line bounding box",
                     "baseline": "hOCR baseline, clamped to the line box", "regions": "ocr_carea blocks as body"}
@@ -247,6 +269,7 @@ def pseudo_label_pages(scans: Path, tesseract: Path, tessdata: Path, *, language
                                                       "file_page_revision_id", "pinned_sha1", "licence_templates",
                                                       "work_group")}
         source["gate_admitted"] = (entry.get("gate") or {}).get("admitted")
+        check_source(source, eval_indexes)
         split = {"train": "train", "dev": "validation"}[entry["split"]]
         for image in entry["images"]:
             for variant in image.get("variants", []):
@@ -313,6 +336,7 @@ def load_real_pages(manifest: Path) -> tuple[list[dict], str, dict]:
         raise EngineError("The real pages manifest must state its label source, traineddata hash and licence")
     if not (document.get("exclusions") or {}).get("eval_indexes"):
         raise EngineError("The real pages manifest must list the evaluation Indexes it excludes")
+    eval_indexes = set(document["exclusions"]["eval_indexes"])
     root = manifest.parent
     pages = []
     for entry in document.get("pages") or []:
@@ -326,6 +350,7 @@ def load_real_pages(manifest: Path) -> tuple[list[dict], str, dict]:
             raise EngineError("A real page image does not match the manifest")
         if entry.get("split") not in ("train", "validation"):
             raise EngineError("Real page splits must be train or validation")
+        key = check_source(entry.get("source") or {}, eval_indexes)
         lines = []
         for position, line in enumerate(entry.get("lines") or []):
             if line.get("line_index") != position:
@@ -352,16 +377,19 @@ def load_real_pages(manifest: Path) -> tuple[list[dict], str, dict]:
             raise EngineError("Each real page needs lines, each in exactly one region")
         pages.append({"sample_id": entry["page_id"], "page_id": entry["page_id"], "page_sha256": digest(image),
                       "width": width, "height": height, "lines": lines, "regions": regions, "path": path,
-                      "template_id": "real_page", "split": entry["split"], "source": entry.get("source") or {}})
+                      "template_id": "real_page", "split": entry["split"], "source": entry["source"], "key": key})
     if not pages:
         raise EngineError("The real pages manifest has no pages")
     if len({page["page_sha256"] for page in pages}) != len(pages):
         raise EngineError("Duplicate real page image")
-    by_split = [{page["source"].get("index_key") for page in pages if page["split"] == split} - {None}
-                for split in ("train", "validation")]
+    by_split = [{page["key"] for page in pages if page["split"] == split} for split in ("train", "validation")]
     if by_split[0] & by_split[1]:
         raise EngineError("An Index has pages in both the train and the validation split")
     header = {name: document[name] for name in ("label_source", "filter", "exclusions") if name in document}
+    reasons: dict[str, int] = {}
+    for rejected in document.get("rejected") or []:
+        reasons[str(rejected.get("reason"))] = reasons.get(str(rejected.get("reason")), 0) + 1
+    header["rejected_by_reason"] = dict(sorted(reasons.items()))
     return pages, digest(raw), header
 
 
@@ -379,13 +407,13 @@ def real_pages_summary(pages: list[dict], manifest_sha256: str, header: dict) ->
             "label_source": header.get("label_source"), "filter": header.get("filter"),
             "exclusions": {"eval_indexes": sorted(exclusions.get("eval_indexes") or []),
                            **{name: value for name, value in exclusions.items() if name != "eval_indexes"}},
-            "files": len(files), "indexes": sorted({page["source"].get("index_key") for page in pages} - {None}),
+            "files": len(files), "indexes": sorted({page["key"] for page in pages}),
+            "rejected_by_reason": header.get("rejected_by_reason", {}),
             "file_licence_templates": dict(sorted(licences.items())),
             **{split: {"pages": sum(page["split"] == split for page in pages),
                        "lines": sum(len(page["lines"]) for page in pages if page["split"] == split),
                        # Fixed before training, by whole work: an Index is in exactly one split.
-                       "indexes": sorted({page["source"].get("index_key") for page in pages
-                                          if page["split"] == split} - {None})}
+                       "indexes": sorted({page["key"] for page in pages if page["split"] == split})}
                for split in ("train", "validation")}}
 
 
@@ -410,4 +438,6 @@ def check_real_pages_record(real: dict) -> list[str]:
     splits = [set((real.get(split) or {}).get("indexes") or []) for split in ("train", "validation")]
     if splits[0] & splits[1]:
         problems.append("data.real_pages: an Index is in both the train and the validation split")
+    if (splits[0] | splits[1]) & set((real.get("exclusions") or {}).get("eval_indexes") or []):
+        problems.append("data.real_pages: an evaluation Index is among the training pages")
     return problems

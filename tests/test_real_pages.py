@@ -54,7 +54,7 @@ def real_manifest(root: Path, splits=('train', 'validation'), change=None) -> Pa
         pages.append({'page_id': f'real:ws_index_{9 + number}:p0001:w400', 'image': f'p{number}.png',
                       'image_sha256': sha, 'width': 400, 'height': 300 + number, 'split': split,
                       'source': {'index_key': f'ws_index_{9 + number}', 'commons_title': f'File:Book{number}.pdf',
-                                 'licence_templates': ['PD-old-70'], 'page': number},
+                                 'licence_templates': ['PD-old-70'], 'gate_admitted': True, 'page': number},
                       'lines': [{'line_index': 0, 'region_index': 0, 'polygon': [[20, 60], [380, 60], [380, 80], [20, 80]],
                                  'baseline': [[20, 77], [380, 77]], 'tesseract_class': 'ocr_line'}],
                       'regions': [{'region_index': 0, 'type': 'body',
@@ -62,7 +62,9 @@ def real_manifest(root: Path, splits=('train', 'validation'), change=None) -> Pa
     document = {'schema': REAL_PAGES_SCHEMA, 'scan_provenance_sha256': '0' * 64,
                 'label_source': {'tool': 'tesseract', 'version': 'tesseract 5.5.3', 'traineddata_sha256': '1' * 64,
                                  'traineddata_licence': 'Apache-2.0', 'psm': 3},
-                'filter': FILTER, 'exclusions': EXCLUSIONS, 'pages': pages, 'rejected': []}
+                'filter': FILTER, 'exclusions': EXCLUSIONS, 'pages': pages,
+                'rejected': [{'image': 'q.png', 'reason': 'disagrees_with_proxy'},
+                             {'image': 'r.png', 'reason': 'disagrees_with_proxy'}, {'image': 's.png', 'reason': 'too_few_lines'}]}
     if change:
         change(document)
     path = root / 'real_pages.json'
@@ -119,6 +121,14 @@ class LoadRealPagesTests(unittest.TestCase):
         self.addCleanup(self.tmp.cleanup)
         self.root = Path(self.tmp.name)
 
+    def test_a_work_key_stands_in_for_an_index_key(self):
+        def work_key(document):
+            for page in document['pages']:
+                source = page['source']
+                source['work_key'] = 'nli:' + source.pop('index_key')
+        pages, _, _ = load_real_pages(real_manifest(self.root, change=work_key))
+        self.assertEqual([page['key'] for page in pages], ['nli:ws_index_9', 'nli:ws_index_10'])
+
     def test_manifest_loads_in_prepare_shape(self):
         pages, sha, header = load_real_pages(real_manifest(self.root))
         self.assertEqual([page['split'] for page in pages], ['train', 'validation'])
@@ -149,8 +159,23 @@ class LoadRealPagesTests(unittest.TestCase):
         def index_in_both_splits(document):
             document['pages'][1]['source']['index_key'] = document['pages'][0]['source']['index_key']
 
+        def eval_index(document):
+            document['pages'][0]['source']['index_key'] = EXCLUSIONS['eval_indexes'][1]
+
+        def no_key(document):
+            document['pages'][0]['source']['index_key'] = None
+
+        def empty_key(document):
+            document['pages'][0]['source']['index_key'] = ' '
+
+        def gate_not_admitted(document):
+            document['pages'][1]['source']['gate_admitted'] = False
+
+        def gate_missing(document):
+            del document['pages'][1]['source']['gate_admitted']
+
         for change in (image_changed, outside, line_outside_region, no_exclusions, no_licence, orphan_line,
-                       index_in_both_splits):
+                       index_in_both_splits, eval_index, no_key, empty_key, gate_not_admitted, gate_missing):
             with self.subTest(change.__name__), self.assertRaises(EngineError):
                 load_real_pages(real_manifest(self.root, change=change))
 
@@ -173,6 +198,7 @@ class RealPagesTrainingTests(TrainingTestCase):
         self.assertEqual(real['label_source']['traineddata_licence'], 'Apache-2.0')
         self.assertEqual(real['exclusions']['eval_indexes'], EXCLUSIONS['eval_indexes'])
         self.assertEqual(real['file_licence_templates'], {'PD-old-70': 2})
+        self.assertEqual(real['rejected_by_reason'], {'disagrees_with_proxy': 2, 'too_few_lines': 1})
         self.assertEqual(summary['train']['pages_by_template']['real_page'], 1)
         real_sha = hashlib.sha256((self.root / 'real' / 'p1.png').read_bytes()).hexdigest()
         listed = (out / 'validation.txt').read_text(encoding='utf-8').split()
@@ -205,6 +231,9 @@ class RealPagesTrainingTests(TrainingTestCase):
         self.assertIn('Tesseract blocks as body', record['segmentation']['region_type_source'])
         self.assertEqual(record['data']['real_pages']['train']['pages'], 1)
         self.assertNotIn(str(self.root), json.dumps(record, ensure_ascii=False))
+        leaked = json.loads(json.dumps(record))
+        leaked['data']['real_pages']['train']['indexes'] = ['ws_index_1']
+        self.assertTrue(any('evaluation Index' in p for p in validate_training_run(leaked)))
         broken = json.loads(json.dumps(record))
         broken['data']['real_pages']['exclusions'] = {}
         broken['data']['real_pages']['label_source'].pop('traineddata_sha256')
@@ -273,6 +302,30 @@ class PseudoLabelTests(unittest.TestCase):
         path = self.scans / 'real_pages.json'
         path.write_text(json.dumps(manifest), encoding='utf-8')
         self.assertEqual(len(load_real_pages(path)[0]), 1)
+
+    def rewrite_provenance(self, change):
+        path = self.scans / 'provenance.json'
+        provenance = json.loads(path.read_text(encoding='utf-8'))
+        change(provenance['files']['ws_index_9'])
+        path.write_text(json.dumps(provenance), encoding='utf-8')
+
+    def test_eval_index_gate_and_missing_key_fail_closed(self):
+        def eval_index(entry):
+            entry['index_key'] = 'ws_index_1'
+
+        def not_admitted(entry):
+            entry['gate'] = {'admitted': False, 'reasons': ['creator_death_year_missing']}
+
+        def no_key(entry):
+            entry['index_key'] = ''
+
+        original = (self.scans / 'provenance.json').read_text(encoding='utf-8')
+        for change in (eval_index, not_admitted, no_key):
+            with self.subTest(change.__name__):
+                (self.scans / 'provenance.json').write_text(original, encoding='utf-8')
+                self.rewrite_provenance(change)
+                with patch('heocr_engine.real_pages.strip_proxy', return_value=[]), self.assertRaises(EngineError):
+                    pseudo_label_pages(self.scans, self.tesseract, self.tessdata)
 
     def test_changed_scan_fails_closed(self):
         path = self.scans / 'train' / 'ws_index_9' / 'p0005_w400.png'

@@ -155,6 +155,11 @@ Synthetic pages alone taught R4d to draw word-sized lines on real books. R4f add
   - a `split` (`train` or `dev`), assigned by whole work.
 - **For the folder:** the evaluation Indexes the scans exclude.
 
+**Every page's book must be usable.** `pseudo-label-pages` and `--real-pages` both fail closed unless each used page's source:
+- has a non-empty `index_key` (a Wikisource Index), or a `work_key` for other sources;
+- is not one of the listed evaluation Indexes;
+- has hocrgen's public-domain gate `admitted: true`.
+
 **`heocr-engine pseudo-label-pages SCANS SCANS/real_pages.json --tesseract … --tessdata …`** runs `tesseract … -l heb --psm 3 hocr` on each scan the provenance marks for use. It writes a `heocr_real_pages.v1` manifest:
 - **Lines:** Tesseract's `ocr_line`, `ocr_header`, `ocr_caption` and `ocr_textfloat` lines.
   - Each polygon is the line's own box, unpadded, because R3h is crop-sensitive.
@@ -177,10 +182,10 @@ Synthetic pages alone taught R4d to draw word-sized lines on real books. R4f add
   - the manifest sha256;
   - the label source and filter;
   - the exclusions, with the full list of evaluation Indexes;
-  - the files, Indexes and licence templates used;
+  - the files, Indexes and licence templates used, and the rejected pages counted by reason;
   - pages, lines and Indexes per split. The splits are fixed before training, by whole work, and an Index in both is rejected.
 
-  `segmentation.region_type_source` adds `"; real pages: Tesseract blocks as body"`. The validator requires the manifest hash, the traineddata hash and licence, and a non-empty exclusion list.
+  `segmentation.region_type_source` adds `"; real pages: Tesseract blocks as body"`. The validator requires the manifest hash, the traineddata hash and licence, a non-empty exclusion list, and no evaluation Index among the pages' Indexes.
 
 ## Reading-order runs
 
