@@ -440,7 +440,7 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
                         split_seed: int = 0, task: str = "recognition", line_polygons: str = "sidecar",
                         polygonizer_height: int = POLYGONIZER_HEIGHT, polygonizer=None,
                         line_types: dict[str, str] | None = None, rect_pad: float = RECT_PAD,
-                        mix_buckets=MIX_BUCKETS) -> dict:
+                        mix_buckets=MIX_BUCKETS, real_pages: Path | None = None) -> dict:
     """Write pages/<sha256>.{jpg,png,xml}, train.txt, validation.txt and dataset.json into `output`.
 
     The two list files hold absolute XML paths for ketos and stay local. dataset.json is path-free.
@@ -450,6 +450,8 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
     rect lines.
     `line_types` (segmentation only) maps region names to kraken line types, such as {"stamp_area": "stamp"};
     lines of other regions keep the `default` type.
+    `real_pages` (segmentation with sidecar regions only) adds the pages of a `heocr_real_pages.v1` manifest
+    (real scans pseudo-labelled by `pseudo-label-pages`) to the split the manifest gives each page.
     """
     if task not in ("recognition", "segmentation"):  # reading-order records are written from a run's evidence
         raise EngineError("Invalid training task")
@@ -480,6 +482,14 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
         raise EngineError("Either every page or no page must have region polygons")
     # Recognition keeps line bounding boxes, so its PAGE XML does not depend on the sidecar's regions.
     sidecar = segmentation and with_regions == len(pages)
+    real, real_sha, real_header = [], None, {}
+    if real_pages is not None:
+        if not sidecar:
+            raise EngineError("Real pages need segmentation data with sidecar regions")
+        from heocr_engine.real_pages import load_real_pages
+        real, real_sha, real_header = load_real_pages(real_pages)
+        if {page["page_sha256"] for page in real} & {page["page_sha256"] for page in pages}:
+            raise EngineError("A real page image is also a synthetic page")
     splits = assign_splits({page["sample_id"] for page in pages}, validation_fraction, split_seed)
     if output.exists() and any(output.iterdir()):
         raise EngineError("Output directory must be new or empty")
@@ -518,6 +528,22 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
                         **({"lines_dropped_by_polygonizer": dropped} if rebuild else {}),
                         **({"lines_by_geometry": geometries} if mix else {}),
                         "page_xml_sha256": digest(xml)})
+    for page in real:
+        raw = read_limited(page["path"], MAX_BYTES)
+        if digest(raw) != page["page_sha256"]:
+            raise EngineError("Page image changed while preparing data")
+        image = output / "pages" / (page["page_sha256"] + (".png" if raw.startswith(b"\x89PNG\r\n\x1a\n") else ".jpg"))
+        image.write_bytes(raw)
+        xml = page_xml(page, image.name, region_types=True, sidecar_regions=True, line_types=line_types)
+        image.with_suffix(".xml").write_bytes(xml)
+        lists[page["split"]].append(str(image.with_suffix(".xml").resolve()))
+        entries.append({"sample_id": page["sample_id"], "page_id": page["page_id"],
+                        "page_sha256": page["page_sha256"], "template_id": "real_page", "split": page["split"],
+                        "lines": len(page["lines"]), "lines_outside_logical_order": len(page["lines"]),
+                        "occluded_lines": 0, "regions": sorted(region["type"] for region in page["regions"]),
+                        "line_types": sorted(line_types.get(line["region"], DEFAULT_LINE_TYPE)
+                                             for line in page["lines"]),
+                        "page_xml_sha256": digest(xml)})
     for split, paths in lists.items():
         if not paths:
             raise EngineError(f"The {split} split has no annotated lines")
@@ -528,6 +554,9 @@ def prepare_kraken_data(annotations: Path, manifest: Path, output: Path, validat
                          "validation_fraction": validation_fraction, "assignment_sha256": _canonical_sha(entries)}}
     if segmentation:
         summary.update(task=task, region_geometry=REGION_GEOMETRIES[0 if sidecar else 1], line_type_map=line_types)
+        if real:
+            from heocr_engine.real_pages import real_pages_summary
+            summary["real_pages"] = real_pages_summary(real, real_sha, real_header)
     else:
         summary["line_polygons"] = line_polygons
     if mix:
@@ -790,6 +819,9 @@ def validate_training_run(record: dict) -> list[str]:
                 or not isinstance(segmentation.get("inference"), dict)
                 or not segmentation["inference"].get("reading_order")):
             problems.append("segmentation must state the line location, class mapping and inference reading order")
+        if "real_pages" in data:
+            from heocr_engine.real_pages import check_real_pages_record
+            problems.extend(check_real_pages_record(data["real_pages"]))
     commands = record["commands"]
     if not isinstance(commands, dict) or not all(isinstance(cmd, list) and all(isinstance(a, str) for a in cmd)
                                                  for cmd in commands.values()):

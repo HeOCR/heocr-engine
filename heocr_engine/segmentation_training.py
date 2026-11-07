@@ -135,8 +135,12 @@ def train_kraken_segmentation(annotations: Path, manifest: Path, work: Path, ket
                               workers: int = 0, threads: int = 1, validation_fraction: float = 0.1,
                               split_seed: int = 0, line_types: dict[str, str] | None = None,
                               hyperparameters: SegmentationHyperparameters = SegmentationHyperparameters(),
-                              timeout: float = 172_800) -> dict:
-    """Prepare typed-region PAGE XML, train a baseline segmenter from scratch with local ketos, describe the run."""
+                              timeout: float = 172_800, real_pages: Path | None = None) -> dict:
+    """Prepare typed-region PAGE XML, train a baseline segmenter from scratch with local ketos, describe the run.
+
+    `real_pages` adds real scans pseudo-labelled by Tesseract (a `heocr_real_pages.v1` manifest, R4f1) to the
+    manifest's splits; the record's `data.real_pages` states their label source, licences and exclusions.
+    """
     hyperparameters.check()
     if (not DEVICE.fullmatch(device) or precision not in PRECISIONS or not _is_int(seed, 0, 2**32 - 1)
             or not _is_int(workers, 0, 256) or not _is_int(threads, 1, 256)
@@ -157,7 +161,7 @@ def train_kraken_segmentation(annotations: Path, manifest: Path, work: Path, ket
     work.mkdir(parents=True, exist_ok=True)
     work = work.resolve()
     summary = prepare_kraken_data(annotations, manifest, work / "data", validation_fraction, split_seed,
-                                  task="segmentation", line_types=line_types)
+                                  task="segmentation", line_types=line_types, real_pages=real_pages)
     region_types = set(summary["train"]["regions_by_type"])
     if not set(summary["validation"]["regions_by_type"]) <= region_types:
         raise EngineError("The validation split has region types the train split lacks")
@@ -203,7 +207,9 @@ def train_kraken_segmentation(annotations: Path, manifest: Path, work: Path, ket
         "data": {**summary, "corpora": corpus_records},
         "segmentation": {"line_location": "baseline", "line_types": sorted(trained_line_types),
                          "line_type_map": summary["line_type_map"],
-                         "region_types": sorted(region_types), "region_type_source": "hocrsyngen region name",
+                         "region_types": sorted(region_types),
+                         "region_type_source": "hocrsyngen region name" + (
+                             "; real pages: Tesseract blocks as body" if "real_pages" in summary else ""),
                          "region_geometry": summary["region_geometry"], "class_mapping": class_mapping,
                          "inference": INFERENCE},
         "commands": {name: _portable(args, tokens) for name, args in commands.items()},

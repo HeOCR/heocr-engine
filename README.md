@@ -24,6 +24,8 @@ Each run writes one `heocr_engine_prediction.v1` JSON object per page; see [docs
 
 `heocr-engine diagnose-segmentation ANNOTATIONS MANIFEST PREDICTED_DIR` compares predicted text lines (PAGE XML or ALTO, one `<page_sha256>.xml` per page) with a hocrsyngen batch's annotated lines: line detection precision, recall and F1, split, merged, missed and spurious lines, and reading order. It is a diagnostic on synthetic pages, not a hocrgen score. See [docs/segmentation_diagnostic.md](docs/segmentation_diagnostic.md).
 
+`heocr-engine pseudo-label-pages SCANS SCANS/real_pages.json --tesseract … --tessdata …` labels real public-domain page scans with a local Tesseract (tight line boxes, hOCR baselines, a geometry-only filter against a hand-free projection proxy) for `train-kraken-seg --real-pages`. See [docs/training_run_contract.md](docs/training_run_contract.md#real-pages-pseudo-labelled-by-tesseract-r4f1).
+
 ## Pipelines and outside contributions
 
 `heocr-engine run IMAGE OUTPUT --pipeline pipeline.json` composes preprocess, recognize and post-correct stages, which can be local subprocesses or installed Python entry points. `heocr-engine validate-predictions FILE...` checks prediction files submitted from elsewhere, including `track: proprietary` outputs, which are reported separately. See [docs/stages.md](docs/stages.md). `heocr-engine tesseract ...` is the same as the original command.

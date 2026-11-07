@@ -143,6 +143,45 @@ heocr-engine train-kraken-seg batch/line_annotations.json batch/generation_manif
 
 `work/` receives `data/`, `checkpoints/` and `ketos.log`; keep it out of the repository.
 
+### Real pages pseudo-labelled by Tesseract (R4f1)
+
+Synthetic pages alone taught R4d to draw word-sized lines on real books. R4f adds real public-domain book scans, labelled by a local Tesseract, to the synthetic batch.
+
+**Collecting scans** is the operator's step, outside this repository (no network code here). It writes a folder with the images and a `provenance.json` (`heocr_real_scan_provenance.v1`) that records:
+- **Per file:**
+  - the Commons title, URL, file page revision, sha1 (checked against a pin) and licence templates;
+  - rights bases;
+  - each image's page number, render URL, width, sha256 and derivation;
+  - a `split` (`train` or `dev`), assigned by whole work.
+- **For the folder:** the evaluation Indexes the scans exclude.
+
+**`heocr-engine pseudo-label-pages SCANS SCANS/real_pages.json --tesseract … --tessdata …`** runs `tesseract … -l heb --psm 3 hocr` on each scan the provenance marks for use. It writes a `heocr_real_pages.v1` manifest:
+- **Lines:** Tesseract's `ocr_line`, `ocr_header`, `ocr_caption` and `ocr_textfloat` lines.
+  - Each polygon is the line's own box, unpadded, because R3h is crop-sensitive.
+  - Each baseline is hOCR's `baseline`, clamped to the box.
+  - Lines with no words, and specks under 6 × 4 px, are dropped.
+- **Regions:** each Tesseract block (`ocr_carea`) that keeps a line is a `body` region, the box around its lines plus 2 px.
+- **Page filter:** geometry only.
+  - The hand-free strip proxy (Otsu; long rules and frames cleared; text rows counted in 12 narrow vertical strips) must agree with Tesseract's lines crossing the same strips, at a ratio of 0.8–1.25. At least 3 lines are needed.
+  - Word confidence is recorded but not used: on 19th-century prints Tesseract's recognition confidence is low even where its line finding is good.
+  - Rejected pages are listed with their reason.
+- **Header:** the manifest records the label source, including the Tesseract version, the `traineddata` sha256 and licence (Apache-2.0), psm and conventions. It also records the filter, the exclusions, and the scan provenance sha256.
+
+**`train-kraken-seg … --real-pages SCANS/real_pages.json`** (and `prepare_kraken_data(real_pages=…)`):
+- **Pages:** the manifest's pages are added to the split the manifest gives them, `train` or `validation`, not to the sha256-rank split.
+  - Each image must match its sha256 and size.
+  - Every line must sit in exactly one `body` region that contains its box.
+  - The batch must have sidecar regions.
+- **Template:** real pages are listed under template `real_page`. Their lines count as `lines_outside_logical_order`, because real pages have no text gold.
+- **Record:** `data.real_pages` holds:
+  - the manifest sha256;
+  - the label source and filter;
+  - the exclusions, with the full list of evaluation Indexes;
+  - the files, Indexes and licence templates used;
+  - pages and lines per split.
+
+  `segmentation.region_type_source` adds `"; real pages: Tesseract blocks as body"`. The validator requires the manifest hash, the traineddata hash and licence, and a non-empty exclusion list.
+
 ## Reading-order runs
 
 A `ketos rotrain` reading-order model, such as A1, has no `heocr-engine` training command. It is trained with ketos directly, on PAGE XML from `prepare-kraken-data --task segmentation`. Its record is written by hand from the run's evidence, and `validate_training_run` checks it like any other record. `prepare-kraken-data` and the training commands have no `reading_order` task.

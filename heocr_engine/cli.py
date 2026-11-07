@@ -433,6 +433,8 @@ def _train_kraken_seg_main(argv: list[str]) -> int:
     parser.add_argument("--augment", action="store_true")
     _line_type_args(parser)
     parser.add_argument("--timeout", type=float, default=172_800, help="Seconds for ketos segtrain (default 48h)")
+    parser.add_argument("--real-pages", type=Path,
+                        help="heocr_real_pages.v1 manifest of pseudo-labelled real scans to add (pseudo-label-pages)")
     args = parser.parse_args(argv)
     if args.record.exists():
         raise EngineError("Record file already exists")
@@ -445,8 +447,30 @@ def _train_kraken_seg_main(argv: list[str]) -> int:
         device=args.device, seed=args.seed, deterministic=args.deterministic, precision=args.precision,
         workers=args.workers, threads=args.threads, validation_fraction=args.validation_fraction,
         split_seed=args.split_seed, line_types=_line_type_map(args.line_type), hyperparameters=hyperparameters,
-        timeout=args.timeout)
+        timeout=args.timeout, real_pages=args.real_pages)
     write_prediction(record, args.record)
+    return 0
+
+
+def _pseudo_label_pages_main(argv: list[str]) -> int:
+    from heocr_engine.real_pages import pseudo_label_pages
+
+    parser = argparse.ArgumentParser(prog="heocr-engine pseudo-label-pages",
+                                     description="Pseudo-label real page scans with a local Tesseract for segmentation "
+                                                 "training and write a heocr_real_pages.v1 manifest.")
+    parser.add_argument("scans", type=Path,
+                        help="Folder with provenance.json (heocr_real_scan_provenance.v1) and the scans it lists")
+    parser.add_argument("output", type=Path, help="Manifest to create, inside the scan folder")
+    parser.add_argument("--tesseract", type=Path, required=True, help="Path to the tesseract command")
+    parser.add_argument("--tessdata", type=Path, required=True, help="Folder holding <language>.traineddata")
+    parser.add_argument("--language", default="heb")
+    parser.add_argument("--psm", type=int, default=3)
+    args = parser.parse_args(argv)
+    if args.output.resolve().parent != args.scans.resolve():
+        raise EngineError("The manifest must be written inside the scan folder (its image paths are relative)")
+    manifest = pseudo_label_pages(args.scans, args.tesseract, args.tessdata, language=args.language, psm=args.psm)
+    write_prediction(manifest, args.output)
+    print(json.dumps({"pages": len(manifest["pages"]), "rejected": len(manifest["rejected"])}))
     return 0
 
 
@@ -480,7 +504,7 @@ def _diagnose_segmentation_main(argv: list[str]) -> int:
 COMMANDS = {"tesseract": _tesseract_main, "kraken": _kraken_main, "run": _run_main,
             "validate-predictions": _validate_main, "prepare-kraken-data": _prepare_kraken_data_main,
             "train-kraken": _train_kraken_main, "train-kraken-seg": _train_kraken_seg_main,
-            "diagnose-segmentation": _diagnose_segmentation_main}
+            "diagnose-segmentation": _diagnose_segmentation_main, "pseudo-label-pages": _pseudo_label_pages_main}
 
 
 def main(argv: list[str] | None = None) -> int:
