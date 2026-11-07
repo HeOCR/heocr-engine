@@ -178,7 +178,7 @@ Synthetic pages alone taught R4d to draw word-sized lines on real books. R4f add
   - the label source and filter;
   - the exclusions, with the full list of evaluation Indexes;
   - the files, Indexes and licence templates used;
-  - pages and lines per split.
+  - pages, lines and Indexes per split. The splits are fixed before training, by whole work, and an Index in both is rejected.
 
   `segmentation.region_type_source` adds `"; real pages: Tesseract blocks as body"`. The validator requires the manifest hash, the traineddata hash and licence, and a non-empty exclusion list.
 

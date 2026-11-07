@@ -357,6 +357,10 @@ def load_real_pages(manifest: Path) -> tuple[list[dict], str, dict]:
         raise EngineError("The real pages manifest has no pages")
     if len({page["page_sha256"] for page in pages}) != len(pages):
         raise EngineError("Duplicate real page image")
+    by_split = [{page["source"].get("index_key") for page in pages if page["split"] == split} - {None}
+                for split in ("train", "validation")]
+    if by_split[0] & by_split[1]:
+        raise EngineError("An Index has pages in both the train and the validation split")
     header = {name: document[name] for name in ("label_source", "filter", "exclusions") if name in document}
     return pages, digest(raw), header
 
@@ -378,7 +382,10 @@ def real_pages_summary(pages: list[dict], manifest_sha256: str, header: dict) ->
             "files": len(files), "indexes": sorted({page["source"].get("index_key") for page in pages} - {None}),
             "file_licence_templates": dict(sorted(licences.items())),
             **{split: {"pages": sum(page["split"] == split for page in pages),
-                       "lines": sum(len(page["lines"]) for page in pages if page["split"] == split)}
+                       "lines": sum(len(page["lines"]) for page in pages if page["split"] == split),
+                       # Fixed before training, by whole work: an Index is in exactly one split.
+                       "indexes": sorted({page["source"].get("index_key") for page in pages
+                                          if page["split"] == split} - {None})}
                for split in ("train", "validation")}}
 
 
@@ -400,4 +407,7 @@ def check_real_pages_record(real: dict) -> list[str]:
         if not isinstance(counts, dict) or not all(isinstance(counts.get(k), int) and counts[k] >= 0
                                                    for k in ("pages", "lines")):
             problems.append(f"data.real_pages.{split} must count pages and lines")
+    splits = [set((real.get(split) or {}).get("indexes") or []) for split in ("train", "validation")]
+    if splits[0] & splits[1]:
+        problems.append("data.real_pages: an Index is in both the train and the validation split")
     return problems

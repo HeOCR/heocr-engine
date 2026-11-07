@@ -51,9 +51,9 @@ def real_manifest(root: Path, splits=('train', 'validation'), change=None) -> Pa
     pages = []
     for number, split in enumerate(splits):
         sha = page_image(root / f'p{number}.png', size=(400, 300 + number))
-        pages.append({'page_id': f'real:ws_index_9:p{number:04d}:w400', 'image': f'p{number}.png', 'image_sha256': sha,
-                      'width': 400, 'height': 300 + number, 'split': split,
-                      'source': {'index_key': 'ws_index_9', 'commons_title': 'File:Book.pdf',
+        pages.append({'page_id': f'real:ws_index_{9 + number}:p0001:w400', 'image': f'p{number}.png',
+                      'image_sha256': sha, 'width': 400, 'height': 300 + number, 'split': split,
+                      'source': {'index_key': f'ws_index_{9 + number}', 'commons_title': f'File:Book{number}.pdf',
                                  'licence_templates': ['PD-old-70'], 'page': number},
                       'lines': [{'line_index': 0, 'region_index': 0, 'polygon': [[20, 60], [380, 60], [380, 80], [20, 80]],
                                  'baseline': [[20, 77], [380, 77]], 'tesseract_class': 'ocr_line'}],
@@ -146,7 +146,11 @@ class LoadRealPagesTests(unittest.TestCase):
         def orphan_line(document):
             document['pages'][0]['regions'][0]['line_indices'] = []
 
-        for change in (image_changed, outside, line_outside_region, no_exclusions, no_licence, orphan_line):
+        def index_in_both_splits(document):
+            document['pages'][1]['source']['index_key'] = document['pages'][0]['source']['index_key']
+
+        for change in (image_changed, outside, line_outside_region, no_exclusions, no_licence, orphan_line,
+                       index_in_both_splits):
             with self.subTest(change.__name__), self.assertRaises(EngineError):
                 load_real_pages(real_manifest(self.root, change=change))
 
@@ -163,10 +167,12 @@ class RealPagesTrainingTests(TrainingTestCase):
         summary = prepare_kraken_data(self.annotations, self.manifest, out, **SPLIT, task='segmentation',
                                       real_pages=self.real)
         real = summary['real_pages']
-        self.assertEqual((real['train'], real['validation']), ({'pages': 1, 'lines': 1}, {'pages': 1, 'lines': 1}))
+        self.assertEqual((real['train'], real['validation']),
+                         ({'pages': 1, 'lines': 1, 'indexes': ['ws_index_9']},
+                          {'pages': 1, 'lines': 1, 'indexes': ['ws_index_10']}))
         self.assertEqual(real['label_source']['traineddata_licence'], 'Apache-2.0')
         self.assertEqual(real['exclusions']['eval_indexes'], EXCLUSIONS['eval_indexes'])
-        self.assertEqual(real['file_licence_templates'], {'PD-old-70': 1})
+        self.assertEqual(real['file_licence_templates'], {'PD-old-70': 2})
         self.assertEqual(summary['train']['pages_by_template']['real_page'], 1)
         real_sha = hashlib.sha256((self.root / 'real' / 'p1.png').read_bytes()).hexdigest()
         listed = (out / 'validation.txt').read_text(encoding='utf-8').split()
