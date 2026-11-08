@@ -30,7 +30,7 @@ Proposals are drafts for the maintainer's decision. They decide nothing; an acce
 | [0001](decisions/0001-governance.md) | Planning notation, labels, milestones; no self-merge |
 | [0002](decisions/0002-normalization-boundary.md) | Engines emit raw text; normalization profiles are evaluator-side, explicit and recorded |
 | [0003](decisions/0003-alignment-masked-diagnostic.md) | `alignment_masked` scoring is a labelled diagnostic only |
-| [0004](decisions/0004-scored-set.md) | Synthetic gold is the reported number; real pages are `unreviewed` diagnostics |
+| [0004](decisions/0004-scored-set.md) | Synthetic gold is the reported number; real pages are `unreviewed` diagnostics (superseded by 0012) |
 | [0005](decisions/0005-proprietary-track.md) | No proprietary or network code; proprietary predictions enter as `track: proprietary` |
 | [0006](decisions/0006-model-licences.md) | Kraken baseline models are user-supplied and hashed; BiblIA_01 is CC-BY-SA-4.0, `blla` is Apache-2.0 |
 | [0007](decisions/0007-first-trained-recognizer.md) | The first trained recognizer starts from scratch (no BiblIA_01 weights); its licence is `Needs verification` with the maintainer; it is not published; segmentation stays `blla` |
@@ -38,3 +38,4 @@ Proposals are drafts for the maintainer's decision. They decide nothing; an acce
 | [0009](decisions/0009-kraken-right-to-left-line-order.md) | `heocr-engine kraken` ties the segmentation direction to `--base-dir` (R → `-d horizontal-rl`) with an override, and records it; supersedes 0008's reading-order clause |
 | [0010](decisions/0010-r3h-release.md) | R3h is released first, under Apache-2.0, licensed by "HeOCR maintainers"; OFL fonts credited but not reaching the weights; Zenodo (version DOI) and Hugging Face; supersedes 0007's licence and publication clauses for R3h only |
 | [0011](decisions/0011-first-release-adds-r4d-and-a1.md) | The first release is R3h + R4d + A1 under 0010's terms, after the R3h + `blla` scores; supersedes 0010's scope and, for R4d and A1, 0008's licence and publication clauses |
+| [0012](decisions/0012-real-page-scored-sets.md) | Real pages with human-adjudicated hocrgen references (e.g. E2d3d) are a scored set beside synthetic gold; pseudo-labels and silver text are dev signals only; supersedes 0004 |
