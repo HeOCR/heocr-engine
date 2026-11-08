@@ -577,6 +577,21 @@ class TrainKrakenTests(TrainingTestCase):
             with self.subTest(broken=broken):
                 self.assertTrue(validate_training_run({**record, **broken}))
 
+    def test_fine_tune_checks_the_whole_base_chain(self):
+        model, base = self.fine_tune_base()
+        record = self.train(base_model=model, base_record=base)
+        grandchild = {**record['init'], 'base_init': record['init']}
+        self.assertEqual(validate_training_run({**record, 'init': grandchild}), [])
+        deep = 'from_scratch'
+        for _ in range(65):
+            deep = {**record['init'], 'base_init': deep}
+        for base_init in ({}, {'kind': 'fine_tune'}, 'pretrained', None,
+                          {**record['init'], 'base_init': {**record['init'], 'resize': 'both'}},
+                          {**record['init'], 'base_init': {**record['init'], 'base_init': 'pretrained'}},
+                          deep):
+            with self.subTest(base_init=str(base_init)[:60]):
+                self.assertTrue(validate_training_run({**record, 'init': {**record['init'], 'base_init': base_init}}))
+
     def test_fine_tune_fails_closed_on_its_base(self):
         model, base = self.fine_tune_base()
         other = self.root / 'other.safetensors'
