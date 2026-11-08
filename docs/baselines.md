@@ -2154,3 +2154,119 @@ Limits:
 - R3h's validation accuracy (0.9959) is on its own 3/4-Kraken geometry mix and is not comparable to R3g's or R3f's.
 - The `rect` geometry approximates Tesseract boxes through one pad fitted on the training batch.
 - Predictions, line files and reports stay local.
+
+## R3i: real-glyph synthetic pages, fine-tuned from R3h (2026-11-08)
+
+**Status: ablation diagnostic (decision 0012 rule 3).** E2d3d (`e2d3d_wikisource_printed_v5`, human-adjudicated) is a scored set. These rows compare three fine-tunes on it to answer a data question. No arm, checkpoint or setting is selected for release from them, and none of the three models is the recognizer of record. R3h stays the recognizer of record.
+
+**Question:** at an equal line budget and equal epochs, do hocrsyngen's real-glyph book pages (`compose-glyph-pages`, glyphs harvested from scanned Wikisource books) lower the recognizer's error on real scanned printed Hebrew more than font-rendered book pages do?
+
+**Design:**
+- Each arm fine-tunes R3h (decision 0013, `--resize union`) for exactly 4 epochs at lr 1e-4, with R3h's recipe otherwise.
+- The three arms differ only in their training pages, each about 25,000 lines:
+  - **A:** font-rendered hocrsyngen book pages only.
+  - **B:** real-glyph pages only.
+  - **C:** half and half.
+- All pages render the same text, so glyph realism is the only difference between A and B.
+- Segmentation is held fixed. Each model re-recognises saved line geometry of the 38 pages for three line sources:
+  - R4d + A1, the released pipeline;
+  - Tesseract psm 3 lines;
+  - `blla`.
+
+  Re-recognising each geometry with R3h reproduces R3h's earlier E2d3d text on 38 of 38 pages for each source.
+- **Checkpoints:** each arm's `best` is chosen on its own synthetic validation split. In all three it is the last epoch, so E2d3d plays no part in selection.
+
+**Leakage and the headline set:**
+- The glyph bank (`pgb-v1`) was harvested from Wikisource Indexes registered in hocrgen's `synthetic_training_works.yaml`. The scored pages themselves were excluded from harvesting, but 28 of the 38 E2d3d pages come from Indexes that gave the bank glyphs from their other pages.
+- **The headline is the other 10 pages (6 Indexes)**, whose books gave the bank nothing.
+- All-38 numbers come second, and they favour the real-glyph arms by construction.
+
+### Headline: the 10 bank-disjoint pages (`primary.v1` CER / WER)
+
+| Line source | R3h | A (font) | B (real glyph) | C (mix) |
+|---|---|---|---|---|
+| R4d + A1 | 0.853 / 1.083 | 0.850 / 1.076 | 0.836 / 1.023 | 0.837 / 1.039 |
+| Tesseract lines | 0.547 / 0.848 | 0.494 / 0.796 | 0.457 / 0.614 | **0.445** / 0.624 |
+| `blla` | 0.656 / 0.987 | 0.597 / 0.916 | 0.568 / 0.816 | 0.567 / 0.813 |
+
+Tesseract alone scores 0.385 / 0.596 on these 10 pages.
+
+**Paired deltas on the 10 pages.** Each cell is the CER delta with its 95% page interval, then its Wikisource-Index cluster interval (6 clusters). 2000 resamples, seed 20261106.
+
+| Line source | B − A | C − A | C − B |
+|---|---|---|---|
+| R4d + A1 | −0.014 [−0.033, −0.006]; cl [−0.054, −0.008] | −0.013 [−0.030, −0.006]; cl [−0.045, −0.006] | +0.001 [−0.003, +0.006]; cl [−0.004, +0.011] |
+| Tesseract lines | −0.037 [−0.087, −0.006]; cl [−0.137, −0.013] | −0.049 [−0.084, −0.027]; cl [−0.120, −0.033] | −0.012 [−0.022, +0.003]; cl [−0.021, +0.020] |
+| `blla` | −0.029 [−0.072, −0.008]; cl [−0.126, −0.011] | −0.030 [−0.058, −0.013]; cl [−0.099, −0.019] | −0.000 [−0.012, +0.022]; cl [−0.009, +0.027] |
+
+WER moves more than CER:
+- B − A on Tesseract lines: −0.183 [−0.289, −0.077].
+- B − A on `blla`: −0.100 [−0.177, −0.048].
+
+Fine-tuning on font pages also helps on its own. A − R3h on Tesseract lines is −0.053 [−0.088, −0.007], and on `blla` −0.058 [−0.092, −0.004]. On R4d + A1 it is −0.003 [−0.021, +0.012].
+
+### All 38 adjudicated pages (`primary.v1` CER / WER; 28 share Indexes with the bank)
+
+| Line source | R3h | A (font) | B (real glyph) | C (mix) |
+|---|---|---|---|---|
+| R4d + A1 | 0.898 / 1.057 | 0.881 / 1.043 | 0.866 / 1.015 | 0.872 / 1.027 |
+| Tesseract lines | 0.391 / 0.820 | 0.326 / 0.714 | **0.194** / 0.405 | 0.199 / 0.422 |
+| `blla` | 0.578 / 0.931 | 0.511 / 0.844 | 0.427 / 0.664 | 0.433 / 0.679 |
+
+Tesseract alone scores 0.237 / 0.507 on all 38.
+
+- **B − A CER** (page; cluster, 14 Indexes):
+  - R4d + A1: −0.015 [−0.019, −0.011]; cl [−0.023, −0.010].
+  - Tesseract lines: −0.132 [−0.184, −0.087]; cl [−0.213, −0.066].
+  - `blla`: −0.083 [−0.127, −0.051]; cl [−0.139, −0.043].
+- **C − B** is slightly positive here: +0.005 to +0.006, with page intervals excluding zero on R4d + A1 and `blla`.
+
+The B − A gap on Tesseract lines is −0.132 on all 38 but −0.037 on the 10 bank-disjoint pages. Most of the real-glyph gain on the 38 therefore comes from books the bank was harvested from, so the all-38 rows overstate it.
+
+### Early read (diagnostic, epoch 1 of 4, Tesseract lines)
+
+| Set | A | B | C |
+|---|---|---|---|
+| 10 pages | 0.495 / 0.798 | 0.464 / 0.645 | 0.462 / 0.665 |
+| 38 pages | 0.329 / 0.714 | 0.217 / 0.466 | 0.225 / 0.495 |
+
+Most of each arm's gain was already there after one epoch.
+
+### Reading (R3i)
+
+**Verdict:** yes, with a smaller effect than the all-38 numbers suggest.
+- On the 10 pages from books that gave the glyph bank nothing, real-glyph pages beat font-rendered pages at an equal line budget and equal epochs on all three fixed line sources. Both page and Index-cluster intervals exclude zero.
+- The largest CER gain is on Tesseract lines: 0.494 → 0.457 (B), with WER 0.796 → 0.614.
+- A half-and-half mix (C) is as good as real-glyph pages alone on these pages. C − B intervals include zero for CER on every source, so mixing costs nothing on held-out books and keeps font coverage.
+- The gain shrinks about 3–4× away from the harvested books: B − A is −0.132 on all 38 against −0.037 on the 10 on Tesseract lines, and −0.083 against −0.029 on `blla`. Part of what the bank teaches is the look of those particular books.
+- Two things do not change:
+  - **Segmentation still dominates.** On R4d + A1 every arm stays above 0.83 CER, and the recognizer moves that by about 0.015.
+  - **No arm beats Tesseract alone on the 10 pages** (0.445 at best against 0.385).
+
+**Implication for the data plan:** add real-glyph pages to recognizer training, mixed with font pages. Harvest from more and different books, since the held-out gain is the one that counts. Choosing a release recognizer needs a selection set outside E2d3d (decision 0012 rule 3).
+
+Limits:
+- One training run per arm. The intervals cover page and Index sampling, not training seeds.
+- The headline set has 10 pages from 6 Indexes, so the cluster intervals rest on 6 clusters.
+- Every arm starts from R3h, and the result may differ for a from-scratch recognizer or a longer schedule.
+- B's training alphabet has 41 symbols against 51 for A and C, because composed glyph pages carry no running headers, page numbers or Latin. `--resize union` keeps R3h's full output layer.
+- Validation accuracies (A 0.9955, B 0.9901, C 0.9911) are each on that arm's own synthetic split and are not comparable.
+- Wall-clock times include two power pauses (SIGSTOP), so they are not speed numbers.
+- Predictions, geometry, reports and weights stay local. Nothing is published.
+
+### Run identities (R3i)
+
+| Part | Identity |
+|---|---|
+| Base | R3h `best_0.9959.safetensors`, sha256 `f76affa84e29536aa1d41f89d3507183c104f1620ca953fdfa5dd4b7a00ba6be`, record `run_r3h.record.json` |
+| Text | `r3e_plain.txt` sha256 `40d1594709f18b42…`: the 9,984 of R3h's 19,991 corpus lines (`7c2a62b8…`) written only in Hebrew letters, space and `. , : ; ' " ׳ ״ - ־ ( ) ? !`. No new text, and no reference text read |
+| Font pages | hocrsyngen `3ca43de` `generate --count 700 --seed 16101`, templates `book_page`, `book_page_two_column` and their `_thumbnail_scan` variants, `--emit-line-annotations` |
+| Real-glyph pages | hocrsyngen `3ca43de` `compose-glyph-pages --count 200` at seeds 16201, 16202 and 16203, against glyph bank `pgb-v1` (`printed_glyph_bank.v1`; 301,044 glyphs, 21 styles; local only) |
+| Arm batches | Page prefixes in manifest order at a 25,000-line budget. A: 534 pages, 25,021 lines (manifest `b1858cacb2b63f76…`, annotations `0704a442caee2599…`). B: 459 pages (a third per seed), 25,088 lines (`123002adfda8dd1b…`, `63ba5edbfae57b62…`). C: 266 font + 233 glyph pages, 25,168 lines (`b23968aa68d8498f…`, `926ee961102e047e…`) |
+| Training | heocr-engine `b21d7ff` (the #56 branch head; identical in code to merged `2abaa7d` except one docstring word) `train-kraken --base-model … --base-record … --resize union --augment --batch-size 16 --learning-rate 0.0001 --quit fixed --epochs 4 --min-epochs 0 --line-polygons mix --polygonizer-height 1800 --rect-pad -0.14 --mix-buckets kraken×6,sidecar,rect`, validation 0.05, split seed 0, seed 42, mps, Kraken 7.0.2. The three records validate on main (`a2d04cc`) |
+| Models | A `fbaecf6478cf6e223309fa0db599613b929e01bb37329d6f46eb1b2225d9c268`, B `5bb7652a510879b8de940c78306dec60ca128275ea380998b261434d544b313b`, C `2015227b6a7d95376d529dbc398bcb9fff3e3d5d7dac80d8f36f0071f88c319f`. Each is `best_*` = checkpoint 03, 16,167,536 bytes. Licence `Needs verification`, unpublished |
+| Line geometry | Saved `heocr_engine_kraken_geometry.v1` for the 38 pages: R4d + A1 (R4d `best_0.8618`, A1 `best_0.0000`, regenerated with R4f's line-source script), Tesseract psm 3 lines and `blla` (R4f's). Recognition on cpu, base direction R |
+| Scoring | hocrgen `d4a3414` `evaluate-references`, `primary.v1` (raw, consonantal and punct_folded also written), modality printed, references `e2d3d_wikisource_printed_v5` and a 10-item subset manifest (`d27de645d3684b45…`). Paired page and Wikisource-Index cluster bootstrap, 2000 resamples, seed 20261106 |
+| Prediction sets | R4d + A1: R3h `a00ac07c01b8099f…`, A `6cdd43c56b2fd552…`, B `639f32e29768c923…`, C `d77905137ef02d8c…`. Tesseract lines: R3h `4b7ebf7a70727bd3…`, A `877aa95c91512c9f…`, B `632542a3fd17ccf1…`, C `2bd43d3722759e72…`. `blla`: R3h `fc26bfc930c8486a…`, A `274a2e28b7e3c77e…`, B `2168e1c89b1bb3f2…`, C `a39ee1c9a412096c…` |
+
+**Scorer note:** the first scoring pass ran after the `hocrgen` worktree pinned at `d4a3414` had been removed. That pass fell back silently to the venv's editable hocrgen at `c962f8c`. Every report was then rescored at `d4a3414`, R3h and Tesseract-alone included, and the numbers above come from that run. They match the first pass to three decimals. The local scoring script now refuses to run unless hocrgen imports from a checkout at `d4a3414`.
