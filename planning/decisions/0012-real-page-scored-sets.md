@@ -1,4 +1,4 @@
-# 0013 — Real pages with human-adjudicated references are a scored set
+# 0012 — Real pages with human-adjudicated references are a scored set
 
 - Status: accepted
 - Date: 2026-11-08
@@ -15,7 +15,7 @@ Decision 0004 made synthetic gold the only reported number because no human tran
    - synthetic gold, from governed hocrsyngen batches with known text;
    - real pages whose references are human-adjudicated in hocrgen, such as E2d3d.
 2. **Dev signals.** Other real-page references are dev signals for selection, never benchmark results. These include Tesseract pseudo-labels, silver text such as Project Ben-Yehuda, a publisher's glyph layer, and unreviewed HASH or tender transcriptions.
-3. **No tuning on scored real pages.** No training, tuning or checkpoint selection uses a scored real set, and whole works or Indexes are held out. A model is scored on a real scored set once, after selection.
+3. **No tuning on scored real pages.** No training, tuning or checkpoint selection uses a scored real set, and whole works or Indexes are held out. A model is scored on a real scored set once, after selection. Diagnostic decompositions of already-fixed models (such as R4f step 1) are allowed, but they never feed selection.
 4. **Agent review is not human review.** Agent or GPT-4o review is never labelled "reviewed" or "human".
 
 ## Consequences for this repository
