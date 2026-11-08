@@ -759,17 +759,27 @@ def _mix_record_ok(data: dict) -> bool:
     return True
 
 
+FINE_TUNE_MAX_DEPTH = 64
+
+
 def _fine_tune_problems(init: dict, task: str) -> list[str]:
-    """Problems with a fine-tune `init`: the base must be a project recognizer pinned by model and record hash."""
+    """Problems with a fine-tune `init`: the base must be a project recognizer pinned by model and record hash.
+
+    `base_init` is checked the same way, down the chain, until it reaches `from_scratch`.
+    """
     if task != "recognition":
         return ["only a recognizer may be fine-tuned"]
-    if (set(init) != {"kind", "base_model_sha256", "base_record_sha256", "base_init", "resize"}
-            or init["kind"] != "fine_tune" or init["resize"] not in FINE_TUNE_RESIZE
-            or not all(isinstance(init[key], str) and HEX64.fullmatch(init[key])
-                       for key in ("base_model_sha256", "base_record_sha256"))
-            or not (init["base_init"] == "from_scratch" or isinstance(init["base_init"], dict))):
-        return ["init must state kind fine_tune, the base model and record sha256s, the base's init and resize"]
-    return []
+    for _ in range(FINE_TUNE_MAX_DEPTH):
+        if (not isinstance(init, dict)
+                or set(init) != {"kind", "base_model_sha256", "base_record_sha256", "base_init", "resize"}
+                or init["kind"] != "fine_tune" or init["resize"] not in FINE_TUNE_RESIZE
+                or not all(isinstance(init[key], str) and HEX64.fullmatch(init[key])
+                           for key in ("base_model_sha256", "base_record_sha256"))):
+            return ["init must state kind fine_tune, the base model and record sha256s, the base's init and resize"]
+        if init["base_init"] == "from_scratch":
+            return []
+        init = init["base_init"]
+    return [f"init chains more than {FINE_TUNE_MAX_DEPTH} fine-tunes"]
 
 
 def _loads_only_base(train: list[str], init: dict) -> bool:
