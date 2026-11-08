@@ -1,6 +1,6 @@
 # 0004 — What counts as the scored set for now
 
-- Status: accepted
+- Status: superseded by [0013](0013-real-page-scored-sets.md) on 2026-11-08
 - Date: 2026-11-01
 - Decided by: HeOCR team lead, under delegation from the maintainer
 

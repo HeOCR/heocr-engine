@@ -114,5 +114,5 @@ The R4f-round answer on them is `blla`: R3h on `blla` lines with heuristic order
 
 - Trained from scratch; no third-party weights are loaded (decision 0008).
 - No weights, images, predictions or training logs are committed, uploaded or published. Release is the maintainer's decision.
-- Scores come from hocrgen, on synthetic gold only (decision 0004).
+- Scores come from hocrgen: synthetic gold and the human-adjudicated E2d3d pages are scored sets; Tesseract pseudo-labels and silver text are dev signals only (decision 0013, superseding 0004).
 - Offline, deterministic tests with a fake ketos executable; CI does not install Kraken.
