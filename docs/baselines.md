@@ -2270,3 +2270,121 @@ Limits:
 | Prediction sets | R4d + A1: R3h `a00ac07c01b8099f…`, A `6cdd43c56b2fd552…`, B `639f32e29768c923…`, C `d77905137ef02d8c…`. Tesseract lines: R3h `4b7ebf7a70727bd3…`, A `877aa95c91512c9f…`, B `632542a3fd17ccf1…`, C `2bd43d3722759e72…`. `blla`: R3h `fc26bfc930c8486a…`, A `274a2e28b7e3c77e…`, B `2168e1c89b1bb3f2…`, C `a39ee1c9a412096c…` |
 
 **Scorer note:** the first scoring pass ran after the `hocrgen` worktree pinned at `d4a3414` had been removed. That pass fell back silently to the venv's editable hocrgen at `c962f8c`. Every report was then rescored at `d4a3414`, R3h and Tesseract-alone included, and the numbers above come from that run. They match the first pass to three decimals. The local scoring script now refuses to run unless hocrgen imports from a checkout at `d4a3414`.
+
+## R3j, R5 and R6: release-candidate recognizers scored once on real pages (2026-11-09)
+
+**Status: scored once under decision 0012 rule 3.** Each model's checkpoint was chosen before any E2d3d scoring: R3j and R5 on their own synthetic validation splits, R6 on two held-out real NLI records. E2d3d informed no choice of checkpoint or setting. These rows record results. They do not change the recognizer of record: R3h stays the Kraken recognizer of record, and any release decision is the maintainer's.
+
+**Models:**
+- **R3j** (Kraken): fine-tunes R3h (decision 0013) on 50,000 lines with R3i's recipe. Its real-glyph bank (`pgb-v2.1`) shares no Wikisource Index with E2d3d, so the 10 pages vs 38 pages split matters less here than it did for R3i. There are two arms:
+  - **mix21:** 25,011 real-glyph lines (bank `pgb-v2.1`: 5 Ben-Yehuda × NLI faces, every evaluation Index excluded) plus 25,067 font-rendered lines.
+  - **font:** 50,013 font-rendered lines, as a control.
+- **R5** (Tesseract): fine-tunes tessdata_best `heb` on R3j's mix21 lines, so it sees synthetic lines only.
+- **R6** (Tesseract): fine-tunes tessdata_best `heb` on **real scanned lines**. These are the 13,648 train lines of `bynli_lines_v1`, cut from NLI scans of public-domain books, each labelled with the Ben-Yehuda edition text that the alignment placed on the line, never with OCR output.
+
+**Scoring:**
+- Every page goes through Tesseract psm 3. R3j re-recognises the saved Tesseract psm 3 line geometry of each page, as R3i did.
+- All rows use hocrgen `d4a3414` `evaluate-references` with `primary.v1`, the same pinned scorer as R3i.
+- Intervals are paired against stock Tesseract (brew `heb`): first the 95% page interval, then the Wikisource-Index cluster interval (14 clusters on 38 pages, 6 on the 10). Both use 2000 resamples, seed 20261106.
+
+### Headline: the audited references (`primary.v1`, Tesseract psm 3 lines)
+
+The references are `e2d4c_wikisource_printed_v7`: the same 38 pages with the full E2d4c human audit (hocrgen#157, merged as `c21168f`; decisions file sha256 `fb78f146…`). The 10-page subset is R3i's bank-disjoint set.
+
+| Engine | CER 38 / 10 | WER 38 / 10 | ΔCER vs stock, 38 (page; cluster) | ΔCER vs stock, 10 (page; cluster) |
+|---|---|---|---|---|
+| Stock Tesseract `heb` (brew) | 0.226 / 0.384 | 0.473 / 0.588 | — | — |
+| tessdata_best `heb` | 0.225 / 0.376 | 0.481 / 0.609 | −0.001 [−0.006, +0.005]; cl [−0.008, +0.007] | −0.008 [−0.026, +0.004]; cl [−0.019, +0.003] |
+| R5 (synthetic mix21 lines) | 0.239 / 0.416 | 0.473 / 0.660 | +0.013 [−0.003, +0.031]; cl [−0.010, +0.048] | +0.032 [+0.007, +0.067]; cl [+0.006, +0.095] |
+| **R6 (real NLI lines)** | **0.209** / 0.383 | **0.407** / 0.585 | **−0.016 [−0.023, −0.010]; cl [−0.024, −0.005]** | −0.002 [−0.012, +0.012]; cl [−0.006, +0.002] |
+| R3j mix21 (Kraken) | 0.261 / 0.479 | 0.539 / 0.723 | +0.036 [+0.017, +0.056]; cl [+0.008, +0.079] | +0.094 [+0.046, +0.146]; cl [+0.039, +0.165] |
+| R3j font (Kraken) | 0.317 / 0.494 | 0.678 / 0.772 | +0.091 [+0.073, +0.111]; cl [+0.069, +0.123] | +0.109 [+0.061, +0.160]; cl [+0.055, +0.176] |
+
+**R6 against tessdata_best, its base:**
+- 38 pages: −0.015 [−0.024, −0.007]; cl [−0.026, +0.001].
+- 10 pages: +0.007 [−0.006, +0.018]; cl [−0.005, +0.019].
+
+**Audit caveat:** some E2d4c audit proposals were found where Tesseract and R3h agree with each other but not with the reference. The corrections may therefore lean slightly toward what Tesseract reads. The audit lowers stock Tesseract's CER from 0.237 to 0.226 on the 38 pages, and that drop is not an improvement in Tesseract. Compare engines paired on the same references, as the table does.
+
+### The same models on the pre-audit references (`e2d3d_wikisource_printed_v5`)
+
+| Engine | CER / WER, 38 | CER / WER, 10 |
+|---|---|---|
+| Stock Tesseract `heb` (brew) | 0.237 / 0.507 | 0.385 / 0.596 |
+| tessdata_best `heb` | 0.236 / 0.515 | 0.377 / 0.613 |
+| R5 | 0.249 / 0.508 | 0.419 / 0.664 |
+| R6 | 0.219 / 0.439 | 0.382 / 0.589 |
+
+On these references:
+- R6 − stock is −0.017 [−0.024, −0.011]; cl [−0.026, −0.006] on the 38 pages.
+- R5 − tessdata_best is +0.014 [−0.006, +0.034] on the 38 pages and +0.041 [+0.009, +0.077] on the 10.
+
+R3j on all three fixed line sources (pre-audit references; R3h and R3i C for comparison):
+
+| Line source | Set | R3h | R3i C | R3j font | R3j mix21 | mix21 − font (page; cluster) |
+|---|---|---|---|---|---|---|
+| Tesseract lines | 10 | 0.547 / 0.848 | 0.445 / 0.624 | 0.495 / 0.778 | 0.478 / 0.724 | −0.017 [−0.028, −0.004]; cl [−0.037, −0.012] |
+| Tesseract lines | 38 | 0.391 / 0.820 | 0.199 / 0.422 | 0.326 / 0.696 | 0.271 / 0.568 | −0.055 [−0.068, −0.041]; cl [−0.076, −0.025] |
+| R4d + A1 | 10 | 0.853 / 1.083 | 0.837 / 1.039 | 0.854 / 1.084 | 0.843 / 1.050 | −0.011 [−0.027, −0.005]; cl [−0.039, −0.006] |
+| R4d + A1 | 38 | 0.898 / 1.057 | 0.872 / 1.027 | 0.883 / 1.050 | 0.872 / 1.028 | −0.011 [−0.020, −0.005]; cl [−0.024, −0.005] |
+| `blla` | 10 | 0.656 / 0.987 | 0.567 / 0.813 | 0.597 / 0.900 | 0.584 / 0.859 | −0.012 [−0.025, −0.005]; cl [−0.028, −0.003] |
+| `blla` | 38 | 0.578 / 0.931 | 0.433 / 0.679 | 0.511 / 0.833 | 0.479 / 0.758 | −0.032 [−0.041, −0.024]; cl [−0.039, −0.022] |
+
+### Order-free check (R6)
+
+The order-free check scores bags of characters, ignoring order (supplementary, not a hocrgen metric; R4f's `r4f_order_free.py`, `primary.v1` text). Its character-bag error counts a substitution twice and a misordering not at all:
+
+| Engine | Pre-audit refs | Audited refs |
+|---|---|---|
+| R6 | 0.215 (CER 0.219) | 0.215 (CER 0.209) |
+| Stock | 0.237 (CER 0.237) | 0.238 (CER 0.226) |
+
+The bag error is about the same as CER, so almost none of R6's remaining error is reading order. It is recognition. R6 also emits about 7% fewer characters than the references (stock: about 3% fewer), so deletions are part of it.
+
+### Reading (R3j, R5, R6)
+
+**Verdict:** real scanned lines are what move Tesseract on real print. Synthetic lines do not.
+- **R6 is the first trained model to beat stock Tesseract on the 38 adjudicated pages.**
+  - CER falls from 0.226 to 0.209 and WER from 0.473 to 0.407, with page and cluster intervals excluding zero.
+  - Against its own base (tessdata_best), the page interval excludes zero, but the cluster interval just reaches it (+0.001).
+  - On the 10 bank-disjoint pages R6 is level with stock (−0.002 [−0.012, +0.012]). Stock's error is highest on those 10 pages, and almost all of R6's training lines come from three books.
+- **R5 shows that synthetic lines do not transfer to real scans for Tesseract.** It trained on the same 50k mix21 lines as R3j, real-glyph included. It is slightly worse than its base on 38 pages and clearly worse on the 10 (+0.041 vs tessdata_best, page and cluster intervals above zero).
+- **R3j: mix21 beats font on every line source and both sets**, so real-glyph pages help again with a bank that shares no Index with the scored pages.
+  - Neither arm beats Tesseract alone: on Tesseract lines, mix21 scores 0.261 / 0.479 against stock's 0.226 / 0.384.
+  - On the 10 pages R3j mix21 (0.478) is also behind R3i C (0.445). R3j differs from R3i C in bank, text and line budget, so this does not isolate a cause.
+- **Segmentation still dominates the Kraken pipeline.** On R4d + A1 every recognizer stays above 0.83 CER.
+- tessdata_best and brew's stock `heb` are level on the 38 pages.
+
+**Implication for the data plan:**
+- Grow the real line set: more books, and more varied prints, toward the hard 10.
+- Keep labels as edition text, never OCR output. Whole-line R6 OCR reaches 69.5% exact lines on held-out records, with no confidence rule at 99% precision.
+- Keep selecting on held-out real records, not on E2d3d.
+
+Limits:
+- **One training run per model.** The intervals cover page and Index sampling, not training seeds.
+- **R6's dev records** (Silman, Brainin: 7,092 lines) are biased toward lines Tesseract reads reasonably. Their BCER compares models; it is not a level.
+- **R6's training books:** five records, all NLI scans accepted as public-domain free use. 99.9% of the lines come from three of them:
+  - Berashadsky: 6,076 lines;
+  - Citron: 6,052;
+  - Tchernowitz: 1,511.
+
+  Frank adds 8 lines and Katzenelson *Shirim* 1. Two pointed prints (*Mahamadim*, Mandelkern) were dropped. *Shirim*, since classified as a pointed print, kept its one line with niqqud removed.
+- **Overlap with E2d3d:** `bynli_lines_v1` was not checked for same-work overlap with E2d3d's Wikisource Indexes. The scans differ (NLI, not Wikisource), and no evaluation manifest names an NLI record. data-collection's later F8f3 search excludes such works.
+- **Line sources:** R3j's rows re-recognise saved line geometry, and the Tesseract rows run full-page psm 3, so their segmentation differs.
+- **The audited references** carry the Tesseract-agreement caveat above.
+- **Nothing is published.** Predictions, reports, line sets and weights stay local. Publishing any trained weights, R6 included, needs the maintainer's explicit approval at each step.
+
+### Run identities (R3j, R5, R6)
+
+| Part | Identity |
+|---|---|
+| R3j training | heocr-engine `2df76ec` `train-kraken`, R3i's recipe (base R3h `best_0.9959`, sha256 `f76affa8…`; `--resize union`, lr 1e-4, 4 epochs, `--line-polygons mix`, `--mix-buckets kraken×6,sidecar,rect`), Kraken 7.0.2, mps |
+| R3j data | Text: the decontaminated Ben-Yehuda public-domain corpus (heocr-synth-gen S16c `corpus.txt`, `d55da980…`). mix21: 47,699 train / 2,379 validation lines, generation manifest `a71cefe0…`, annotations `26075099…`, from S16c `rc_glyph_v21_50k` (glyph bank `pgb-v2.1`, local only) and `rc_font_50k`. font: 47,490 / 2,523 lines, manifest `0096c02f…`, annotations `614e769e…` |
+| R3j models | Best checkpoint is epoch 3 in both arms (stopped by the epoch limit). mix21 `a22b64dbd00b19e37c33f5453eef23888064bc114138345c625306407df65232` (synthetic validation accuracy 0.9984). font `8d7d59058adc4de80fd93f365562b1d0d9e551a6e30f3c3fe1e7508a7def58ca` (0.9993). Licence `Needs verification`, unpublished |
+| Tesseract base | tessdata_best `heb.traineddata` at tesseract-ocr/tessdata_best `e12c65a` (Apache-2.0), sha256 `dbaa827aea6bc21215638447f17783a1004987c2d0bf5573d111fee397abdae5`. Build files from tesseract-ocr/langdata_lstm `07930fd` (Apache-2.0) |
+| R5 | `lstmtraining --continue_from` the base on R3j's mix21 lines, cut by bbox + 6 px, with truth in Tesseract's LSTM order; 47,765 train / 2,313 validation lines. Selected `heb_0.042_11834_199100` (lowest synthetic validation BCER, 0.760%). `heb.traineddata` sha256 `1d716f519e3393de1d721f2c5fb0aeab95f50410e7f12abd1c26ed843b5469f9`. Unpublished |
+| R6 data | heocr-synth-gen S16c `bynli_lines_v1`, manifest sha256 `9b6adb42…`. Train: 13,648 lines from five records (Berashadsky 6,076, Citron 6,052, Tchernowitz 1,511, Frank 8, Katzenelson *Shirim* 1). Dev and selection: 7,092 lines from two whole held-out records (Silman 1929, Brainin 1928). Built with hocrgen's canvas→image fix (`fc1a524`, #152). Alignment score ≥ 0.9 and line-OCR agreement ≥ 0.7; flagged pointed prints dropped |
+| R6 training | `lstmtraining --continue_from` the base, two arms of up to 100k iterations: the stored learning rate (`lrdef`), and `--learning_rate 0.0001 --reset_learning_rate`. Starter unicharset: base plus `־` and `–` |
+| R6 selection | Lowest dev BCER (lstmeval) over every checkpoint of both arms. Selected `lrdef/heb_0.603_16919_54500`: dev BCER 2.03%, BWER 5.30%. On the same dev lines tessdata_best scores 11.45% / 23.34%, and R5 7.06% / 17.29% (inflated: R5's glyphs come from these records) |
+| R6 model | `heb.traineddata` sha256 `73eb18e03f8793dff9c03699db0845779f6b5db4897824bcd61787245ec66e10`; data-collection's aligner records it as `ocr_model: r6@73eb18e0` (hocrgen#155). Licence `Needs verification`, unpublished |
+| Scoring | hocrgen `d4a3414` `evaluate-references`, `primary.v1`, modality printed, Tesseract 5.5.3 psm 3. References: `e2d4c_wikisource_printed_v7` (built from hocrgen#157 at `6c74426`, merged as `c21168f`, decisions sha256 `fb78f146…`) and `e2d3d_wikisource_printed_v5`, each with its 10-page bank-disjoint subset. Paired page and Wikisource-Index cluster bootstrap, 2000 resamples, seed 20261106 |
