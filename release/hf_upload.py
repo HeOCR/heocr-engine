@@ -1,4 +1,4 @@
-"""Upload the first release's three models to Hugging Face Hub (release/README.md, plan step 7).
+"""Upload HeOCR's released models to Hugging Face Hub (release/README.md, plan step 7).
 
 Each model gets its own public repository under the HeOCR organisation. Its `README.md` is the model's
 `huggingface.yaml` front matter between `---` lines, followed by its `card_body.md`. Beside the card go the weights
@@ -11,9 +11,11 @@ under their release name, `LICENSE`, `NOTICE` and the training record, as in the
   state file, so the plan can be checked before production exists.
 - **Token:** `HF_TOKEN` is read from the environment only. It is passed to huggingface_hub directly, and never goes
   into an argument list or any output; it is redacted from errors.
+- **Releases:** the default `--models` is the first release, R4d + A1 + R3h. R6 (Tesseract) is a release of its own:
+  `--models r6`, with R6's own Zenodo state file. One run never mixes the two.
 - **Dependencies:** huggingface_hub is imported only for a real upload.
 
-Each upload needs the maintainer's go-ahead (item 8).
+No per-upload go-ahead is needed since decision 0014.
 """
 from __future__ import annotations
 
@@ -31,9 +33,10 @@ zenodo = importlib.util.module_from_spec(_spec)
 _spec.loader.exec_module(zenodo)
 DepositError = zenodo.DepositError
 MODELS = zenodo.MODELS
-# One public repository per model under the HeOCR organisation (item 7; decision 0011's note).
+CHOICES = zenodo.CHOICES
+# One public repository per model under the HeOCR organisation (item 7; decision 0011's note; R6: decision 0014).
 HF_REPOS = {"r4d": "HeOCR/heocr-r4d-segmentation", "a1": "HeOCR/heocr-a1-reading-order",
-            "r3h": "HeOCR/heocr-r3h-recognition"}
+            "r3h": "HeOCR/heocr-r3h-recognition", "r6": "HeOCR/heocr-r6-tesseract-heb"}
 
 
 def read_token(environ=os.environ) -> str:
@@ -43,16 +46,17 @@ def read_token(environ=os.environ) -> str:
     return value
 
 
-def dois(state_path: Path, *, dry_run: bool) -> dict[str, str]:
+def dois(state_path: Path, *, dry_run: bool, models=MODELS) -> dict[str, str]:
     """Each model's DOI from a Zenodo state file: production only, unless this is a dry run."""
     state = json.loads(state_path.read_text(encoding="utf-8"))
     if state.get("api") != zenodo.PRODUCTION and not dry_run:
         raise DepositError(f"The state file is for {state.get('api')}; a real upload needs the production DOIs")
     records = state.get("records", {})
-    missing = [model for model in MODELS if not records.get(model, {}).get("doi")]
+    zenodo.check_one_release(models, records)
+    missing = [model for model in models if not records.get(model, {}).get("doi")]
     if missing:
         raise DepositError(f"No DOI in the state file for {', '.join(missing)}")
-    return {model: records[model]["doi"] for model in MODELS}
+    return {model: records[model]["doi"] for model in models}
 
 
 def build_card(model: str, doi: str, release: Path = RELEASE) -> str:
@@ -95,8 +99,8 @@ def _weights(values: list[str]) -> dict[str, Path]:
     weights = {}
     for value in values:
         model, sep, path = value.partition("=")
-        if not sep or model not in MODELS:
-            raise DepositError(f"--weights takes MODEL=PATH with MODEL in {', '.join(MODELS)}")
+        if not sep or model not in CHOICES:
+            raise DepositError(f"--weights takes MODEL=PATH with MODEL in {', '.join(CHOICES)}")
         weights[model] = Path(path)
     return weights
 
@@ -106,7 +110,8 @@ def main(argv=None, environ=os.environ, api_factory=None, add=None) -> int:
     parser.add_argument("--zenodo-state", type=Path, required=True,
                         help="the Zenodo state file with the reserved DOIs (production for a real upload)")
     parser.add_argument("--weights", nargs="+", required=True, metavar="MODEL=PATH")
-    parser.add_argument("--models", nargs="+", choices=MODELS, default=list(MODELS))
+    parser.add_argument("--models", nargs="+", choices=CHOICES, default=list(MODELS),
+                        help="default: the first release, r4d a1 r3h. r6 is a release of its own: give it alone")
     parser.add_argument("--release-dir", type=Path, default=RELEASE, help="dry run only: a copy of release/")
     parser.add_argument("--dry-run", action="store_true", help="print the plan; no network")
     args = parser.parse_args(argv)
@@ -115,7 +120,7 @@ def main(argv=None, environ=os.environ, api_factory=None, add=None) -> int:
         release = args.release_dir.resolve()
         if release != RELEASE and not args.dry_run:
             raise DepositError("--release-dir is for dry runs only; an upload uses the repository's release/")
-        found, weights = dois(args.zenodo_state, dry_run=args.dry_run), _weights(args.weights)
+        found, weights = dois(args.zenodo_state, dry_run=args.dry_run, models=args.models), _weights(args.weights)
         missing = [model for model in args.models if model not in weights]
         if missing:
             raise DepositError(f"--weights has no path for {', '.join(missing)}")

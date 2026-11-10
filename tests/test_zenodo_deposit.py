@@ -421,5 +421,209 @@ class ReleaseFrontMatterTests(unittest.TestCase):
                 self.assertEqual(front['communities'], ['heocr', 'ocr_models'])
 
 
+
+R6_DOI = '10.5072/zenodo.600'
+
+
+def _need_yaml(test):
+    try:
+        import yaml  # noqa: F401
+    except ImportError:
+        test.skipTest('PyYAML is not installed')
+
+
+class NoNetwork:
+    """An opener that fails the test if any request is made."""
+
+    def __call__(self, request, timeout=None):
+        raise AssertionError(f'network request: {request.get_method()} {request.full_url}')
+
+
+@contextlib.contextmanager
+def r6_release_copy():
+    """A release/ copy whose R6 card cites R6_DOI, with fake weights matching R6's copied record."""
+    import shutil
+    with tempfile.TemporaryDirectory() as directory:
+        directory = Path(directory)
+        release = directory / 'release'
+        shutil.copytree(ROOT / 'release' / 'r6', release / 'r6')
+        body = release / 'r6' / 'card_body.md'
+        body.write_text(body.read_text(encoding='utf-8') + f'\nCite {R6_DOI}.\n', encoding='utf-8')
+        weights = directory / 'heb.traineddata'
+        weights.write_bytes(b'r6 weights')
+        record_path = release / 'r6' / 'r6_training_run.json'
+        record = json.loads(record_path.read_text(encoding='utf-8'))
+        record['output']['model_sha256'] = hashlib.sha256(b'r6 weights').hexdigest()
+        record_path.write_text(json.dumps(record), encoding='utf-8')
+        yield directory, release, weights
+
+
+def run_main(argv, environ, opener):
+    out, err = io.StringIO(), io.StringIO()
+    with contextlib.redirect_stdout(out), contextlib.redirect_stderr(err):
+        code = zd.main(argv, environ, opener)
+    return code, out.getvalue(), err.getvalue()
+
+
+class R6Tests(unittest.TestCase):
+    """R6 (Tesseract) is a release of its own: plain card, heocr only, own state file; R4d/A1/R3h unchanged."""
+
+    def test_r6_is_selectable_but_not_a_default(self):
+        self.assertEqual(zd.MODELS, ('r4d', 'a1', 'r3h'))
+        self.assertIn('r6', zd.CHOICES)
+        self.assertEqual(zd.release_of('r3h'), 'first')
+        self.assertEqual(zd.release_of('r6'), 'r6')
+
+    def test_validators_by_model(self):
+        for model in zd.MODELS:
+            self.assertIs(zd.validate_front(model), zd.validate_htrmopo)
+        self.assertIs(zd.validate_front('r6'), zd.validate_plain)
+        front = dict(FRONT, communities=['heocr'], id=R6_DOI)
+        zd.validate_plain(front)
+        for bad, message in ((dict(front, communities=['heocr', 'ocr_models']), 'ocr_models'),
+                             ({k: v for k, v in front.items() if k != 'id'}, 'lacks id'),
+                             (dict(front, license='CC-BY-NC-4.0'), 'Apache-2.0'),
+                             (dict(front, authors=[{'name': 'HeOCR maintainers'}]), 'type')):
+            with self.subTest(message=message):
+                with self.assertRaisesRegex(zd.DepositError, message):
+                    zd.validate_plain(bad)
+
+    def test_r6_front_matter_maps_with_its_own_links_and_the_same_creators(self):
+        _need_yaml(self)
+        front, first = zd.read_front('r6'), zd.read_front('r3h')
+        self.assertEqual(front['communities'], ['heocr'])
+        self.assertEqual(front['authors'], first['authors'])
+        metadata = zd.record_metadata(front, '<p></p>', '2026-11-10')
+        self.assertEqual(metadata['creators'], zd.record_metadata(first, '<p></p>', '2026-11-10')['creators'])
+        self.assertEqual(metadata['rights'], [{'id': 'apache-2.0'}])
+        self.assertEqual(metadata['resource_type'], {'id': 'publication-other'})
+        links = {(r['identifier'], r['resource_type']['id']) for r in metadata['related_identifiers']}
+        self.assertIn(('https://github.com/tesseract-ocr/tessdata_best/blob/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/'
+                       'heb.traineddata', 'software'), links)
+        for record in ('990020308000205171', '990020495520205171', '990020522850205171', '990019385920205171',
+                       '990013538860205171'):
+            self.assertIn((f'https://iiif.nli.org.il/IIIFv21/{record}/manifest', 'image'), links)
+        self.assertTrue(all(r['relation_type'] == {'id': 'isderivedfrom'} for r in metadata['related_identifiers']))
+        self.assertIn({'subject': 'tesseract'}, metadata['subjects'])
+
+    def test_record_metadata_without_related_is_unchanged(self):
+        # the kraken front matter has no `related`, so its mapping is exactly what it was
+        self.assertEqual(zd.record_metadata(FRONT, '<p>card</p>', '2026-11-06')['related_identifiers'],
+                         [{'identifier': FRONT['datasets'][0], 'scheme': 'url',
+                           'relation_type': {'id': 'isderivedfrom'}, 'resource_type': {'id': 'dataset'}}])
+
+    def test_r6_is_never_mixed_with_the_first_release(self):
+        with self.assertRaisesRegex(zd.DepositError, 'release of its own'):
+            zd.check_one_release(['r6', 'r3h'])
+        with self.assertRaisesRegex(zd.DepositError, 'own state file'):
+            zd.check_one_release(['r6'], {'r4d': {'id': 'rec1'}})
+        zd.check_one_release(['r6'], {'r6': {'id': 'rec9'}})
+        zd.check_one_release(list(zd.MODELS), {'r4d': {'id': 'rec1'}})
+        with outside_repository() as directory:
+            state = directory / 'state.json'
+            zd.save_state(state, {'api': zd.SANDBOX, 'records': {'r4d': {'id': 'rec1', 'doi': '10.5072/zenodo.100'}}})
+            code, _, err = run_main(['--models', 'r6', '--state', str(state), 'publish'],
+                                    {'ZENODO_SANDBOX_TOKEN': TOKEN}, NoNetwork())
+            self.assertEqual(code, 1)
+            self.assertIn('own state file', err)
+            code, _, err = run_main(['--models', 'r6', 'r3h', '--state', str(directory / 'new.json'), 'reserve'],
+                                    {'ZENODO_SANDBOX_TOKEN': TOKEN}, NoNetwork())
+            self.assertEqual(code, 1)
+            self.assertIn('release of its own', err)
+            # status of any single-release state file still works
+            self.assertEqual(run_main(['--state', str(state), 'status'], {}, NoNetwork())[0], 0)
+
+    def test_reserve_r6_alone(self):
+        fake = FakeZenodo()
+        with outside_repository() as directory:
+            path = directory / 'r6-state.json'
+            state = zd.reserve(zd.Api(zd.SANDBOX, TOKEN, fake), {'api': zd.SANDBOX, 'records': {}},
+                               {'r6': dict(FRONT, communities=['heocr'])}, path, '2026-11-10', ('r6',))
+        self.assertEqual(list(state['records']), ['r6'])
+        self.assertEqual(fake.calls(), [('POST', '/records'), ('POST', '/records/rec1/draft/pids/doi')])
+
+    def test_reserve_command_honours_models(self):
+        _need_yaml(self)
+        with outside_repository() as directory:
+            fake = FakeZenodo()
+            code, _, err = run_main(['--models', 'r6', '--state', str(directory / 's.json'), 'reserve'],
+                                    {'ZENODO_SANDBOX_TOKEN': TOKEN}, fake)
+            self.assertEqual(code, 0, err)
+            self.assertEqual(len(fake.requests), 2)
+            sent = json.loads(fake.requests[0]['data'])['metadata']
+            self.assertTrue(sent['title'].startswith('Hebrew printed-text recognition for Tesseract'))
+            self.assertEqual(len(sent['creators']), 2)
+
+    def test_upload_r6_sends_the_plain_card_and_its_four_files(self):
+        _need_yaml(self)
+        with r6_release_copy() as (directory, release, weights):
+            state = directory / 'state' / 'r6.json'
+            zd.save_state(state, {'api': zd.SANDBOX, 'records': {'r6': {'id': 'rec6', 'doi': R6_DOI}}})
+            original = zd.validate_htrmopo
+            zd.validate_htrmopo = lambda front: self.fail('R6 must not be HTRMoPo-validated')
+            try:
+                fake = FakeZenodo()
+                code, _, err = run_main(['--models', 'r6', '--release-dir', str(release), '--state', str(state),
+                                         'upload', '--weights', f'r6={weights}'], {'ZENODO_SANDBOX_TOKEN': TOKEN}, fake)
+            finally:
+                zd.validate_htrmopo = original
+        self.assertEqual(code, 0, err)
+        self.assertEqual([k['key'] for k in json.loads(fake.requests[0]['data'])],
+                         ['README.md', 'heocr_r6.traineddata', 'LICENSE', 'NOTICE', 'r6_training_run.json'])
+        readme = fake.requests[1]['data'].decode('utf-8')
+        self.assertTrue(readme.startswith('---\n'))
+        self.assertIn(f'id: {R6_DOI}', readme)
+        self.assertNotIn('ocr_models', readme.split('\n---\n', 1)[0])
+
+    def test_publish_r6_requests_heocr_only(self):
+        _need_yaml(self)
+        with outside_repository() as directory:
+            state = directory / 'r6.json'
+            zd.save_state(state, {'api': zd.SANDBOX, 'records': {'r6': {'id': 'rec6', 'doi': R6_DOI}}})
+            fake = FakeZenodo()
+            code, _, err = run_main(['--models', 'r6', '--state', str(state), 'publish'],
+                                    {'ZENODO_SANDBOX_TOKEN': TOKEN}, fake)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(fake.calls(), [('GET', '/communities/heocr'), ('GET', '/communities/heocr'),
+                                        ('POST', '/records/rec6/draft/actions/publish'),
+                                        ('POST', '/records/rec6/communities')])
+        self.assertEqual(json.loads(fake.requests[3]['data']), {'communities': [{'id': 'uuid-heocr'}]})
+
+    def test_plan_needs_no_network_and_no_token(self):
+        _need_yaml(self)
+        try:
+            import markdown  # noqa: F401
+        except ImportError:
+            self.skipTest('Markdown is not installed')
+        with r6_release_copy() as (directory, release, weights):
+            # before step 1: no state file and no DOI yet
+            code, out, err = run_main(['--models', 'r6', '--release-dir', str(release), '--state',
+                                       str(directory / 'none.json'), 'plan', '--weights', f'r6={weights}'],
+                                      {}, NoNetwork())
+            self.assertEqual(code, 0, err)
+            planned = json.loads(out)
+            self.assertEqual(planned['card']['format'], 'plain (not HTRMoPo)')
+            self.assertIsNone(planned['card']['doi'])
+            self.assertEqual(planned['communities'], ['heocr'])
+            self.assertEqual([f['key'] for f in planned['files']],
+                             ['README.md', 'heocr_r6.traineddata', 'LICENSE', 'NOTICE', 'r6_training_run.json'])
+            self.assertEqual(planned['files'][1]['sha256'], hashlib.sha256(b'r6 weights').hexdigest())
+            self.assertNotIn('description', planned['metadata'])
+            self.assertFalse((directory / 'none.json').exists())  # plan never writes the state file
+            # with a reserved DOI, the card's citation is checked as upload would
+            state = directory / 'state' / 'r6.json'
+            zd.save_state(state, {'api': zd.SANDBOX, 'records': {'r6': {'id': 'rec6', 'doi': '10.5072/zenodo.999'}}})
+            code, _, err = run_main(['--models', 'r6', '--release-dir', str(release), '--state', str(state), 'plan'],
+                                    {}, NoNetwork())
+            self.assertEqual(code, 1)
+            self.assertIn('step 2', err)
+            # tampered weights are refused, as upload would
+            weights.write_bytes(b'other')
+            code, _, err = run_main(['--models', 'r6', '--release-dir', str(release), '--state',
+                                     str(directory / 'none.json'), 'plan', '--weights', f'r6={weights}'], {}, NoNetwork())
+            self.assertEqual(code, 1)
+            self.assertIn('does not match', err)
+
+
 if __name__ == '__main__':
     unittest.main()

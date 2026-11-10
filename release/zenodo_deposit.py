@@ -1,16 +1,21 @@
-"""Deposit the first release's three models on Zenodo, one plan step at a time (release/README.md, item 8).
+"""Deposit HeOCR's released models on Zenodo, one plan step at a time (release/README.md).
 
-Each subcommand is one step of the plan and needs its own go-ahead from the maintainer:
+Each subcommand is one step of the plan (no per-step go-ahead since decision 0014):
 
-  reserve   step 1: create the three drafts and reserve their DOIs; writes the state file
+  reserve   step 1: create the drafts and reserve their DOIs; writes the state file
   upload    step 3: upload each card (as README.md) and its four files into its draft
   metadata  step 4: set each draft's metadata from its front matter and card body
   publish   step 6: publish each draft, then request inclusion in its communities
   status    print the drafts and DOIs in the state file (no network)
+  plan      print what reserve, upload, metadata and publish would send (no network, no token)
   requests  list each record's requests, e.g. community inclusion, with their status (read-only)
   accept    accept pending inclusion requests to the maintainer's own communities (heocr) only
 
 Step 2 (putting the reserved DOIs into the cards, by PR) and step 5 (checking the previews) are done by hand.
+
+- **Releases:** the first release is the kraken pipeline R4d + A1 + R3h, the default `--models`, with HTRMoPo cards.
+  R6 (Tesseract) is a release of its own (`--models r6`): a plain card that is not HTRMoPo-validated, its own
+  communities (not `ocr_models`), and its own state file. One run never mixes the two.
 
 - **Target:** the Zenodo sandbox, unless `--production` is given.
 - **Tokens:** read only from the environment (`ZENODO_SANDBOX_TOKEN`, or `ZENODO_TOKEN` with `--production`). A token
@@ -44,8 +49,11 @@ TOKEN_VARIABLES = {SANDBOX: "ZENODO_SANDBOX_TOKEN", PRODUCTION: "ZENODO_TOKEN"}
 # to any other community (ocr_models) are left to that community's moderators.
 OWNED_COMMUNITIES = {SANDBOX: {"heocr": "c261ed63-f520-48a3-90c2-c64ed1cc0395"},
                      PRODUCTION: {"heocr": "febfcbcf-2444-4a84-8699-04cd1c44c8a7"}}
-# Deposit order: the pipeline order of the cards' tables.
+# The first release, in deposit order (the pipeline order of the cards' tables). These cards are HTRMoPo v1.
 MODELS = ("r4d", "a1", "r3h")
+# Later models, each a release of its own with its own state file. Their zenodo.yaml is not HTRMoPo front matter.
+SEPARATE_RELEASES = ("r6",)
+CHOICES = MODELS + SEPARATE_RELEASES
 # htrmopo 0.5 files models as legacy `upload_type: publication`, `publication_type: other`.
 RESOURCE_TYPE = {"id": "publication-other"}
 # DOI registration needs a publisher (sandbox, 2026-11-06: "Missing publisher field required for DOI registration");
@@ -135,7 +143,44 @@ def record_metadata(front: dict, description_html: str, publication_date: str) -
         metadata["related_identifiers"] = [{"identifier": url, "scheme": "url",
                                             "relation_type": {"id": "isderivedfrom"},
                                             "resource_type": {"id": "dataset"}} for url in front["datasets"]]
+    # `related` (R6, not HTRMoPo): isDerivedFrom links with their own resource type, e.g. a base model or scans.
+    for item in front.get("related") or ():
+        metadata.setdefault("related_identifiers", []).append({
+            "identifier": item["identifier"], "scheme": "url", "relation_type": {"id": "isderivedfrom"},
+            "resource_type": {"id": item["resource_type"]}})
     return metadata
+
+
+def release_of(model: str) -> str:
+    """The release a model belongs to: "first" for R4d + A1 + R3h, else the model itself (R6)."""
+    return "first" if model in MODELS else model
+
+
+def check_one_release(models, state_models=()) -> None:
+    """Refuse a run, or a state file, that mixes releases: each release has its own deposit and state file."""
+    releases = {release_of(m) for m in (*models, *state_models)}
+    if len(releases) > 1:
+        raise DepositError("R6 is a release of its own: run it alone (--models r6) with its own state file, "
+                           "never together with r4d, a1 or r3h")
+
+
+def validate_front(model: str, validate=None):
+    """The card validator for a model: HTRMoPo v1 for the kraken pipeline, the plain check for the others."""
+    if validate is not None:
+        return validate
+    return validate_htrmopo if model in MODELS else validate_plain
+
+
+def validate_plain(front: dict) -> None:
+    """A non-HTRMoPo card (R6): the keys the deposit maps, and never the kraken-only ocr_models community."""
+    missing = [key for key in ("id", "summary", "authors", "license") if not front.get(key)]
+    if missing:
+        raise DepositError(f"The front matter lacks {', '.join(missing)}")
+    if front["license"] != "Apache-2.0":
+        raise DepositError(f"Unexpected licence {front['license']!r}; HeOCR weights are Apache-2.0")
+    if "ocr_models" in (front.get("communities") or ()):
+        raise DepositError("ocr_models is the kraken/HTRMoPo community; a non-kraken model does not go there")
+    creators(front["authors"])
 
 
 def _inside_repository(path: Path) -> bool:
@@ -174,13 +219,14 @@ def _draft(state: dict, model: str) -> dict:
     return record
 
 
-def reserve(api: Api, state: dict, fronts: dict, state_path: Path, today: str) -> dict:
+def reserve(api: Api, state: dict, fronts: dict, state_path: Path, today: str, models=MODELS) -> dict:
     """Step 1: one draft per model, each with its DOI reserved.
 
     Crash-safe and resumable: a new draft's id is saved before its DOI is reserved, so a draft is never lost, and
     a rerun reserves the DOI of a saved draft that has none and skips models that are done.
     """
-    for model in MODELS:
+    check_one_release(models, state["records"])
+    for model in models:
         record = state["records"].get(model)
         if record and record.get("doi"):
             continue
@@ -210,6 +256,36 @@ def build_card(front: dict, body: str, doi: str, validate=None) -> str:
     (validate or validate_htrmopo)(front)
     import yaml  # noqa: PLC0415  (only needed for a real deposit)
     return "---\n" + yaml.safe_dump(front, sort_keys=False, allow_unicode=True) + "---\n" + body
+
+
+def plan(model: str, front: dict, body: str, state: dict, today: str, weights: Path | None = None,
+         release: Path = RELEASE, validate=None, render=None) -> dict:
+    """What steps 1, 3, 4 and 6 would send for one model, with every offline check those steps make; no network."""
+    record = state["records"].get(model) or {}
+    doi = record.get("doi")
+    validator = validate_front(model, validate)
+    if doi:
+        card = build_card(front, body, doi, validator)
+        card_check = {"doi": doi, "cites_doi": True, "readme_bytes": len(card.encode("utf-8"))}
+    else:
+        # before step 1 there is no DOI yet: check the front matter as if `id` were set, and skip the citation check
+        validator({**front, "id": "10.5281/zenodo.0"})
+        card_check = {"doi": None, "cites_doi": "checked by upload and metadata once the DOI is reserved (step 2)"}
+    metadata = record_metadata(front, (render or description_html)(body), today)
+    record_path = release / model / f"{model}_training_run.json"
+    output = json.loads(record_path.read_text(encoding="utf-8"))["output"]
+    if weights is not None:
+        files = [{"key": name, "bytes": path.stat().st_size, "sha256": hashlib.sha256(path.read_bytes()).hexdigest()}
+                 for name, path in deposit_files(model, weights, release).items()]
+    else:
+        files = [{"key": output["release_file_name"], "sha256": output["model_sha256"], "weights": "not given"},
+                 *({"key": name} for name in ("LICENSE", "NOTICE", record_path.name))]
+    return {"model": model, "release": release_of(model), "draft": record.get("id"),
+            "card": {"format": "HTRMoPo v1" if model in MODELS else "plain (not HTRMoPo)", **card_check},
+            "files": [{"key": "README.md"}, *files],
+            "metadata": {**{k: v for k, v in metadata.items() if k != "description"},
+                         "description_bytes": len(metadata["description"].encode("utf-8"))},
+            "communities": front.get("communities", [])}
 
 
 def validate_htrmopo(front: dict) -> None:
@@ -317,8 +393,8 @@ def _weights(values: list[str]) -> dict[str, Path]:
     weights = {}
     for value in values:
         model, sep, path = value.partition("=")
-        if not sep or model not in MODELS:
-            raise DepositError(f"--weights takes MODEL=PATH with MODEL in {', '.join(MODELS)}")
+        if not sep or model not in CHOICES:
+            raise DepositError(f"--weights takes MODEL=PATH with MODEL in {', '.join(CHOICES)}")
         weights[model] = Path(path)
     return weights
 
@@ -327,9 +403,11 @@ def main(argv=None, environ=os.environ, opener=None) -> int:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--production", action="store_true", help="zenodo.org instead of the sandbox (default)")
     parser.add_argument("--state", type=Path, required=True, help="state file outside the repository")
-    parser.add_argument("--models", nargs="+", choices=MODELS, default=list(MODELS))
+    parser.add_argument("--models", nargs="+", choices=CHOICES, default=list(MODELS),
+                        help="default: the first release, r4d a1 r3h. r6 is a release of its own: give it alone, "
+                             "with its own state file")
     parser.add_argument("--release-dir", type=Path, default=RELEASE,
-                        help="folder with r4d/, a1/, r3h/ (default: this repository's release/). Sandbox only: a "
+                        help="folder with the model folders (default: this repository's release/). Sandbox only: a "
                              "production deposit uses the approved, pinned files in the repository")
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("reserve")
@@ -338,6 +416,9 @@ def main(argv=None, environ=os.environ, opener=None) -> int:
     commands.add_parser("metadata")
     commands.add_parser("publish")
     commands.add_parser("status")
+    plan_parser = commands.add_parser("plan")
+    plan_parser.add_argument("--weights", nargs="+", metavar="MODEL=PATH",
+                             help="optional: check the weights' sha256 and list the files' sizes")
     commands.add_parser("requests")
     commands.add_parser("accept")
     args = parser.parse_args(argv)
@@ -348,7 +429,18 @@ def main(argv=None, environ=os.environ, opener=None) -> int:
             raise DepositError("--release-dir is for the sandbox only; production uses the repository's release/")
         state = load_state(args.state, base)
         if args.command == "status":
+            check_one_release((), state["records"])
             print(json.dumps(state, indent=2))
+            return 0
+        check_one_release(args.models, state["records"])
+        if args.command == "plan":
+            weights = _weights(args.weights or [])
+            print(f"target: {base} (plan only: no network, no token)", file=sys.stderr)
+            today = datetime.date.today().isoformat()
+            for model in args.models:
+                body = (release / model / "card_body.md").read_text(encoding="utf-8")
+                print(json.dumps(plan(model, read_front(model, release), body, state, today, weights.get(model),
+                                      release), indent=2, ensure_ascii=False))
             return 0
         api = Api(base, read_token(base, environ), opener)
         print(f"target: {base}", file=sys.stderr)
@@ -364,9 +456,9 @@ def main(argv=None, environ=os.environ, opener=None) -> int:
                 for line in accept_owned(api, state, model, OWNED_COMMUNITIES[base]):
                     print(json.dumps(line))
             return 0
-        fronts = {model: read_front(model, release) for model in MODELS}
+        fronts = {model: read_front(model, release) for model in args.models}
         if args.command == "reserve":
-            reserve(api, state, fronts, args.state, datetime.date.today().isoformat())
+            reserve(api, state, fronts, args.state, datetime.date.today().isoformat(), args.models)
         if args.command == "publish":
             for model in args.models:
                 _draft(state, model)
@@ -378,9 +470,10 @@ def main(argv=None, environ=os.environ, opener=None) -> int:
                 weights = _weights(args.weights)
                 if model not in weights:
                     raise DepositError(f"--weights has no path for {model}")
-                upload(api, state, model, build_card(fronts[model], body, doi), deposit_files(model, weights[model], release))
+                upload(api, state, model, build_card(fronts[model], body, doi, validate_front(model)),
+                       deposit_files(model, weights[model], release))
             elif args.command == "metadata":
-                build_card(fronts[model], body, doi)
+                build_card(fronts[model], body, doi, validate_front(model))
                 set_metadata(api, state, model, record_metadata(fronts[model], description_html(body),
                                                                 datetime.date.today().isoformat()))
             elif args.command == "publish":
