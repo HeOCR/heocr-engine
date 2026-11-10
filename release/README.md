@@ -186,3 +186,81 @@ python release/zenodo_deposit.py --state … status                             
 - **Accounts:** decided on 2026-11-06 (item 7). See "Before step 1" for what Shay sets up.
 - **Check the training records again** for local paths at deposit time (proposal §4).
 - **The reserved version DOIs** in each card's Citation section and pipeline table (plan step 2).
+
+# Second release: R6 (Tesseract), a deposit of its own
+
+**Status: drafts, nothing reserved or published.** The maintainer said "Yes, release R6" on 2026-11-10, and decision 0014 needs no per-step go-ahead. Terms: Apache-2.0, licensed by "HeOCR maintainers", as decisions 0010 and 0014; inputs under decision 0015 (NLI "public domain, free use" scans, credited in the NOTICE).
+
+| Model | Release file | Trained as | sha256 | Folder |
+|---|---|---|---|---|
+| R6 | `heocr_r6.traineddata` | `heb.traineddata` | `73eb18e03f8793dff9c03699db0845779f6b5db4897824bcd61787245ec66e10` | `r6/` |
+
+R6 fine-tunes tessdata_best `heb` on 13,648 real NLI scan lines labelled with Project Ben-Yehuda text (`docs/baselines.md`, R3j/R5/R6 section). Users run it as `tesseract … -l heocr_r6 --tessdata-dir DIR --psm 3`. The release name is a Tesseract language name, so it uses an underscore, like tessdata's `chi_sim`. (Tesseract 5.5.3 also loads a hyphenated name; the underscore follows the convention.)
+
+**How it differs from the first release:**
+- **Its own record, its own DOI.** R6 is not part of the kraken pipeline. Its card links to none of the R4d, A1 and R3h DOIs, and their cards are unchanged.
+- **Not HTRMoPo.** `r6/zenodo.yaml` uses the keys the deposit script maps (`summary`, `authors`, `license`, `tags`, `communities`), plus `related`: `isDerivedFrom` links with their own resource type (the tessdata_best base as `software`, the five NLI IIIF manifests as `image`, the Ben-Yehuda dump as `dataset`). It has no `software_hints`, and the card is not validated against the HTRMoPo v1 schema. A plain check (`validate_plain`) requires `id`, `summary`, `authors` and the Apache-2.0 licence, and refuses `ocr_models`.
+- **Community `heocr` only.** `ocr_models` is the kraken/HTRMoPo listing that `kraken list` and `htrmopo list` read; a `.traineddata` does not belong there.
+- **Creators** are the first release's, exactly: Shay Palachy Affek (person, ORCID iD 0000-0002-1459-9320) and "HeOCR maintainers" (organisation).
+- **The training record** is `heocr_tesseract_training_run.v1`, below.
+
+## Files in `r6/`
+
+The same set as the first release's folders: `card_body.md`, `zenodo.yaml`, `huggingface.yaml`, `NOTICE`, `LICENSE` (byte-identical to the others) and `r6_training_run.json`. A card for either venue is its front matter between `---` lines, followed by `card_body.md`. The Hugging Face front matter has no `base_model`, because that field takes a Hub repository id and tessdata_best is not on the Hub.
+
+### `heocr_tesseract_training_run.v1`
+
+`heocr_engine_training_run.v1` does not fit a Tesseract run:
+- it describes ketos runs made by `heocr-engine train-kraken`;
+- its `init` must be `from_scratch` or a fine-tune of a project recognizer with its own record, while R6 starts from a third-party model;
+- its `data` must be a hocrsyngen batch, with annotations and generation-manifest sha256s;
+- its `text_order` assumes kraken's display-order reordering.
+
+So R6's record is a minimal equivalent with the same top-level sections where they apply, written by hand from the task's scripts, logs and outputs. `tests/test_release_r6.py` checks it.
+
+| Section | Holds |
+|---|---|
+| `schema_version`, `schema_note` | `heocr_tesseract_training_run.v1`, and why it is not the engine format |
+| `engine`, `trainer` | Tesseract 5.5.3; `lstmtraining`, `lstmeval` and `combine_tessdata`, with executable sha256s |
+| `init` | the third-party base (repository, commit, git blob, sha256, licence, version string, extracted LSTM sha256), the starter traineddata (unicharset, dictionary, langdata_lstm build files) and the network |
+| `data` | the line set's manifest, summary and PNG hashes; label source, normalisation and gates; the scans' holder, licence label, attribution and route; each training and selection record with its lines and US status |
+| `truth_order` | logical ground truth, and the LSTM training order |
+| `commands` | argument lists with `<placeholders>` for local files: `.lstmf` conversion, both training arms, selection and conversion |
+| `hyperparameters`, `run`, `outcome` | the two arms, the selection rule and the selected checkpoint |
+| `evaluation` | the scored set, scorer, results with intervals, and the word 6-gram text-overlap check |
+| `output` | sha256, bytes, training and release file names, language name, format |
+| `model_licence` | Apache-2.0, `basis` decision 0014, `published: false` |
+
+## The scripts for R6
+
+Both scripts take `--models r6`. The default `--models` stays `r4d a1 r3h`, and for that default their requests and output are byte-identical to before (checked by running `main`'s scripts and this branch's against the same fake server).
+- **One release per run, one state file per release.** A run that names `r6` with any of `r4d`, `a1`, `r3h`, or that uses a state file holding the other release's drafts, is refused. Use a separate state file, for example `~/.config/heocr/zenodo-production-r6-state.json` (and `…-sandbox-r6-state.json`).
+- **`reserve` honours `--models`.** It used to reserve all three first-release models whatever `--models` said; with the default it still does.
+- **`plan`** (new) prints what `reserve`, `upload`, `metadata` and `publish` would send for each model: the card format and DOI check, the files with their sha256s, the metadata without the description, and the communities. It makes no network call, needs no token and never writes the state file. Before step 1 it skips the card's citation check, which `upload` and `metadata` make once the DOI exists.
+
+## Plan for R6
+
+Sandbox first, then production, as for the first release. Tokens come from the environment only: `ZENODO_SANDBOX_TOKEN`, `ZENODO_TOKEN` and `HF_TOKEN`, which the maintainer's Codex helper will provide. No agent creates an account or handles a token in any file.
+
+```sh
+S=~/.config/heocr/zenodo-production-r6-state.json   # outside the repository; R6 only
+python release/zenodo_deposit.py --models r6 --production --state $S plan --weights r6=…/heb.traineddata  # any time, offline
+python release/zenodo_deposit.py --models r6 --production --state $S reserve                             # step 1
+python release/zenodo_deposit.py --models r6 --production --state $S upload --weights r6=…/heb.traineddata  # step 3
+python release/zenodo_deposit.py --models r6 --production --state $S metadata                            # step 4
+python release/zenodo_deposit.py --models r6 --production --state $S publish                             # step 6
+python release/zenodo_deposit.py --models r6 --production --state $S accept                              # step 6: heocr
+python release/hf_upload.py --models r6 --zenodo-state $S --weights r6=…/heb.traineddata                 # step 7
+```
+
+1. **Reserve** one draft and its DOI. Nothing is public yet.
+2. **Fill the card by PR:** replace the `DRAFT` comment in the Citation section of `r6/card_body.md` with the reserved version DOI. That is the only change. The DOI goes nowhere else: no other card links to R6, and R6 links to no other record.
+3. **Upload** the card as `README.md`, then `heocr_r6.traineddata` (the trained `heb.traineddata` is uploaded under its release name; `upload` refuses it unless its sha256 matches the record), `LICENSE`, `NOTICE` and `r6_training_run.json`.
+4. **Set the metadata:** the title from `summary`, the description from the card body, the creators, the licence, keywords from `tags` and the `related` links.
+5. **Check the draft** in Zenodo's preview.
+6. **Publish,** then request inclusion in `heocr` and accept it with `accept`.
+7. **Mirror to Hugging Face:** `HeOCR/heocr-r6-tesseract-heb`, created public if needed, with the card (`huggingface.yaml` + `card_body.md`, citing the DOI) and the same four files in one commit.
+
+**To confirm on the sandbox:** that Zenodo accepts the resource types `software` and `image` in `related` links (the first release used only `dataset`). If it does not, change them in `r6/zenodo.yaml` before production.
+
+**At deposit time:** check the training record again for local paths (the test does), and record the DOI and the publication in a planning note, as for the first release.
