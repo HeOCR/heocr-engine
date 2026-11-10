@@ -115,7 +115,7 @@ Shay does these himself. None of them is an agent action.
 
 The cards cross-link the three models by version DOI, so all three DOIs must exist before any card is final.
 
-Each step needs its own go-ahead from the maintainer (item 8). The whole plan runs first on the Zenodo sandbox (`https://sandbox.zenodo.org/api/`, with the sandbox token), and then on production. Paths are InvenioRDM's records API under `/api/`. The community-review and inclusion calls are to be confirmed on the sandbox before production.
+Since decision 0014 (2026-11-10), the steps need no per-step go-ahead; item 8 is superseded. The whole plan runs first on the Zenodo sandbox (`https://sandbox.zenodo.org/api/`, with the sandbox token), and then on production. Paths are InvenioRDM's records API under `/api/`. The community-review and inclusion calls are to be confirmed on the sandbox before production.
 
 1. **Reserve.** Create three drafts, `POST /api/records`, one each for R4d, A1 and R3h, with the creators mapped as above. Reserve each draft's DOI with `POST /api/records/{id}/draft/pids/doi`, and note it. Nothing is public yet, and an unpublished draft can still be deleted.
 2. **Fill the cards.**
@@ -156,7 +156,7 @@ An upstream htrmopo change would remove the need for the script: publishing into
 
 ### The deposit script
 
-`release/zenodo_deposit.py` runs the API steps. Each run is one step, and each step needs its go-ahead.
+`release/zenodo_deposit.py` runs the API steps. Each run is one step (no per-step go-ahead since decision 0014).
 - **Target:** the sandbox, unless `--production` is given.
 - **Token:** read from `ZENODO_SANDBOX_TOKEN`, or from `ZENODO_TOKEN` with `--production`. It is sent only as a Bearer header and redacted from errors.
 - **State file:** holds only draft ids and DOIs, kept private (`chmod 600`). It must be outside the repository, and one file serves one target.
