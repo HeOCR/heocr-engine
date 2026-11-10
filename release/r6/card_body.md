@@ -163,7 +163,7 @@ The line set is not yet published. Its per-line manifest names each line's NLI r
 
 ## Contact
 
-Report problems and questions as issues on [HeOCR/heocr-engine](https://github.com/HeOCR/heocr-engine/issues). A rights concern about any source book can be raised the same way; name the NLI record id.
+Report problems and questions as issues on [HeOCR/heocr-engine](https://github.com/HeOCR/heocr-engine/issues). A rights concern about any source book can be raised the same way, or by email to heocrproject@gmail.com; name the NLI record id. The takedown procedure is at [heocr.github.io/rights.html](https://heocr.github.io/rights.html).
 
 ## Citation
 
