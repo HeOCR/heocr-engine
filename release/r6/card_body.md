@@ -167,4 +167,4 @@ Report problems and questions as issues on [HeOCR/heocr-engine](https://github.c
 
 ## Citation
 
-Cite this model by its version DOI. <!-- DRAFT: R6's reserved version DOI (release/README.md, R6 plan step 2). Never cite the concept DOI. -->
+Cite this model by its version DOI: [10.5281/zenodo.24109989](https://doi.org/10.5281/zenodo.24109989).

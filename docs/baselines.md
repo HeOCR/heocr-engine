@@ -2304,6 +2304,8 @@ The references are `e2d4c_wikisource_printed_v7`: the same 38 pages with the ful
 - 38 pages: −0.015 [−0.024, −0.007]; cl [−0.026, +0.001].
 - 10 pages: +0.007 [−0.006, +0.018]; cl [−0.005, +0.019].
 
+**R6 against stock, page by page** (`primary.v1`, the 38 pages above; `reports_audit2/38/tess_r6_alone__vs__tesseract_alone.json`, `comparison.deltas.adjudicated_reference.profiles.primary.v1`): CER improves on 26 pages, is unchanged on 2 and worsens on 10. WER R6 − stock is −0.066 [−0.086, −0.046] (paired bootstrap).
+
 **Audit caveat:** some E2d4c audit proposals were found where Tesseract and R3h agree with each other but not with the reference. The corrections may therefore lean slightly toward what Tesseract reads. The audit lowers stock Tesseract's CER from 0.237 to 0.226 on the 38 pages, and that drop is not an improvement in Tesseract. Compare engines paired on the same references, as the table does.
 
 ### The same models on the pre-audit references (`e2d3d_wikisource_printed_v5`)
@@ -2369,10 +2371,10 @@ Limits:
   - Tchernowitz: 1,511.
 
   Frank adds 8 lines and Katzenelson *Shirim* 1. Two pointed prints (*Mahamadim*, Mandelkern) were dropped. *Shirim*, since classified as a pointed print, kept its one line with niqqud removed.
-- **Overlap with E2d3d:** `bynli_lines_v1` was not checked for same-work overlap with E2d3d's Wikisource Indexes. The scans differ (NLI, not Wikisource), and no evaluation manifest names an NLI record. data-collection's later F8f3 search excludes such works.
+- **Overlap with E2d3d:** checked on 2026-11-10 for the R6 release (`release/r6/card_body.md`). The 13,648 training labels share no word 6-gram with the 38 reference texts. The full Ben-Yehuda texts of the five training books share three, all from two Bible verses that one Frank story and one evaluation page both quote, and none of them is in Frank's 8 training lines. The scans differ (NLI, not Wikisource), and no evaluation manifest names an NLI record. data-collection's later F8f3 search excludes such works.
 - **Line sources:** R3j's rows re-recognise saved line geometry, and the Tesseract rows run full-page psm 3, so their segmentation differs.
 - **The audited references** carry the Tesseract-agreement caveat above.
-- **Nothing is published.** Predictions, reports, line sets and weights stay local. Publishing any trained weights, R6 included, needs the maintainer's explicit approval at each step.
+- **Publication.** Under decision 0014, R6 is released as `heocr_r6.traineddata` (version DOI [10.5281/zenodo.24109989](https://doi.org/10.5281/zenodo.24109989), Hugging Face `HeOCR/heocr-r6-tesseract-heb`; `release/r6/`). R3j and R5 are not released. Predictions, reports and line sets stay local.
 
 ### Run identities (R3j, R5, R6)
 

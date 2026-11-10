@@ -53,7 +53,8 @@ class R6ReleaseFilesTests(unittest.TestCase):
         for needle in ('0.209', '0.226', '0.225', '−0.016 [−0.023, −0.010]', '0.383', '0.384', 'No gain on the hardest'):
             with self.subTest(needle=needle):
                 self.assertIn(needle, card)
-        self.assertIn('<!-- DRAFT: R6\'s reserved version DOI', card)
+        self.assertNotIn('<!-- DRAFT', card)
+        self.assertIn('[10.5281/zenodo.24109989](https://doi.org/10.5281/zenodo.24109989)', card)
         for doi in PIPELINE_DOIS:
             self.assertNotIn(doi, card)
 
