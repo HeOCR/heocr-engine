@@ -1,0 +1,431 @@
+{
+  "schema_version": "heocr_tesseract_training_run.v1",
+  "schema_note": "A minimal record for a Tesseract fine-tune, defined in release/README.md (R6). heocr_engine_training_run.v1 does not fit: it describes ketos runs made by heocr-engine train-kraken, its init must be from_scratch or a fine-tune of a project recognizer with its own record, its data must be a hocrsyngen batch (annotations and generation-manifest sha256), and its text_order assumes kraken's display-order reordering. R6 is an lstmtraining run from a third-party base model (tessdata_best) on real scanned lines, run by hand from task scripts. This record keeps the same top-level sections where they apply and has no local paths; <placeholders> stand for local files.",
+  "model": "R6",
+  "task": "recognition",
+  "engine": {
+    "name": "tesseract",
+    "version": "5.5.3",
+    "leptonica_version": "1.87.0",
+    "executable_sha256": "d3d15b31535c2dd88cbbb53ec54a16b9a739f4146e1648b4b6ad57cf5ce79f1d",
+    "build": "Homebrew bottle, macOS arm64"
+  },
+  "trainer": {
+    "name": "lstmtraining",
+    "version": "5.5.3",
+    "executable_sha256": "2d93f9c95a3b2b543c1c47bd599442d9a9fe472a0e19e3cf1ee68e9db16cb900",
+    "lstmeval_sha256": "8a364e65381eb731a6bb8d6240c41d8736319af15ae6f2953e79f5cfeeaabac8",
+    "combine_tessdata_sha256": "5c2c817aeb8a0d1db941c40dc2fe46487269532ec514c6b0418dac626fa2e798"
+  },
+  "init": {
+    "kind": "fine_tune_third_party",
+    "base_model": {
+      "name": "tessdata_best heb",
+      "repository": "https://github.com/tesseract-ocr/tessdata_best",
+      "commit": "e12c65a915945e4c28e237a9b52bc4a8f39a0cec",
+      "file_name": "heb.traineddata",
+      "git_blob": "0fc27335b628e0e7992c58804c0437662ec54b06",
+      "sha256": "dbaa827aea6bc21215638447f17783a1004987c2d0bf5573d111fee397abdae5",
+      "licence": "Apache-2.0",
+      "version_string": "4.00.00alpha:heb:synth20170629:[1,36,0,1Ct3,3,16Mp3,3Lfys48Lfx96Lrx96Lfx192O1c1]",
+      "lstm_sha256": "8f3271676f6dbd4e13382d4bb84c69e9b0ff25316686647689d34a7c22b5532c",
+      "lstm_extracted_with": [
+        "<combine_tessdata>",
+        "-e",
+        "<base>/heb.traineddata",
+        "<base>/heb.lstm"
+      ]
+    },
+    "starter_traineddata": {
+      "sha256": "8b9d798a456bd1d4cd8bdf71b3d7b9d7579cea6cbd51302accd57f521669b846",
+      "bytes": 604400,
+      "unicharset": "the base's LSTM unicharset plus U+05BE (maqaf) and U+2013 (en dash); lstm-unicharset sha256 cf6bd3f0357bd7704ad2130e9f51674c5375b82ba546594398e5f4525d9e8cdf",
+      "dictionary": "lstm-word-dawg and lstm-punc-dawg byte-identical to the R5 starter's (word dawg sha256 cddcc086c241eeaf0f29b77f7955770d4fe3b2832f8fec986e53c7a0a579fcdb): the base's own word list (70,171 words, recovered with dawg2wordlist), rebuilt with combine_lang_model --lang_is_rtl, norm mode 2",
+      "build_files": {
+        "repository": "https://github.com/tesseract-ocr/langdata_lstm",
+        "commit": "07930fd9f246622c26eb5de794d9212ceac432d3",
+        "licence": "Apache-2.0",
+        "files": [
+          "radical-stroke.txt",
+          "Hebrew.unicharset",
+          "Latin.unicharset",
+          "heb/heb.punc",
+          "heb/heb.numbers"
+        ]
+      }
+    },
+    "network_spec": "[1,36,0,1Ct3,3,16Mp3,3Lfys48Lfx96Lrx96Lfx192O1c1]",
+    "output_codes": {
+      "base": 69,
+      "fine_tuned": 70
+    }
+  },
+  "data": {
+    "line_set": "bynli_lines_v1",
+    "line_set_schema": "s16c_benyehuda_nli_lines.v1",
+    "built_by": "heocr-synth-gen S16c scripts/build_line_set.py, with hocrgen fc1a524 (canvas-to-image frame fix, HeOCR/hocrgen#152)",
+    "manifest_sha256": "9b6adb4253954aa164dc699bc647abb416611792aa5bfb06737cf3f00155dc72",
+    "summary_sha256": "82c2756bafd9327f9a392719d0a7e55e71e0f62912d039d84dbb5ae3567dce46",
+    "pngs_sha256": "a1484332598d1f4a3ec8fdef0bf4f2f8cc7abcdf952ef5dd9bde26ca93503cb8",
+    "pngs_sha256_definition": "sha256 of all 20,740 PNG files concatenated in sorted relative-path order",
+    "labels": {
+      "source": "Project Ben-Yehuda edition text placed on each line by the F8f alignment (hocrgen.tools.benyehuda_nli_alignment); never OCR output",
+      "text_source": {
+        "name": "Project Ben-Yehuda public_domain_dump",
+        "url": "https://github.com/projectbenyehuda/public_domain_dump",
+        "release": "2026-03",
+        "licence": "public domain (dump LICENSE)",
+        "release_files_sha256": {
+          "txt.zip": "c7fa0535ca08c18c1068da6fdd4436413dfb4a34aa36eae2ba0c28e2a5171122",
+          "txt_stripped.zip": "8c8e1007f1c7c0dbf90a7a1c2257d2febfc9fabb15e6c12d4d514f39a9b9a6d1"
+        }
+      },
+      "normalisation": "NFC, logical order; niqqud removed; '…' as '...', '„' as '\"', soft hyphens removed",
+      "niqqud": false,
+      "latin_letters": false,
+      "lines_with_digits": {
+        "train": 90
+      }
+    },
+    "gates": {
+      "min_alignment_score": 0.9,
+      "min_line_ocr_similarity": 0.7,
+      "max_height_ratio": 1.6,
+      "pointed_prints": "dropped (records 990017258010205171 Mahamadim and 990013637480205171 Mandelkern)",
+      "dropped": {
+        "below_min_score": 2367,
+        "label_disagrees_with_line_ocr": 685,
+        "taller_than_one_line": 463,
+        "outside_repertoire": 14,
+        "aligned_twice": 1,
+        "pointed_print": 4498
+      }
+    },
+    "scans": {
+      "holder": "National Library of Israel",
+      "attribution": "From the collections of the National Library of Israel / מאוסף הספרייה הלאומית",
+      "licence_label": "public domain, free use",
+      "licence_url": "https://www.nli.org.il/contenteditors/pages-for-terms-of-use/public-domain-free-use",
+      "acquisition_route": "nli_free_use",
+      "manifest_url_pattern": "https://iiif.nli.org.il/IIIFv21/<record_id>/manifest",
+      "rights_basis": "heocr-engine decision 0015; hocrgen planning/decisions/2026-11-10-legal-strategy.md rule 2 (NLI's own free-use scans stay in, with attribution)"
+    },
+    "split": {
+      "unit": "record (whole book)",
+      "train_lines": 13648,
+      "selection_lines": 7092
+    },
+    "train": [
+      {
+        "record_id": "990020308000205171",
+        "book": "berashadsky-sipurim-1910",
+        "title": "Ketavim Aharonim",
+        "creators": "Yeshayahu Berashadsky (1871-1908); Pesach Kaplan (1870-1943); Ben-Avigdor (1866-1921)",
+        "published": "Warsaw: Tushiya, 1910",
+        "lines": 6076,
+        "us_status": "pd_us (published before 1931)"
+      },
+      {
+        "record_id": "990020495520205171",
+        "book": "citron-ahorei-hapargod-1923",
+        "title": "Me-Ahorei ha-Pargod",
+        "creators": "Shmuel Leib Citron (1860-1930)",
+        "published": "Vilna: Z. Matz, 1923-1925",
+        "lines": 6052,
+        "us_status": "pd_us (published before 1931)"
+      },
+      {
+        "record_id": "990020522850205171",
+        "book": "tchernowitz-hamadpis-1927",
+        "title": "Im Shahar",
+        "creators": "Shmuel Tchernowitz (1879-1929)",
+        "published": "Jerusalem: Ha-Madpis, 1927",
+        "lines": 1511,
+        "us_status": "pd_us (published before 1931)"
+      },
+      {
+        "record_id": "990019385920205171",
+        "book": "frank-agadot-hazohar-1924",
+        "title": "Sefer Agadot ha-Zohar",
+        "creators": "Azriel Natan Frank (1863-1924)",
+        "published": "Warsaw: Ahiasaf, 1923-1924",
+        "lines": 8,
+        "us_status": "pd_us (published before 1931)"
+      },
+      {
+        "record_id": "990013538860205171",
+        "book": "katzenelson-shirim-1938",
+        "title": "Shirim",
+        "creators": "Yitzhak Katzenelson (1885-1944); illustrations by Henoch Barczynski (1896-1944)",
+        "published": "Lodz: Hovevei Shira, 1938",
+        "lines": 1,
+        "us_status": "not_established"
+      }
+    ],
+    "selection": [
+      {
+        "record_id": "990020250940205171",
+        "book": "silman-1929",
+        "title": "Sansinim",
+        "creators": "Kadish Yehuda Silman (1880-1937)",
+        "published": "Jerusalem and Tel Aviv: Tarbut, 1929",
+        "lines": 3046
+      },
+      {
+        "record_id": "990018546440205171",
+        "book": "brainin-1928",
+        "title": "Avraham Mapu: Hayav u-Sfarav",
+        "creators": "Reuven Brainin (1862-1939)",
+        "published": "Vilna and Warsaw: Tushiya, 1928",
+        "lines": 4046
+      }
+    ],
+    "selection_bias": "the line-OCR gate kept lines whose label agrees with stock Tesseract's reading at 0.7 or more, so the selection lines lean toward lines Tesseract reads reasonably; their scores compare models, they are not a level",
+    "conversion": "each line's label is written in training order to <line>.gt.txt and to a WordStr <line>.box, then commands.make_lstmf writes <line>.lstmf (task script make_lstmf.py): 13,648 train and 7,092 selection .lstmf files, none failed"
+  },
+  "truth_order": {
+    "ground_truth": "logical",
+    "training_order": "Tesseract LSTM order: the logical line reversed as a whole, punctuation not mirrored, then each digit run (with internal . , : /) reversed back to left to right",
+    "inference_output": "logical"
+  },
+  "commands": {
+    "make_lstmf": [
+      "<tesseract>",
+      "<line>.png",
+      "<line>",
+      "--psm",
+      "13",
+      "lstm.train"
+    ],
+    "train_lrdef": [
+      "<lstmtraining>",
+      "--continue_from",
+      "<base>/heb.lstm",
+      "--old_traineddata",
+      "<base>/heb.traineddata",
+      "--traineddata",
+      "<starter>/heb/heb.traineddata",
+      "--model_output",
+      "<work>/lrdef/heb",
+      "--train_listfile",
+      "<data>/train.list",
+      "--eval_listfile",
+      "<data>/dev.list",
+      "--max_iterations",
+      "100000",
+      "--target_error_rate",
+      "0.01",
+      "--debug_interval",
+      "-1"
+    ],
+    "train_lr1e4": [
+      "<lstmtraining>",
+      "--continue_from",
+      "<base>/heb.lstm",
+      "--old_traineddata",
+      "<base>/heb.traineddata",
+      "--traineddata",
+      "<starter>/heb/heb.traineddata",
+      "--model_output",
+      "<work>/lr1e4/heb",
+      "--train_listfile",
+      "<data>/train.list",
+      "--eval_listfile",
+      "<data>/dev.list",
+      "--max_iterations",
+      "100000",
+      "--target_error_rate",
+      "0.01",
+      "--debug_interval",
+      "-1",
+      "--learning_rate",
+      "0.0001",
+      "--reset_learning_rate"
+    ],
+    "select": [
+      "<lstmeval>",
+      "--model",
+      "<checkpoint>",
+      "--traineddata",
+      "<starter>/heb/heb.traineddata",
+      "--eval_listfile",
+      "<data>/dev.list"
+    ],
+    "convert": [
+      "<lstmtraining>",
+      "--stop_training",
+      "--continue_from",
+      "<work>/lrdef/heb_0.603_16919_54500.checkpoint",
+      "--traineddata",
+      "<starter>/heb/heb.traineddata",
+      "--model_output",
+      "<out>/heb.traineddata"
+    ]
+  },
+  "hyperparameters": {
+    "arms": {
+      "lrdef": {
+        "learning_rate": null,
+        "learning_rate_note": "not set: lstmtraining continues with the rate stored in the base (its first per-layer adjustment in the log reads 0.0005)"
+      },
+      "lr1e4": {
+        "learning_rate": 0.0001,
+        "reset_learning_rate": true
+      }
+    },
+    "max_iterations": 100000,
+    "target_error_rate": 0.01,
+    "eval_listfile": "the selection lines (lstmtraining evaluates on them periodically; this never changes the weights)"
+  },
+  "run": {
+    "date": "2026-11-09",
+    "device": "cpu",
+    "machine": "Apple silicon Mac",
+    "deterministic": false,
+    "scheduler": "both arms ran concurrently under HeOCR's power scheduler"
+  },
+  "outcome": {
+    "iterations_completed": {
+      "lrdef": 100000,
+      "lr1e4": 100000
+    },
+    "checkpoints_evaluated": {
+      "lrdef": 37,
+      "lr1e4": 59
+    },
+    "selection_rule": "lowest lstmeval BCER on the selection lines over every saved checkpoint of both arms; BWER breaks ties",
+    "selected": {
+      "arm": "lrdef",
+      "checkpoint": "heb_0.603_16919_54500",
+      "training_iteration": 54500,
+      "learning_iteration": 16919,
+      "train_bcer_percent": 0.603,
+      "selection_bcer_percent": 2.03,
+      "selection_bwer_percent": 5.302
+    },
+    "best_other_arm": {
+      "arm": "lr1e4",
+      "checkpoint": "heb_0.731_39467_95500",
+      "selection_bcer_percent": 2.136,
+      "selection_bwer_percent": 5.813
+    },
+    "base_on_selection_lines": {
+      "model": "tessdata_best heb",
+      "bcer_percent": 11.45,
+      "bwer_percent": 23.34
+    },
+    "validation_metric_definition": "lstmeval BCER / BWER, Tesseract-internal, on the training-order truth; not hocrgen primary.v1"
+  },
+  "evaluation": {
+    "scored_set": "e2d4c_wikisource_printed_v7 (38 pages, 14 Hebrew Wikisource Indexes; and its 10-page bank-disjoint subset)",
+    "reference_manifest_sha256": "0de65f63567ba3b70ec2d72fac5f7f0407f1df55d790d5c9537fb32eafac6fdb",
+    "decision": "planning/decisions/0012-real-page-scored-sets.md (scored once, after selection)",
+    "scorer": "hocrgen d4a3414 evaluate-references, primary.v1, modality printed",
+    "inference": "Tesseract 5.5.3, psm 3, whole pages",
+    "results": {
+      "38": {
+        "r6": {
+          "cer": 0.209,
+          "wer": 0.407
+        },
+        "stock_heb": {
+          "cer": 0.226,
+          "wer": 0.473
+        },
+        "tessdata_best_heb": {
+          "cer": 0.225,
+          "wer": 0.481
+        },
+        "r6_minus_stock_cer": {
+          "delta": -0.016,
+          "page_95": [
+            -0.023,
+            -0.01
+          ],
+          "cluster_95": [
+            -0.024,
+            -0.005
+          ]
+        },
+        "r6_minus_tessdata_best_cer": {
+          "delta": -0.015,
+          "page_95": [
+            -0.024,
+            -0.007
+          ],
+          "cluster_95": [
+            -0.026,
+            0.001
+          ]
+        }
+      },
+      "10": {
+        "r6": {
+          "cer": 0.383,
+          "wer": 0.585
+        },
+        "stock_heb": {
+          "cer": 0.384,
+          "wer": 0.588
+        },
+        "tessdata_best_heb": {
+          "cer": 0.376,
+          "wer": 0.609
+        },
+        "r6_minus_stock_cer": {
+          "delta": -0.002,
+          "page_95": [
+            -0.012,
+            0.012
+          ],
+          "cluster_95": [
+            -0.006,
+            0.002
+          ]
+        },
+        "r6_minus_tessdata_best_cer": {
+          "delta": 0.007,
+          "page_95": [
+            -0.006,
+            0.018
+          ],
+          "cluster_95": [
+            -0.005,
+            0.019
+          ]
+        }
+      }
+    },
+    "bootstrap": {
+      "resamples": 2000,
+      "seed": 20261106,
+      "clusters": "wikisource_index"
+    },
+    "text_overlap_check": {
+      "method": "word 6-grams, Hebrew letters only, marks U+0591-U+05C7 stripped, NFC",
+      "training_labels_vs_references": 0,
+      "training_books_full_text_vs_references": {
+        "shared_6grams": 3,
+        "book": "frank-agadot-hazohar-1924",
+        "note": "two Bible verses (Isaiah 26:2, Psalms 118:20) quoted by one Frank story and one reference page; in none of Frank's 8 training lines"
+      },
+      "checked": "2026-11-10"
+    }
+  },
+  "output": {
+    "model_sha256": "73eb18e03f8793dff9c03699db0845779f6b5db4897824bcd61787245ec66e10",
+    "bytes": 3628595,
+    "file_name": "heb.traineddata",
+    "release_file_name": "heocr_r6.traineddata",
+    "language_name": "heocr_r6",
+    "format": "Tesseract traineddata, LSTM only (components: lstm, lstm-punc-dawg, lstm-word-dawg, lstm-number-dawg, lstm-unicharset, lstm-recoder, version)",
+    "version_string": "5.5.3",
+    "byte_reproducible": false
+  },
+  "model_licence": {
+    "status": "Apache-2.0",
+    "owner": "maintainer",
+    "basis": "planning/decisions/0014-open-release-always.md",
+    "published": false
+  }
+}

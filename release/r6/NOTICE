@@ -1,0 +1,105 @@
+HeOCR R6 Hebrew printed-text recognition model for Tesseract
+Copyright (c) 2026 HeOCR maintainers
+
+This model (heocr_r6.traineddata, trained as heb.traineddata, sha256
+73eb18e03f8793dff9c03699db0845779f6b5db4897824bcd61787245ec66e10) is
+licensed under the Apache License, Version 2.0. See LICENSE.
+
+Base model
+----------
+
+This model is a modified version of the tessdata_best Hebrew model
+(heb.traineddata) of the Tesseract OCR project,
+https://github.com/tesseract-ocr/tessdata_best, commit
+e12c65a915945e4c28e237a9b52bc4a8f39a0cec, sha256
+dbaa827aea6bc21215638447f17783a1004987c2d0bf5573d111fee397abdae5, licensed
+under the Apache License, Version 2.0.
+
+HeOCR modified it on 2026-11-09: its LSTM network was fine-tuned with
+Tesseract's lstmtraining on real scanned Hebrew lines, and two characters
+were added to its character set (the maqaf U+05BE and the en dash U+2013).
+Its dictionary components were rebuilt from the base model's own word list
+with build files from https://github.com/tesseract-ocr/langdata_lstm, commit
+07930fd9f246622c26eb5de794d9212ceac432d3, licensed under the Apache License,
+Version 2.0.
+
+Software
+--------
+
+The model was trained with, and runs in, Tesseract 5.5.3
+(https://github.com/tesseract-ocr/tesseract), licensed under the Apache
+License, Version 2.0. The model file contains no Tesseract code.
+
+Training data: scans
+--------------------
+
+From the collections of the National Library of Israel / מאוסף הספרייה הלאומית
+
+The training lines were cut from these National Library of Israel (NLI)
+scans. Each record's IIIF manifest carries NLI's licence "public domain,
+free use"
+(https://www.nli.org.il/contenteditors/pages-for-terms-of-use/public-domain-free-use)
+and the attribution "מאוסף הספרייה הלאומית". They were fetched from NLI's
+IIIF service (https://iiif.nli.org.il/IIIFv21/<record>/manifest), the
+route HeOCR's legal strategy calls nli_free_use. None is a Google-digitized
+"public domain, non-commercial use" scan.
+
+  NLI record 990020308000205171: Yeshayahu Berashadsky (1871-1908), Ketavim
+    Aharonim, with a biography by Pesach Kaplan (1870-1943) and an essay by
+    Ben-Avigdor (1866-1921). Warsaw: Tushiya, 1910. 6,076 lines.
+  NLI record 990020495520205171: Shmuel Leib Citron (1860-1930), Me-Ahorei
+    ha-Pargod. Vilna: Z. Matz, 1923-1925. 6,052 lines.
+  NLI record 990020522850205171: Shmuel Tchernowitz (1879-1929), Im Shahar.
+    Jerusalem: Ha-Madpis, 1927. 1,511 lines.
+  NLI record 990019385920205171: Azriel Natan Frank (1863-1924), Sefer
+    Agadot ha-Zohar. Warsaw: Ahiasaf, 1923-1924. 8 lines.
+  NLI record 990013538860205171: Yitzhak Katzenelson (1885-1944), Shirim.
+    Lodz: Hovevei Shira, 1938. 1 line.
+
+Checkpoint selection used lines from two further NLI "public domain, free
+use" scans, fetched the same way. They were not trained on:
+
+  NLI record 990020250940205171: Kadish Yehuda Silman (1880-1937),
+    Sansinim. Jerusalem and Tel Aviv: Tarbut, 1929.
+  NLI record 990018546440205171: Reuven Brainin (1862-1939), Avraham Mapu:
+    Hayav u-Sfarav. Vilna and Warsaw: Tushiya, 1928.
+
+Every author, contributor and illustrator of these books died more than 70
+years ago, so the books are in the public domain in Israel. The books
+printed before 1931 are also past the United States copyright term. The US
+status of Shirim (1938, one training line) is not established.
+
+The model contains no scan images. The line crops are not distributed with
+it.
+
+Training data: text
+-------------------
+
+Each training line is labelled with the transcription of the same edition
+from Project Ben-Yehuda (https://benyehuda.org), public domain dump release
+2026-03 (https://github.com/projectbenyehuda/public_domain_dump). Its
+licence states that the data files are in the public domain. Credit: Project
+Ben-Yehuda volunteers.
+
+Evaluation data (not used for training)
+---------------------------------------
+
+The model was scored on 38 page transcriptions from Hebrew Wikisource
+(https://he.wikisource.org), licensed under the Creative Commons
+Attribution-ShareAlike licence (CC BY-SA), as adjudicated by HeOCR's human
+reviewers. They were used only to score the model after it was chosen,
+never for training, tuning or checkpoint selection. The model contains no
+Wikisource text.
+
+No endorsement
+--------------
+
+Neither the National Library of Israel, Project Ben-Yehuda, the Tesseract
+OCR project nor Wikisource endorses HeOCR or this model.
+
+Rights concerns
+---------------
+
+If you believe a source item is subject to a valid copyright or another
+binding restriction, open an issue at
+https://github.com/HeOCR/heocr-engine/issues and name its NLI record id.
