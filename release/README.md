@@ -240,6 +240,10 @@ Both scripts take `--models r6`. The default `--models` stays `r4d a1 r3h`, and 
 
 ## Plan for R6
 
+**Status: published on 2026-11-10.** Zenodo [10.5281/zenodo.24109989](https://doi.org/10.5281/zenodo.24109989) (record 24109989, accepted into `heocr`), mirrored on Hugging Face as [HeOCR/heocr-r6-tesseract-heb](https://huggingface.co/HeOCR/heocr-r6-tesseract-heb).
+- **Checks:** the sandbox run (draft 638698) came first. The production draft was checked before publishing: the file's md5 matched, and the creators, licence, DOI, 5 files and 7 related links were all right.
+- **After publishing:** the Hugging Face file's sha256 matches the record, and Tesseract 5.5.3 loads `-l heocr_r6` from it.
+
 Sandbox first, then production, as for the first release. Tokens come from the environment only: `ZENODO_SANDBOX_TOKEN`, `ZENODO_TOKEN` and `HF_TOKEN`, which the maintainer's Codex helper will provide. No agent creates an account or handles a token in any file.
 
 ```sh
