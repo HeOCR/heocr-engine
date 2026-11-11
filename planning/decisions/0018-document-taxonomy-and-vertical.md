@@ -26,11 +26,11 @@ hebrew
 
 ## Decision
 
-1. **Dates are guides, not rules.** The maintainer: "don't make the year a rule!"
-   - A unit (a book, document series or writer) is placed by how it looks: typography, letterforms, script.
-   - The year is only a hint.
-   - When the look is unclear, the unit stays **unclassified**, and a human decides from the scan. An agent may propose a node, but never fixes an unclear one.
-   - Reprints are classed by the typography on the page, not by the reprint date.
+1. **Placement uses heuristics, not a date rule.** The maintainer: "don't make the year a rule! ... it's a thought; a suggestion; a heuristic; fonts can also guide us, as well as genres".
+   - A unit (a book, document series or writer) is placed by weighing several signals: typography and letterforms, genre, and approximate date.
+   - **One genre rule is firm:** rabbinic, Torah and other holy texts are **always old printed**, whatever their print date or typeface.
+   - When the signals disagree or are unclear, the unit stays **unclassified**, and a human decides from the scan. An agent may propose a node, but never fixes an unclear one.
+   - **A fuller definition is pending.** A deep-research consultation on Hebrew typographic history and document genres, commissioned by the maintainer on 2026-11-11, will feed it. Until then, these heuristics apply.
 2. **Selectable sets, with a score for every model.** A person can pick any node down to at least the second level below *hebrew*:
    - printed → new printed, old printed;
    - modern mixed → filled-out forms;
@@ -50,6 +50,6 @@ hebrew
 - **From 0017's domains to the tree:**
   - P-mod is new printed (laws and government documents, plus other modern genres) together with modern mixed (filled-out forms).
   - 0017's P-hist/standard-square units are new-printed books wherever their typography is modern.
-  - Rabbinic and other old-style print is old printed.
+  - Rabbinic, Torah and holy texts are old printed (the firm genre rule), and so is other old-style print.
 - **audit2 pages:** they are reclassified by look, per unit. Its new-printed pages give new printed a scored set today.
 - **R8:** it is selected on new-printed dev only. The rabbinic line sets (rablines_v1, wslines_v1) are enrichment candidates, kept only if new-printed dev improves.
