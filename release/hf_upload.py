@@ -11,8 +11,8 @@ under their release name, `LICENSE`, `NOTICE` and the training record, as in the
   state file, so the plan can be checked before production exists.
 - **Token:** `HF_TOKEN` is read from the environment only. It is passed to huggingface_hub directly, and never goes
   into an argument list or any output; it is redacted from errors.
-- **Releases:** the default `--models` is the first release, R4d + A1 + R3h. R6 (Tesseract) is a release of its own:
-  `--models r6`, with R6's own Zenodo state file. One run never mixes the two.
+- **Releases:** the default `--models` is the first release, R4d + A1 + R3h. R6 and R7 (Tesseract) are each a release
+  of their own: `--models r6` or `--models r7`, each with its own Zenodo state file. One run never mixes two releases.
 - **Dependencies:** huggingface_hub is imported only for a real upload.
 
 No per-upload go-ahead is needed since decision 0014.
@@ -34,9 +34,10 @@ _spec.loader.exec_module(zenodo)
 DepositError = zenodo.DepositError
 MODELS = zenodo.MODELS
 CHOICES = zenodo.CHOICES
-# One public repository per model under the HeOCR organisation (item 7; decision 0011's note; R6: decision 0014).
+# One public repository per model under the HeOCR organisation (item 7; decision 0011's note; R6, R7: decision 0014).
 HF_REPOS = {"r4d": "HeOCR/heocr-r4d-segmentation", "a1": "HeOCR/heocr-a1-reading-order",
-            "r3h": "HeOCR/heocr-r3h-recognition", "r6": "HeOCR/heocr-r6-tesseract-heb"}
+            "r3h": "HeOCR/heocr-r3h-recognition", "r6": "HeOCR/heocr-r6-tesseract-heb",
+            "r7": "HeOCR/heocr-r7-tesseract-heb"}
 
 
 def read_token(environ=os.environ) -> str:
@@ -111,7 +112,8 @@ def main(argv=None, environ=os.environ, api_factory=None, add=None) -> int:
                         help="the Zenodo state file with the reserved DOIs (production for a real upload)")
     parser.add_argument("--weights", nargs="+", required=True, metavar="MODEL=PATH")
     parser.add_argument("--models", nargs="+", choices=CHOICES, default=list(MODELS),
-                        help="default: the first release, r4d a1 r3h. r6 is a release of its own: give it alone")
+                        help="default: the first release, r4d a1 r3h. r6 and r7 are each a release of their own: "
+                             "give one alone")
     parser.add_argument("--release-dir", type=Path, default=RELEASE, help="dry run only: a copy of release/")
     parser.add_argument("--dry-run", action="store_true", help="print the plan; no network")
     args = parser.parse_args(argv)
