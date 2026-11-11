@@ -85,9 +85,10 @@ class R7ReleaseFilesTests(unittest.TestCase):
                 self.assertIn(needle, card)
         self.assertIn(f'https://doi.org/{R6_DOI}', card)  # R6 is named, not replaced
 
-    def test_card_doi_is_still_a_draft_and_links_no_pipeline_record(self):
+    def test_card_cites_its_reserved_doi_and_links_no_pipeline_record(self):
         card = read('card_body.md')
-        self.assertIn("<!-- DRAFT: R7's reserved version DOI", card)
+        self.assertNotIn('<!-- DRAFT', card)
+        self.assertIn('[10.5281/zenodo.24126449](https://doi.org/10.5281/zenodo.24126449)', card)
         citation = card.split('## Citation', 1)[1]
         self.assertNotIn(R6_DOI, citation)  # R7 cites its own DOI, once reserved (plan step 2)
         for doi in PIPELINE_DOIS:

@@ -2390,3 +2390,49 @@ Limits:
 | R6 selection | Lowest dev BCER (lstmeval) over every checkpoint of both arms. Selected `lrdef/heb_0.603_16919_54500`: dev BCER 2.03%, BWER 5.30%. On the same dev lines tessdata_best scores 11.45% / 23.34%, and R5 7.06% / 17.29% (inflated: R5's glyphs come from these records) |
 | R6 model | `heb.traineddata` sha256 `73eb18e03f8793dff9c03699db0845779f6b5db4897824bcd61787245ec66e10`; data-collection's aligner records it as `ocr_model: r6@73eb18e0` (hocrgen#155). Licence `Needs verification`, unpublished |
 | Scoring | hocrgen `d4a3414` `evaluate-references`, `primary.v1`, modality printed, Tesseract 5.5.3 psm 3. References: `e2d4c_wikisource_printed_v7` (built from hocrgen#157 at `6c74426`, merged as `c21168f`, decisions sha256 `fb78f146…`) and `e2d3d_wikisource_printed_v5`, each with its 10-page bank-disjoint subset. Paired page and Wikisource-Index cluster bootstrap, 2000 resamples, seed 20261106 |
+
+## R7: Tesseract fine-tuned on more real books, scored once on real pages (2026-11-11)
+
+**Status: scored once under decision 0012 rule 3. Published under decision 0014** as `heocr_r7.traineddata`, version DOI [10.5281/zenodo.24126449](https://doi.org/10.5281/zenodo.24126449) (`release/r7/`).
+
+- **Recipe:** R6's recipe and base, on more data.
+  - Base: tessdata_best `heb` `e12c65a`, with R6's starter. R7 does not continue from R6.
+  - Data: 95,151 train lines of `bynli_lines_v2` (manifest `53dd7f1a…`), from 7 NLI and 23 Internet Archive books, labelled with Ben-Yehuda edition text.
+  - Filters: 69 lines that share a word 6-gram with dev, and 145 whose labels contain ׳, ״ or —.
+- **Arms:** `lrdef` and `lr1e4`, each run to 200k iterations.
+- **Selection:** on the dev set, which is 7,113 lines of whole held-out works.
+  - Selected `lr1e4/heb_0.634_52608_117100`: dev BCER / BWER **1.567% / 4.463%**.
+  - On the same lines, R6 scores 2.056% / 5.406% (biased in R6's favour, since R6 was selected on 99.7% of them) and tessdata_best 11.516%.
+  - Model sha256 `95faab81…`.
+
+**38 pages, `primary.v1`:** CER / WER, with R7 minus baseline as Δ [page interval]; cl [Wikisource-Index cluster interval].
+
+| Baseline | CER: base → R7 | ΔCER | WER: base → R7 | ΔWER |
+|---|---|---|---|---|
+| Stock | 0.226 → 0.209 | −0.017 [−0.029, −0.006]; cl [−0.034, +0.006] | 0.473 → 0.393 | −0.080 [−0.107, −0.053]; cl [−0.120, −0.024] |
+| tessdata_best | 0.225 → 0.209 | −0.016 [−0.030, −0.001]; cl [−0.035, +0.013] | 0.481 → 0.393 | −0.088 [−0.115, −0.060]; cl [−0.131, −0.029] |
+| R6 | 0.209 → 0.209 | −0.001 [−0.007, +0.006]; cl [−0.009, +0.012] | 0.407 → 0.393 | −0.014 [−0.027, +0.000]; cl [−0.031, +0.009] |
+
+**10 bank-disjoint pages:**
+
+| Baseline | CER: base → R7 | ΔCER | ΔWER |
+|---|---|---|---|
+| Stock | 0.384 → 0.393 | +0.009 [−0.004, +0.025]; cl [−0.009, +0.020] | −0.020 [−0.047, −0.005] |
+| R6 | 0.383 → 0.393 | +0.011 [−0.001, +0.019]; cl [−0.010, +0.021] | −0.016 [−0.046, +0.000] |
+
+### Reading (R7)
+
+- **Line recognition improved; page CER did not.**
+  - Dev BCER fell by about a quarter against R6.
+  - On the 38 pages, R7 ties R6 on CER, and WER is slightly lower within the intervals.
+  - With Indexes resampled as clusters, R7's CER gain over stock is no longer clear, though its WER gain still is.
+- **Order-free word recall improves:** letters only, R7 misses 28.6% of the reference words, R6 30.2% and stock 33.3%. R7 also emits 2.2% fewer letters than R6, mostly on two small-type rabbinic pages (`ws_index_381649` p0011, p0012).
+- **Correction to "Order-free check (R6)" above.**
+  - That bag counts each substitution twice, so its closeness to CER does not show that ordering costs nothing.
+  - The opposite bound, minimum bag edits, is not a measure of ordering either: confusions that cancel across a page (one כ→ב, one ב→כ) cost nothing in a bag.
+  - How much page error is layout and reading order is open. It needs a line-aligned measure, which is a prerequisite for choosing R8's direction.
+- **R8 candidates:**
+  - That line-aligned measure.
+  - Rabbinic and small-type books in training.
+  - A unicharset with ׳ ״ — and niqqud.
+  - The out_alt editions (hocrgen#169).
