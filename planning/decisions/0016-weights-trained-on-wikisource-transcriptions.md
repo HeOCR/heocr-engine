@@ -1,4 +1,4 @@
-# 0016 — Weights trained on CC BY-SA label text stay Apache-2.0, with attribution
+# 0016 — Weights trained on Hebrew Wikisource transcriptions of public-domain works stay Apache-2.0, with attribution
 
 - Status: accepted
 - Date: 2026-11-11
@@ -18,8 +18,8 @@ Before deciding, the maintainer saw this reasoning:
 
 ## Decision
 
-1. **Weights stay Apache-2.0.** Weights trained on CC BY-SA 4.0 label text, starting with Hebrew Wikisource, are released under Apache-2.0, as in decision 0014.
+1. **Weights stay Apache-2.0.** Weights trained on Hebrew Wikisource proofread transcriptions of public-domain works (CC BY-SA 4.0) are released under Apache-2.0, as in decision 0014.
 2. **Credit the text as a training source.** The NOTICE and card credit "Hebrew Wikisource contributors" (CC BY-SA 4.0) as a source of training text, not only of scoring references, and name the line set and its per-page permalinks.
-3. **Keep the label text out of the `traineddata`.** No word list or dawg is built from CC BY-SA text. The starter keeps the base word list, so the weights argument in the context holds.
+3. **Keep the label text out of the `traineddata`.** No word list or dawg is built from Wikisource text. The starter keeps the base word list, so the weights argument in the context holds.
 4. **Published labels follow their licence.** If a line set with Wikisource labels is published, its label text carries CC BY-SA 4.0 with attribution, which is an exception to "CC0 data" limited to that text. Scan crops and HeOCR's own metadata are unaffected.
-5. **Non-commercial and no-derivatives text is still excluded** (the iron rule of decision 0014). This decision covers attribution and share-alike licences only.
+5. **Scope.** This decision covers Hebrew Wikisource proofread transcriptions of public-domain works only. The thin-copyright argument holds for faithful transcriptions of PD works, not for original works. Other CC BY or CC BY-SA text sources (for example Sefaria versions) need their own decision. Non-commercial and no-derivatives text stays excluded (the iron rule of decision 0014).
