@@ -625,5 +625,160 @@ class R6Tests(unittest.TestCase):
             self.assertIn('does not match', err)
 
 
+R7_DOI = '10.5072/zenodo.700'
+R7_NLI = ('990017640460205171', '990020308000205171', '990020495520205171', '990020522850205171',
+          '990020466440205171', '990019385920205171', '990013538860205171')
+
+
+@contextlib.contextmanager
+def r7_release_copy():
+    """A release/ copy whose R7 card cites R7_DOI, with fake weights matching R7's copied record."""
+    import shutil
+    with tempfile.TemporaryDirectory() as directory:
+        directory = Path(directory)
+        release = directory / 'release'
+        shutil.copytree(ROOT / 'release' / 'r7', release / 'r7')
+        body = release / 'r7' / 'card_body.md'
+        body.write_text(body.read_text(encoding='utf-8') + f'\nCite {R7_DOI}.\n', encoding='utf-8')
+        weights = directory / 'heb.traineddata'
+        weights.write_bytes(b'r7 weights')
+        record_path = release / 'r7' / 'r7_training_run.json'
+        record = json.loads(record_path.read_text(encoding='utf-8'))
+        record['output']['model_sha256'] = hashlib.sha256(b'r7 weights').hexdigest()
+        record_path.write_text(json.dumps(record), encoding='utf-8')
+        yield directory, release, weights
+
+
+class R7Tests(unittest.TestCase):
+    """R7 (Tesseract) is a release of its own, like R6: plain card, heocr only, own state file."""
+
+    def test_r7_is_selectable_but_not_a_default(self):
+        self.assertEqual(zd.MODELS, ('r4d', 'a1', 'r3h'))
+        self.assertEqual(zd.SEPARATE_RELEASES, ('r6', 'r7'))
+        self.assertEqual(zd.release_of('r7'), 'r7')
+        self.assertIs(zd.validate_front('r7'), zd.validate_plain)
+
+    def test_r7_front_matter_maps_with_its_own_links_and_the_same_creators(self):
+        _need_yaml(self)
+        front, r6 = zd.read_front('r7'), zd.read_front('r6')
+        self.assertEqual(front['communities'], ['heocr'])
+        self.assertEqual(front['authors'], r6['authors'])
+        zd.validate_plain(dict(front, id=R7_DOI))
+        metadata = zd.record_metadata(front, '<p></p>', '2026-11-11')
+        self.assertEqual(metadata['creators'], zd.record_metadata(r6, '<p></p>', '2026-11-11')['creators'])
+        self.assertEqual(metadata['rights'], [{'id': 'apache-2.0'}])
+        links = [(r['identifier'], r['resource_type']['id']) for r in metadata['related_identifiers']]
+        self.assertEqual(len(links), len(set(links)))
+        self.assertIn(('https://github.com/tesseract-ocr/tessdata_best/blob/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/'
+                       'heb.traineddata', 'software'), links)
+        self.assertIn(('https://github.com/projectbenyehuda/public_domain_dump', 'dataset'), links)
+        for record in R7_NLI:
+            self.assertIn((f'https://iiif.nli.org.il/IIIFv21/{record}/manifest', 'image'), links)
+        record = json.loads((ROOT / 'release' / 'r7' / 'r7_training_run.json').read_text(encoding='utf-8'))
+        ia = [r['ia_identifier'] for r in record['data']['train'] if r['source'] == 'internet_archive']
+        self.assertEqual(len(ia), 23)
+        for identifier in ia:
+            self.assertIn((f'https://archive.org/details/{identifier}', 'image'), links)
+        self.assertEqual(len(links), 1 + len(R7_NLI) + len(ia) + 1)
+        self.assertTrue(all(r['relation_type'] == {'id': 'isderivedfrom'} for r in metadata['related_identifiers']))
+        # R7 is not derived from R6, and the script maps every `related` link to isDerivedFrom: no R6 link
+        self.assertFalse([i for i, _ in links if '24109989' in i])
+
+    def test_r6_and_r7_are_separate_releases(self):
+        for models, state in ((['r7', 'r6'], {}), (['r7', 'r3h'], {}), (['r7'], {'r6': {'id': 'rec6'}}),
+                              (['r6'], {'r7': {'id': 'rec7'}}), (list(zd.MODELS), {'r7': {'id': 'rec7'}})):
+            with self.subTest(models=models, state=list(state)):
+                with self.assertRaisesRegex(zd.DepositError, 'release of its own.*own state file'):
+                    zd.check_one_release(models, state)
+        zd.check_one_release(['r7'], {'r7': {'id': 'rec7'}})
+        zd.check_one_release(['r6'], {'r6': {'id': 'rec6'}})
+        with outside_repository() as directory:
+            state = directory / 'r6.json'
+            zd.save_state(state, {'api': zd.SANDBOX, 'records': {'r6': {'id': 'rec6', 'doi': '10.5072/zenodo.600'}}})
+            code, _, err = run_main(['--models', 'r7', '--state', str(state), 'publish'],
+                                    {'ZENODO_SANDBOX_TOKEN': TOKEN}, NoNetwork())
+            self.assertEqual(code, 1)
+            self.assertIn('own state file', err)
+
+    def test_reserve_r7_alone(self):
+        _need_yaml(self)
+        with outside_repository() as directory:
+            fake = FakeZenodo()
+            code, _, err = run_main(['--models', 'r7', '--state', str(directory / 'r7.json'), 'reserve'],
+                                    {'ZENODO_SANDBOX_TOKEN': TOKEN}, fake)
+            self.assertEqual(code, 0, err)
+            self.assertEqual(fake.calls(), [('POST', '/records'), ('POST', '/records/rec1/draft/pids/doi')])
+            sent = json.loads(fake.requests[0]['data'])['metadata']
+            self.assertTrue(sent['title'].startswith('Hebrew printed-text recognition for Tesseract'))
+            self.assertTrue(sent['title'].endswith('(HeOCR R7)'))
+            self.assertEqual(list(json.loads((directory / 'r7.json').read_text())['records']), ['r7'])
+
+    def test_upload_r7_sends_the_plain_card_and_its_four_files(self):
+        _need_yaml(self)
+        with r7_release_copy() as (directory, release, weights):
+            state = directory / 'state' / 'r7.json'
+            zd.save_state(state, {'api': zd.SANDBOX, 'records': {'r7': {'id': 'rec7', 'doi': R7_DOI}}})
+            original = zd.validate_htrmopo
+            zd.validate_htrmopo = lambda front: self.fail('R7 must not be HTRMoPo-validated')
+            try:
+                fake = FakeZenodo()
+                code, _, err = run_main(['--models', 'r7', '--release-dir', str(release), '--state', str(state),
+                                         'upload', '--weights', f'r7={weights}'], {'ZENODO_SANDBOX_TOKEN': TOKEN}, fake)
+            finally:
+                zd.validate_htrmopo = original
+        self.assertEqual(code, 0, err)
+        self.assertEqual([k['key'] for k in json.loads(fake.requests[0]['data'])],
+                         ['README.md', 'heocr_r7.traineddata', 'LICENSE', 'NOTICE', 'r7_training_run.json'])
+        readme = fake.requests[1]['data'].decode('utf-8')
+        self.assertIn(f'id: {R7_DOI}', readme)
+        self.assertNotIn('ocr_models', readme.split('\n---\n', 1)[0])
+
+    def test_publish_r7_requests_heocr_only(self):
+        _need_yaml(self)
+        with outside_repository() as directory:
+            state = directory / 'r7.json'
+            zd.save_state(state, {'api': zd.SANDBOX, 'records': {'r7': {'id': 'rec7', 'doi': R7_DOI}}})
+            fake = FakeZenodo()
+            code, _, err = run_main(['--models', 'r7', '--state', str(state), 'publish'],
+                                    {'ZENODO_SANDBOX_TOKEN': TOKEN}, fake)
+        self.assertEqual(code, 0, err)
+        self.assertEqual(fake.calls(), [('GET', '/communities/heocr'), ('GET', '/communities/heocr'),
+                                        ('POST', '/records/rec7/draft/actions/publish'),
+                                        ('POST', '/records/rec7/communities')])
+
+    def test_plan_r7_offline_and_the_draft_card_is_refused_once_a_doi_exists(self):
+        _need_yaml(self)
+        try:
+            import markdown  # noqa: F401
+        except ImportError:
+            self.skipTest('Markdown is not installed')
+        with outside_repository() as directory:
+            # the repository's own card, before step 1: no DOI yet, so the DRAFT citation is fine
+            code, out, err = run_main(['--models', 'r7', '--state', str(directory / 'none.json'), 'plan'],
+                                      {}, NoNetwork())
+            self.assertEqual(code, 0, err)
+            planned = json.loads(out)
+            self.assertEqual(planned['release'], 'r7')
+            self.assertEqual(planned['card']['format'], 'plain (not HTRMoPo)')
+            self.assertEqual(planned['communities'], ['heocr'])
+            self.assertEqual(planned['files'][1], {'key': 'heocr_r7.traineddata', 'weights': 'not given',
+                                                   'sha256': '95faab81fba6fe57f854f973c1ccad2b0d1059fb951f34b17277385ceea8b303'})
+            self.assertEqual(len(planned['metadata']['related_identifiers']), 32)
+            self.assertFalse((directory / 'none.json').exists())
+            # after step 1 the card must cite the reserved DOI (step 2), and the draft card does not
+            state = directory / 'r7.json'
+            zd.save_state(state, {'api': zd.SANDBOX, 'records': {'r7': {'id': 'rec7', 'doi': R7_DOI}}})
+            code, _, err = run_main(['--models', 'r7', '--state', str(state), 'plan'], {}, NoNetwork())
+            self.assertEqual(code, 1)
+            self.assertIn('step 2', err)
+        with r7_release_copy() as (directory, release, weights):
+            code, out, err = run_main(['--models', 'r7', '--release-dir', str(release), '--state',
+                                       str(directory / 'none.json'), 'plan', '--weights', f'r7={weights}'],
+                                      {}, NoNetwork())
+            self.assertEqual(code, 0, err)
+            self.assertEqual([f['key'] for f in json.loads(out)['files']],
+                             ['README.md', 'heocr_r7.traineddata', 'LICENSE', 'NOTICE', 'r7_training_run.json'])
+
+
 if __name__ == '__main__':
     unittest.main()
