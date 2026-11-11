@@ -92,7 +92,10 @@ planning/decisions/2026-11-10-legal-strategy.md). In short: a public-domain
 book, a faithful scan by the named library, fetched from the Internet
 Archive; no new right arises in the scan and no contract binds its reuse.
 The justification ids are listed in r7_training_run.json. Death years are
-the ones those justifications record.
+the ones those justifications record, with one exception: Alfred Dreyfus
+died in 1935 (Wikidata), but his justification conservatively records 1939,
+the Internet Archive's creator dates. Either year puts the book in the
+public domain.
 
   kolsifreperetsbe03smoluoft: Peretz Smolenskin (d. 1885), Kol Sifre, vol.
     3. Vilna: M. Katzenellenbogen, 1905. Robarts - University of Toronto.
@@ -157,8 +160,8 @@ the ones those justifications record.
   maamarmagenetsin00mode: Leon of Modena (d. 1648), Ma'amar Magen
     ve-Tsinah, edited by Abraham Geiger (d. 1874). Breslau: H. Sulzbach,
     1856. Duke University Libraries. 1,145 lines.
-  hegyoneshpinozah00rubi: Salomon Rubin (d. 1910), Hegyone Shpinozah, 1897.
-    Robarts - University of Toronto. 557 lines.
+  hegyoneshpinozah00rubi: Salomon Rubin (d. 1910), Hegyone Shpinozah.
+    Krakow: A. Faust, 1897. Robarts - University of Toronto. 557 lines.
 
 No checkpoint-selection line comes from the Internet Archive.
 
