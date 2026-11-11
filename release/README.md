@@ -303,6 +303,12 @@ Both scripts take `--models r7`, exactly as `--models r6`. `SEPARATE_RELEASES` i
 
 ## Plan for R7
 
+**Status: published on 2026-11-11.**
+- **Where:** Zenodo [10.5281/zenodo.24126449](https://doi.org/10.5281/zenodo.24126449) (record 24126449; community request f83fc631 accepted into `heocr`), mirrored on Hugging Face as [HeOCR/heocr-r7-tesseract-heb](https://huggingface.co/HeOCR/heocr-r7-tesseract-heb).
+- **No sandbox run.** R7 reuses R6's code path, which was proven in the sandbox and then in production.
+- **Checks before publishing:** the production draft's 5 files were complete; the weights' md5 matched the local model; and the creators, the Apache-2.0 licence and the 32 related links (23 of them `archive.org`, which resolve) were all right.
+- **After publishing:** the files downloaded from Zenodo and from Hugging Face both have sha256 `95faab81…`, and Tesseract 5.5.3 loads `-l heocr_r7` from the Zenodo copy. Its output on an E2d4c page is the same as the scored prediction.
+
 The same seven steps as R6, sandbox first:
 
 ```sh
