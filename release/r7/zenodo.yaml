@@ -1,0 +1,111 @@
+# Zenodo deposit metadata for R7, read by release/zenodo_deposit.py (`--models r7`).
+# R7 is a Tesseract model, as R6 is, so this is NOT HTRMoPo front matter: it is not validated
+# against the HTRMoPo v1 schema, has no `software_hints`, and R7 does not go to the `ocr_models`
+# community, which `kraken list` and `htrmopo list` read. It uses the same keys as R6's record
+# (release/README.md, "R6" and "R7"). The deposit card is this front matter between `---` lines,
+# with `id` added, followed by card_body.md. `id` is added at R7 plan step 2: the version DOI
+# reserved for this record's draft.
+summary: Hebrew printed-text recognition for Tesseract, fine-tuned from tessdata_best heb on real public-domain NLI and Internet Archive scans with Project Ben-Yehuda text (HeOCR R7)
+# Creators: as the R4d, A1, R3h and R6 records (release/README.md, "Deposits"). Person names
+# are "Family, Given"; `type` is the InvenioRDM creator type.
+authors:
+  - name: Palachy Affek, Shay
+    type: personal
+    orcid: https://orcid.org/0000-0002-1459-9320
+  - name: HeOCR maintainers
+    type: organizational
+license: Apache-2.0
+software_name: tesseract
+language:
+  - heb
+script:
+  - Hebr
+tags:
+  - tesseract
+  - traineddata
+  - hebrew
+  - printed
+  - ocr
+  - text-recognition
+  - real scans
+  - HeOCR
+model_type:
+  - recognition
+metrics:  # percent, hocrgen primary.v1, Tesseract 5.5.3 psm 3, E2d4c (see the card body)
+  cer_e2d4c_38: 20.9
+  wer_e2d4c_38: 39.3
+  cer_e2d4c_10: 39.3
+# isDerivedFrom links (InvenioRDM related identifiers): the base model, the training scans
+# (the 7 NLI IIIF manifests and the 23 Internet Archive items) and the transcription source.
+# No link to R6 (10.5281/zenodo.24109989): the script maps every `related` item to
+# isDerivedFrom, and R7 is not derived from R6 (it starts from the same base). Nor
+# isNewVersionOf: R7 supersedes nothing, and it is a record of its own, not a Zenodo version
+# of R6's. The card body names R6 and its DOI.
+related:
+  - identifier: https://github.com/tesseract-ocr/tessdata_best/blob/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/heb.traineddata
+    resource_type: software
+  - identifier: https://iiif.nli.org.il/IIIFv21/990017640460205171/manifest
+    resource_type: image
+  - identifier: https://iiif.nli.org.il/IIIFv21/990020308000205171/manifest
+    resource_type: image
+  - identifier: https://iiif.nli.org.il/IIIFv21/990020495520205171/manifest
+    resource_type: image
+  - identifier: https://iiif.nli.org.il/IIIFv21/990020522850205171/manifest
+    resource_type: image
+  - identifier: https://iiif.nli.org.il/IIIFv21/990020466440205171/manifest
+    resource_type: image
+  - identifier: https://iiif.nli.org.il/IIIFv21/990019385920205171/manifest
+    resource_type: image
+  - identifier: https://iiif.nli.org.il/IIIFv21/990013538860205171/manifest
+    resource_type: image
+  - identifier: https://archive.org/details/kolsifreperetsbe03smoluoft
+    resource_type: image
+  - identifier: https://archive.org/details/sifrehazikhronot00mont
+    resource_type: image
+  - identifier: https://archive.org/details/kolsifreperetsbe01smoluoft
+    resource_type: image
+  - identifier: https://archive.org/details/kolsifreperetsbe05smoluoft
+    resource_type: image
+  - identifier: https://archive.org/details/miyarketetevel008800
+    resource_type: image
+  - identifier: https://archive.org/details/ldpd_15772050_000
+    resource_type: image
+  - identifier: https://archive.org/details/mabeothayehudims00raff
+    resource_type: image
+  - identifier: https://archive.org/details/atn3681.0001.001.umich.edu
+    resource_type: image
+  - identifier: https://archive.org/details/maloketravseadya00bornuoft
+    resource_type: image
+  - identifier: https://archive.org/details/mimitsrayimhusef00fran
+    resource_type: image
+  - identifier: https://archive.org/details/ademataidibruivr00benyuoft
+    resource_type: image
+  - identifier: https://archive.org/details/agadothatanaim11bach
+    resource_type: image
+  - identifier: https://archive.org/details/motsaegolahzikhr00rabbuoft
+    resource_type: image
+  - identifier: https://archive.org/details/peereakhmemedina00gree
+    resource_type: image
+  - identifier: https://archive.org/details/imanuelharomimon0000tche
+    resource_type: image
+  - identifier: https://archive.org/details/mishnatrishonimt0000klat
+    resource_type: image
+  - identifier: https://archive.org/details/igrothaasirmeiha00drey
+    resource_type: image
+  - identifier: https://archive.org/details/masaleeretsyirae00lewi
+    resource_type: image
+  - identifier: https://archive.org/details/sepherhayyeyehud01mode
+    resource_type: image
+  - identifier: https://archive.org/details/reginahashkenazi00ginsuoft
+    resource_type: image
+  - identifier: https://archive.org/details/anshekayruan00pozn
+    resource_type: image
+  - identifier: https://archive.org/details/maamarmagenetsin00mode
+    resource_type: image
+  - identifier: https://archive.org/details/hegyoneshpinozah00rubi
+    resource_type: image
+  - identifier: https://github.com/projectbenyehuda/public_domain_dump
+    resource_type: dataset
+# Zenodo communities, read by the deposit script. heocr only: not ocr_models (kraken/HTRMoPo).
+communities:
+  - heocr
