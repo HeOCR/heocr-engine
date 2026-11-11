@@ -268,3 +268,60 @@ python release/hf_upload.py --models r6 --zenodo-state $S --weights r6=…/heb.t
 **To confirm on the sandbox:** that Zenodo accepts the resource types `software` and `image` in `related` links (the first release used only `dataset`). If it does not, change them in `r6/zenodo.yaml` before production.
 
 **At deposit time:** check the training record again for local paths (the test does), and record the DOI and the publication in a planning note, as for the first release.
+
+# Third release: R7 (Tesseract), a deposit of its own
+
+**Status: drafts, nothing reserved or published.** Decision 0014 needs no per-step go-ahead. Terms: Apache-2.0, licensed by "HeOCR maintainers", as R6; inputs under decision 0015 (NLI "public domain, free use" scans and Internet Archive library scans, both credited in the NOTICE).
+
+| Model | Release file | Trained as | sha256 | Folder |
+|---|---|---|---|---|
+| R7 | `heocr_r7.traineddata` | `heb.traineddata` | `95faab81fba6fe57f854f973c1ccad2b0d1059fb951f34b17277385ceea8b303` | `r7/` |
+
+R7 is R6's recipe on a larger line set: tessdata_best `heb` (the same base and the same starter as R6, not R6 itself) fine-tuned on 95,151 real lines of `bynli_lines_v2`, from 7 NLI books and 23 Internet Archive books, labelled with Project Ben-Yehuda text. Users run it as `tesseract … -l heocr_r7 --tessdata-dir DIR --psm 3`.
+
+**What the card says.** R7 beats stock Tesseract and tessdata_best on the 38 E2d4c pages, by about 0.016 CER and 0.08–0.09 WER. It ties R6 on CER (R7 − R6 = −0.0005 [−0.0072, +0.0061]), its WER is slightly lower within the interval, and on the 10 hardest pages it is no better than stock or R6. **R7 supersedes nothing; R6 remains valid.** R6's card, record and deposit are unchanged.
+
+**How it differs from R6:**
+- **Two scan routes.** The NOTICE credits NLI with every record id, and the Internet Archive with every identifier and its contributing library. For the Internet Archive items it states that the original conditions of each item on the Internet Archive still apply: they are published there without an explicit licence (hocrgen decision 2026-11-10, open release, item 2).
+- **Rights justifications.** Each Internet Archive book carries the ids of its `hocrgen.rights_justification.v1` records (one per Ben-Yehuda work) in `r7_training_run.json`, as hocrgen's legal-strategy decision asks of a release's provenance file. All 23 were checked against the f8f_ia `editions.json` before the NOTICE was written: each is accepted, its id matches the line set's, its digitizer is a university library (none Google, none NLI), and every recorded death year is more than 70 years ago.
+- **`related` links:** the base as `software`, the 7 NLI IIIF manifests and the 23 Internet Archive items (`https://archive.org/details/<identifier>`) as `image`, and the Ben-Yehuda dump as `dataset`: 32 in all.
+- **No link to R6's record.** The script maps every `related` item to `isDerivedFrom`, and R7 is not derived from R6. `isNewVersionOf` would say that R7 replaces R6, which it does not, and R7 is a record of its own, not a Zenodo version of R6's. The card body names R6 and its DOI instead.
+
+## Files in `r7/`
+
+The same set as `r6/`: `card_body.md`, `zenodo.yaml`, `huggingface.yaml` (for `HeOCR/heocr-r7-tesseract-heb`), `NOTICE`, `LICENSE` (byte-identical) and `r7_training_run.json`. `tests/test_release_r7.py` checks them.
+
+The record is `heocr_tesseract_training_run.v1`, with R6's top-level sections in R6's order. Where R7 has more than R6:
+- `data.scans` is a list with one entry per route (`nli_free_use`, `internet_archive`). R6's single object is the one-route case.
+- Each `data.train` and `data.selection` entry has a `source`. NLI entries keep R6's keys. Internet Archive entries have `ia_identifier`, `contributing_library`, `pby_works` (each with its `rights_justification_id`), `death_years`, `publication_year`, `israel_status`, `us_status` and the justification's one-line summary.
+- `data.gates.training_list_filters` records the two filters applied after `.lstmf` conversion: train lines sharing a word 6-gram with a dev line, and lines with characters outside the starter's set.
+- `evaluation.results` gives four decimals, each delta's WER interval and page counts, and the paired comparison against R6.
+
+## The scripts for R7
+
+Both scripts take `--models r7`, exactly as `--models r6`. `SEPARATE_RELEASES` is now `("r6", "r7")`: R6 and R7 are separate releases, so a run naming both, or a state file holding the other's draft, is refused. The default `--models` stays `r4d a1 r3h`. Use an R7-only state file, for example `~/.config/heocr/zenodo-production-r7-state.json`.
+
+## Plan for R7
+
+The same seven steps as R6, sandbox first:
+
+```sh
+S=~/.config/heocr/zenodo-production-r7-state.json   # outside the repository; R7 only
+python release/zenodo_deposit.py --models r7 --production --state $S plan --weights r7=…/heb.traineddata  # any time, offline
+python release/zenodo_deposit.py --models r7 --production --state $S reserve                             # step 1
+python release/zenodo_deposit.py --models r7 --production --state $S upload --weights r7=…/heb.traineddata  # step 3
+python release/zenodo_deposit.py --models r7 --production --state $S metadata                            # step 4
+python release/zenodo_deposit.py --models r7 --production --state $S publish                             # step 6
+python release/zenodo_deposit.py --models r7 --production --state $S accept                              # step 6: heocr
+python release/hf_upload.py --models r7 --zenodo-state $S --weights r7=…/heb.traineddata                 # step 7
+```
+
+1. **Reserve** one draft and its DOI.
+2. **Fill the card by PR:** replace the `DRAFT` comment in the Citation section of `r7/card_body.md` with the reserved version DOI, and update `tests/test_release_r7.py` to expect it, as #68 did for R6.
+3. **Upload** the card as `README.md`, then `heocr_r7.traineddata` (refused unless its sha256 matches the record), `LICENSE`, `NOTICE` and `r7_training_run.json`.
+4. **Set the metadata.**
+5. **Check the draft** in Zenodo's preview. Its 32 related links include 23 `archive.org` URLs, which no earlier record had.
+6. **Publish,** then request inclusion in `heocr` and accept it with `accept`.
+7. **Mirror to Hugging Face:** `HeOCR/heocr-r7-tesseract-heb`.
+
+`plan` was run offline on this branch with no state file, once without weights and once with the trained `heb.traineddata`: the plain card check passed, the weights matched the record's sha256 (3,628,595 bytes), and it listed 5 files, 32 related links and the `heocr` community.
