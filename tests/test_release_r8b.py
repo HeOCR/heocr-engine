@@ -146,13 +146,14 @@ class R8bReleaseFilesTests(unittest.TestCase):
                 with self.subTest(set=name, model=model):
                     self.assertTrue(f"{value['cer']:.3f} / {value['wer']:.3f}" in card, (name, model))
 
-    def test_card_doi_is_still_a_draft_and_links_no_pipeline_record(self):
+    def test_card_cites_its_reserved_doi_and_links_no_pipeline_record(self):
         card = read('card_body.md')
-        self.assertIn("<!-- DRAFT: R8b's reserved version DOI", card)
+        self.assertIn('[10.5281/zenodo.24156688](https://doi.org/10.5281/zenodo.24156688)', card)
+        self.assertNotIn('DRAFT', card)
         self.assertNotIn('sharp', card.lower())  # eval: the two sharpness measures disagree on Brainin IA
         self.assertNotIn('whose labels are exact', card)  # every OLB dev line is layer-exact; 'exact' is the tier
         citation = card.split('## Citation', 1)[1]
-        self.assertNotIn(R7_DOI, citation)  # R8b cites its own DOI, once reserved (plan step 2)
+        self.assertNotIn(R7_DOI, citation)  # R8b cites its own DOI (plan step 2)
         for doi in PIPELINE_DOIS:
             self.assertNotIn(doi, card)
 
