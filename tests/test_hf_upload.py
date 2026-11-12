@@ -308,5 +308,81 @@ class R7HfTests(unittest.TestCase):
                                             'r7_training_run.json'])
 
 
+R8B_DOI = '10.5281/zenodo.888'
+R8B_FILES = ['README.md', 'heocr_r8b.traineddata', 'LICENSE', 'NOTICE', 'r8b_training_run.json']
+
+
+@contextlib.contextmanager
+def r8b_release_copy(api=None, records=None):
+    """A release/ copy with R8b only: its card cites R8B_DOI, fake weights match its record; an R8b-only state file."""
+    with tempfile.TemporaryDirectory() as directory:
+        directory = Path(directory)
+        release = directory / 'release'
+        shutil.copytree(ROOT / 'release' / 'r8b', release / 'r8b')
+        body = release / 'r8b' / 'card_body.md'
+        body.write_text(body.read_text(encoding='utf-8') + f'\nCite {R8B_DOI}.\n', encoding='utf-8')
+        weights = directory / 'heb.traineddata'
+        weights.write_bytes(b'r8b weights')
+        record_path = release / 'r8b' / 'r8b_training_run.json'
+        record = json.loads(record_path.read_text(encoding='utf-8'))
+        record['output']['model_sha256'] = hashlib.sha256(b'r8b weights').hexdigest()
+        record_path.write_text(json.dumps(record), encoding='utf-8')
+        state = directory / 'r8b-state.json'
+        state.write_text(json.dumps({'api': api or hf.zenodo.PRODUCTION,
+                                     'records': records or {'r8b': {'id': 'rec8', 'doi': R8B_DOI}}}))
+        yield release, weights, state
+
+
+class R8bHfTests(unittest.TestCase):
+    def test_r8b_repository(self):
+        self.assertEqual(hf.HF_REPOS['r8b'], 'HeOCR/heocr-r8b-tesseract-heb')
+        self.assertEqual(hf.HF_REPOS['r7'], 'HeOCR/heocr-r7-tesseract-heb')  # R7's repository is unchanged
+        self.assertEqual(hf.MODELS, ('r4d', 'a1', 'r3h'))
+
+    def test_r8b_dry_run_plans_one_public_repo_without_network_or_token(self):
+        with r8b_release_copy(api=hf.zenodo.SANDBOX) as (release, weights, state):
+            code, out, err = run(['--dry-run', '--models', 'r8b', '--release-dir', str(release),
+                                  '--zenodo-state', str(state), '--weights', f'r8b={weights}'])
+        self.assertEqual(code, 0, err)
+        planned = json.loads(out)
+        self.assertEqual((planned['repo_id'], planned['public']), ('HeOCR/heocr-r8b-tesseract-heb', True))
+        self.assertEqual([f['path'] for f in planned['files']], R8B_FILES)
+
+    def test_r8b_card_front_matter_names_r7_as_its_base(self):
+        with r8b_release_copy() as (release, _, _):
+            card = hf.build_card('r8b', R8B_DOI, release)
+        front = card.split('\n---\n', 1)[0]
+        self.assertTrue(front.startswith('---\nlicense: apache-2.0'))
+        for line in ('base_model: HeOCR/heocr-r7-tesseract-heb', 'base_model_relation: finetune', '  - he',
+                     '  - tesseract', '  - ocr', '  - hebrew'):
+            self.assertIn(line, front.splitlines())
+        self.assertNotIn('#', front)
+
+    def test_the_r8b_repository_card_is_refused_until_it_cites_its_doi(self):
+        with self.assertRaisesRegex(hf.DepositError, 'step 2'):
+            hf.build_card('r8b', R8B_DOI)
+
+    def test_r8b_needs_its_own_state_file(self):
+        with r8b_release_copy(records={'r7': {'id': 'rec7', 'doi': '10.5281/zenodo.24126449'}}) as (release, weights,
+                                                                                                    state):
+            code, _, err = run(['--dry-run', '--models', 'r8b', '--release-dir', str(release),
+                                '--zenodo-state', str(state), '--weights', f'r8b={weights}'])
+        self.assertEqual(code, 1)
+        self.assertIn('own state file', err)
+        with r8b_release_copy() as (release, weights, state):
+            code, _, err = run(['--dry-run', '--models', 'r7', 'r8b', '--release-dir', str(release),
+                                '--zenodo-state', str(state), '--weights', f'r8b={weights}', f'r7={weights}'])
+        self.assertEqual(code, 1)
+        self.assertIn('release of its own', err)
+
+    def test_r8b_upload_is_one_commit_to_its_repo(self):
+        with r8b_release_copy() as (release, weights, _):
+            fake = FakeHfApi()
+            hf.upload(fake, hf.plan('r8b', weights, R8B_DOI, release), 'r8b', Add)
+        self.assertEqual([c[:2] for c in fake.calls], [('create_repo', 'HeOCR/heocr-r8b-tesseract-heb'),
+                                                       ('create_commit', 'HeOCR/heocr-r8b-tesseract-heb')])
+        self.assertEqual(fake.calls[1][2], R8B_FILES)
+
+
 if __name__ == '__main__':
     unittest.main()

@@ -14,9 +14,9 @@ Each subcommand is one step of the plan (no per-step go-ahead since decision 001
 Step 2 (putting the reserved DOIs into the cards, by PR) and step 5 (checking the previews) are done by hand.
 
 - **Releases:** the first release is the kraken pipeline R4d + A1 + R3h, the default `--models`, with HTRMoPo cards.
-  R6 and R7 (Tesseract) are each a release of their own (`--models r6`, `--models r7`): a plain card that is not
-  HTRMoPo-validated, their own communities (not `ocr_models`), and their own state file. One run never mixes two
-  releases.
+  R6, R7 and R8b (Tesseract) are each a release of their own (`--models r6`, `--models r7`, `--models r8b`): a plain
+  card that is not HTRMoPo-validated, their own communities (not `ocr_models`), and their own state file. One run
+  never mixes two releases.
 
 - **Target:** the Zenodo sandbox, unless `--production` is given.
 - **Tokens:** read only from the environment (`ZENODO_SANDBOX_TOKEN`, or `ZENODO_TOKEN` with `--production`). A token
@@ -53,7 +53,7 @@ OWNED_COMMUNITIES = {SANDBOX: {"heocr": "c261ed63-f520-48a3-90c2-c64ed1cc0395"},
 # The first release, in deposit order (the pipeline order of the cards' tables). These cards are HTRMoPo v1.
 MODELS = ("r4d", "a1", "r3h")
 # Later models, each a release of its own with its own state file. Their zenodo.yaml is not HTRMoPo front matter.
-SEPARATE_RELEASES = ("r6", "r7")
+SEPARATE_RELEASES = ("r6", "r7", "r8b")
 CHOICES = MODELS + SEPARATE_RELEASES
 # htrmopo 0.5 files models as legacy `upload_type: publication`, `publication_type: other`.
 RESOURCE_TYPE = {"id": "publication-other"}
@@ -144,7 +144,7 @@ def record_metadata(front: dict, description_html: str, publication_date: str) -
         metadata["related_identifiers"] = [{"identifier": url, "scheme": "url",
                                             "relation_type": {"id": "isderivedfrom"},
                                             "resource_type": {"id": "dataset"}} for url in front["datasets"]]
-    # `related` (R6, R7; not HTRMoPo): isDerivedFrom links with their own resource type, e.g. a base model or scans.
+    # `related` (R6, R7, R8b; not HTRMoPo): isDerivedFrom links with their own resource type, e.g. a base model or scans.
     for item in front.get("related") or ():
         metadata.setdefault("related_identifiers", []).append({
             "identifier": item["identifier"], "scheme": "url", "relation_type": {"id": "isderivedfrom"},
@@ -153,7 +153,7 @@ def record_metadata(front: dict, description_html: str, publication_date: str) -
 
 
 def release_of(model: str) -> str:
-    """The release a model belongs to: "first" for R4d + A1 + R3h, else the model itself (R6, R7)."""
+    """The release a model belongs to: "first" for R4d + A1 + R3h, else the model itself (R6, R7, R8b)."""
     return "first" if model in MODELS else model
 
 
@@ -175,7 +175,7 @@ def validate_front(model: str, validate=None):
 
 
 def validate_plain(front: dict) -> None:
-    """A non-HTRMoPo card (R6, R7): the keys the deposit maps, and never the kraken-only ocr_models community."""
+    """A non-HTRMoPo card (R6, R7, R8b): the keys the deposit maps, and never the kraken-only ocr_models community."""
     missing = [key for key in ("id", "summary", "authors", "license") if not front.get(key)]
     if missing:
         raise DepositError(f"The front matter lacks {', '.join(missing)}")
@@ -407,8 +407,8 @@ def main(argv=None, environ=os.environ, opener=None) -> int:
     parser.add_argument("--production", action="store_true", help="zenodo.org instead of the sandbox (default)")
     parser.add_argument("--state", type=Path, required=True, help="state file outside the repository")
     parser.add_argument("--models", nargs="+", choices=CHOICES, default=list(MODELS),
-                        help="default: the first release, r4d a1 r3h. r6 and r7 are each a release of their own: "
-                             "give one alone, with its own state file")
+                        help="default: the first release, r4d a1 r3h. r6, r7 and r8b are each a release of their "
+                             "own: give one alone, with its own state file")
     parser.add_argument("--release-dir", type=Path, default=RELEASE,
                         help="folder with the model folders (default: this repository's release/). Sandbox only: a "
                              "production deposit uses the approved, pinned files in the repository")

@@ -1,0 +1,2620 @@
+{
+ "schema_version": "heocr_tesseract_training_run.v1",
+ "schema_note": "A minimal record for a Tesseract fine-tune, defined in release/README.md (R6). heocr_engine_training_run.v1 does not fit: it describes ketos runs made by heocr-engine train-kraken, its init must be from_scratch or a fine-tune of a project recognizer with its own record, its data must be a hocrsyngen batch (annotations and generation-manifest sha256), and its text_order assumes kraken's display-order reordering. R6, R7 and R8b are lstmtraining runs from a third-party base model (tessdata_best, through R7 for R8b) on real scanned and other lines, run by hand from task scripts. This record keeps the same top-level sections where they apply and has no local paths; <placeholders> stand for local files.",
+ "model": "R8b",
+ "task": "recognition",
+ "engine": {
+  "name": "tesseract",
+  "version": "5.5.3",
+  "leptonica_version": "1.87.0",
+  "executable_sha256": "d3d15b31535c2dd88cbbb53ec54a16b9a739f4146e1648b4b6ad57cf5ce79f1d",
+  "build": "Homebrew bottle, macOS arm64"
+ },
+ "trainer": {
+  "name": "lstmtraining",
+  "version": "5.5.3",
+  "executable_sha256": "2d93f9c95a3b2b543c1c47bd599442d9a9fe472a0e19e3cf1ee68e9db16cb900",
+  "lstmeval_sha256": "8a364e65381eb731a6bb8d6240c41d8736319af15ae6f2953e79f5cfeeaabac8",
+  "combine_tessdata_sha256": "5c2c817aeb8a0d1db941c40dc2fe46487269532ec514c6b0418dac626fa2e798"
+ },
+ "init": {
+  "kind": "continue_from_project_model",
+  "from_model": {
+   "name": "HeOCR R7",
+   "doi": "10.5281/zenodo.24126449",
+   "checkpoint": "lr1e4/heb_0.634_52608_117100",
+   "checkpoint_sha256": "7bfac6d340ae9cb23bdeedefc2300cd50ee8158005c74a8b95988b0fba35587a",
+   "released_model_sha256": "95faab81fba6fe57f854f973c1ccad2b0d1059fb951f34b17277385ceea8b303",
+   "old_traineddata_sha256": "8b9d798a456bd1d4cd8bdf71b3d7b9d7579cea6cbd51302accd57f521669b846",
+   "note": "the checkpoint R7 was packed from; R7 is itself a fine-tune of the base below"
+  },
+  "base_model": {
+   "name": "tessdata_best heb",
+   "repository": "https://github.com/tesseract-ocr/tessdata_best",
+   "commit": "e12c65a915945e4c28e237a9b52bc4a8f39a0cec",
+   "file_name": "heb.traineddata",
+   "git_blob": "0fc27335b628e0e7992c58804c0437662ec54b06",
+   "sha256": "dbaa827aea6bc21215638447f17783a1004987c2d0bf5573d111fee397abdae5",
+   "licence": "Apache-2.0",
+   "version_string": "4.00.00alpha:heb:synth20170629:[1,36,0,1Ct3,3,16Mp3,3Lfys48Lfx96Lrx96Lfx192O1c1]",
+   "lstm_sha256": "8f3271676f6dbd4e13382d4bb84c69e9b0ff25316686647689d34a7c22b5532c",
+   "lstm_extracted_with": [
+    "<combine_tessdata>",
+    "-e",
+    "<base>/heb.traineddata",
+    "<base>/heb.lstm"
+   ]
+  },
+  "starter_traineddata": {
+   "sha256": "202272593630b4eddba57d5b09f5d3a142ed551b9550094e2885eb1b359fe037",
+   "bytes": 604650,
+   "name": "the R8 starter (R6's and R7's starter plus ׳ ״ —)",
+   "unicharset": "the base's LSTM unicharset plus U+05BE (maqaf), U+2013 (en dash), U+05F3 (geresh), U+05F4 (gershayim) and U+2014 (em dash): 74 unicharset entries, 73 codes; lstm-unicharset sha256 fd56926d9c3e2c37faa1f90d4f6960c5ac9ced92f03d326f72b03c1ecdd481a7",
+   "dictionary": "the base's own word list (70,171 entries, recovered with dawg2wordlist), rebuilt with combine_lang_model --lang_is_rtl, norm mode 2; lstm-word-dawg sha256 a618186eb88789a203c2475ec30fbe2277427f97d063a8bf91cc564c0a166649",
+   "build_files": {
+    "repository": "https://github.com/tesseract-ocr/langdata_lstm",
+    "commit": "07930fd9f246622c26eb5de794d9212ceac432d3",
+    "licence": "Apache-2.0",
+    "files": [
+     "radical-stroke.txt",
+     "Hebrew.unicharset",
+     "Latin.unicharset",
+     "heb/heb.punc",
+     "heb/heb.numbers"
+    ]
+   },
+   "note": "R7's starter was 8b9d798a…; R8a, the S17a A/B arms and R8b use this one"
+  },
+  "network_spec": "[1,36,0,1Ct3,3,16Mp3,3Lfys48Lfx96Lrx96Lfx192O1c1]",
+  "output_codes": {
+   "base": 69,
+   "r7": 70,
+   "fine_tuned": 73
+  }
+ },
+ "data": {
+  "line_sets": [
+   {
+    "name": "bynli_lines_v2",
+    "schema": "s16c_benyehuda_nli_lines.v2",
+    "manifest_sha256": "53dd7f1a10929ad4a60020ad7f42be62f27ee905cb7e6cfb0e319c5b2f5db7ca",
+    "train_lines": 95296,
+    "note": "R7's 95,151 lines plus the 145 lines with ׳ ״ — that R7's starter could not represent; built by hocrgen 1921bbe (docs/f8f_r7_handoff.md)"
+   },
+   {
+    "name": "bynli_lines_v3",
+    "schema": "s16c_benyehuda_nli_lines.v2",
+    "manifest_sha256": "4cba250f0f3e9207d26fd6e7415b1ed37132123c9c0c9ec961cc58ed0490994e",
+    "train_lines": 62808,
+    "note": "hocrgen 93a413f (docs/f8f_r8_handoff.md); train minus Kevar and Yedi'ot ha-Teva (selection) and Zerubavel (overlap), minus 74 lines sharing a word 6-gram with a dev or scored set"
+   },
+   {
+    "name": "reshumotlines_v1",
+    "schema": "s16c_reshumot_lines.v1",
+    "manifest_sha256": "a6de99ba6943209ba80a809b6bf64ff0e425d860b5787a5201a6d8153efc8a5c",
+    "train_lines": 19533,
+    "note": "hocrgen docs/reshumot_lines.md; 20,926 train lines minus 95 with characters outside the starter (Latin, mostly; 107 with the 12 dev lines), 347 sharing a 6-gram with reshumot dev and 951 sharing one with P-mod evaluation-booklet text (mostly date headers and enactment formulas)"
+   },
+   {
+    "name": "wslines_v1",
+    "schema": "wikisource lines",
+    "manifest_sha256": "25ed7ff97d6cd1d05774de6377d4481483981ebcdc7460472d041118df988f99",
+    "train_lines": 11,
+    "note": "R8a trained on 3,812; 3,801 were dropped for R8b (line_verify Indexes)"
+   },
+   {
+    "name": "s17a_addon_v1.1",
+    "schema": "s17a add-on",
+    "manifest_sha256": "3f79461b6842b396d62139ddf6501554428abfe735e7e8274cd1bf8261355f1e",
+    "train_lines": 18627,
+    "note": "synthetic; v1 minus 37 lines tied to the R8b selection books"
+   }
+  ],
+  "labels": {
+   "source": "scanned book lines and synthetic lines: Project Ben-Yehuda edition text (books placed by the F8f alignment, never OCR output); Reshumot lines: the publisher's born-digital PDF text layer; Wikisource lines: the proofread transcription",
+   "text_source": {
+    "name": "Project Ben-Yehuda public_domain_dump",
+    "url": "https://github.com/projectbenyehuda/public_domain_dump",
+    "release": "2026-03",
+    "licence": "public domain (dump LICENSE)",
+    "release_files_sha256": {
+     "txt.zip": "c7fa0535ca08c18c1068da6fdd4436413dfb4a34aa36eae2ba0c28e2a5171122",
+     "txt_stripped.zip": "8c8e1007f1c7c0dbf90a7a1c2257d2febfc9fabb15e6c12d4d514f39a9b9a6d1"
+    }
+   },
+   "normalisation": "NFC, logical order; niqqud removed; '…' as '...', '„' as '\"', soft hyphens removed",
+   "niqqud": false,
+   "label_character_check": "every label character is in the starter unicharset (build_lists.py asserts it)"
+  },
+  "gates": {
+   "book_lines": "as R7 (min alignment score 0.9, min line-OCR similarity 0.7, max height ratio 1.6, at most 6,100 lines per record, pointed prints dropped); bynli_lines_v3 also drops pointed spans in unpointed prints",
+   "reshumot": "born-digital check per booklet; hocrgen.split.eval_reserved.refuse_eval_reserved_training_input passes on all 19,533 rows (non_eval booklets only)",
+   "training_list_filters": {
+    "script": "task script build_lists.py (R8b), then eval's check_train_overlap.py drops",
+    "dropped": {
+     "bynli_lines_v3_shares_a_6gram_with_a_dev_or_scored_set": 74,
+     "reshumot_shares_a_6gram_with_reshumot_dev": 347,
+     "reshumot_train_outside_the_starter_unicharset": 95,
+     "eval_check_line_verify_units_wslines_v1": 3801,
+     "eval_check_reshumot_vs_pmod_eval_booklets": 951
+    },
+    "order": "seeded shuffle, seed 20261111 (lstmtraining reads a list in order)"
+   }
+  },
+  "scans": [
+   {
+    "route": "nli_free_use",
+    "holder": "National Library of Israel",
+    "attribution": "From the collections of the National Library of Israel / מאוסף הספרייה הלאומית",
+    "licence_label": "public domain, free use",
+    "licence_url": "https://www.nli.org.il/contenteditors/pages-for-terms-of-use/public-domain-free-use",
+    "manifest_url_pattern": "https://iiif.nli.org.il/IIIFv21/<record_id>/manifest",
+    "gate": "hocrgen decide_nli_rights (licence slug public-domain-free-use only)",
+    "rights_basis": "heocr-engine decision 0015; hocrgen planning/decisions/2026-11-10-legal-strategy.md rule 2 (NLI's own free-use scans stay in, with attribution)"
+   },
+   {
+    "route": "internet_archive",
+    "holder": "Internet Archive, scans made by the contributing library of each item",
+    "source_class": "ia_library_scan_no_licence_field",
+    "licence_label": null,
+    "licence_note": "published on the Internet Archive without an explicit licence (no licenseurl or rights field); the original conditions of each item on the Internet Archive still apply",
+    "item_url_pattern": "https://archive.org/details/<ia_identifier>",
+    "digitizers": "university libraries for 33 items; Google for 4 (see google_scans); none NLI-origin",
+    "gate": "hocrgen.fetchers.ia_iiif.decide_ia_rights (planning/decisions/2026-11-09-internet-archive-library-scans.md)",
+    "rights_justification": "hocrgen.rights_justification.v1, one per Ben-Yehuda work and scan, generated by hocrgen.fetchers.ia_justification.build_ia_rights_justification (as of 2026-11-10); every training row carries its id",
+    "rights_basis": "heocr-engine decision 0015; hocrgen planning/decisions/2026-11-10-legal-strategy.md (Route B) and 2026-11-10-open-release-and-clean-inputs.md item 2"
+   },
+   {
+    "route": "internet_archive (Google-digitized)",
+    "source_class": "ia_google_digitized_scan",
+    "digitizer": "Digitized by Google; retrieved via the Internet Archive",
+    "items": [
+     "afahleneemaniml00fngoog",
+     "mikhtavimmiarsh00mezagoog",
+     "korothayehudimb00friegoog",
+     "tsitsimuferaimm00geiggoog"
+    ],
+    "contributing_libraries": {
+     "afahleneemaniml00fngoog": "University of California",
+     "mikhtavimmiarsh00mezagoog": "unknown library",
+     "korothayehudimb00friegoog": "University of California",
+     "tsitsimuferaimm00geiggoog": "University of California"
+    },
+    "hygiene": "canvas 0 (Google's usage-guidelines page) excluded; no 'Digitized by Google' watermark found on any other page; no training line from canvas 0",
+    "rights_basis": "hocrgen planning/decisions/2026-11-10-legal-strategy.md rule 3 (Routes B and C: Google-digitized scans fetched from the Internet Archive or Wikimedia Commons are admitted) and rule 5 (hygiene); heocr-engine planning/decisions/0015-legal-strategy.md"
+   },
+   {
+    "route": "wikimedia_commons",
+    "items": [
+     "File:Salomon Buber. Sifre de-agadeta al megilat Ester.1886.pdf"
+    ],
+    "rights_basis": "hocrgen planning/decisions/2026-11-10-legal-strategy.md (Route C); justification rj:ws_index_332490:0b20c1d7e01b in hocrgen docs/wikisource_rights_justifications.json"
+   },
+   {
+    "route": "reshumot_born_digital",
+    "holder": "Reshumot, the official gazette of the State of Israel",
+    "licence": "PD-IL: Copyright Act 2007 section 6 (laws and regulations); status outside Israel not asserted",
+    "capture": "rendered by HeOCR from the publisher's PDFs (pdftoppm, 150 dpi grey); not scans"
+   }
+  ],
+  "split": {
+   "unit": "record (whole book or booklet)",
+   "train_lines": 196275,
+   "selection_lines": 3000,
+   "train_lines_before_filters": 201027
+  },
+  "train": [
+   {
+    "source": "nli_free_use",
+    "record_id": "990017640460205171",
+    "book": "tolstoy-anna-karenina-1918",
+    "title": "Anna Karenina (Hebrew)",
+    "creators": "Leo Tolstoy (1828-1910); translated by Yosef Eliyahu Triwosch (1855-1940)",
+    "published": "Moscow: A. Y. Stybel, 1918-1922",
+    "lines": 6100,
+    "us_status": "pd_us (published before 1931)",
+    "line_set": "bynli_lines_v2"
+   },
+   {
+    "source": "nli_free_use",
+    "record_id": "990020308000205171",
+    "book": "berashadsky-sipurim-1910",
+    "title": "Ketavim Aharonim",
+    "creators": "Yeshayahu Berashadsky (1871-1908); Pesach Kaplan (1870-1943); Ben-Avigdor (1866-1921)",
+    "published": "Warsaw: Tushiya, 1910",
+    "lines": 6076,
+    "us_status": "pd_us (published before 1931)",
+    "line_set": "bynli_lines_v2"
+   },
+   {
+    "source": "nli_free_use",
+    "record_id": "990020495520205171",
+    "book": "citron-ahorei-hapargod-1923",
+    "title": "Me-Ahorei ha-Pargod",
+    "creators": "Shmuel Leib Citron (1860-1930)",
+    "published": "Vilna: Z. Matz, 1923-1925",
+    "lines": 6052,
+    "us_status": "pd_us (published before 1931)",
+    "line_set": "bynli_lines_v2"
+   },
+   {
+    "source": "nli_free_use",
+    "record_id": "990020522850205171",
+    "book": "tchernowitz-hamadpis-1927",
+    "title": "Im Shahar",
+    "creators": "Shmuel Tchernowitz (1879-1929)",
+    "published": "Jerusalem: Ha-Madpis, 1927",
+    "lines": 1511,
+    "us_status": "pd_us (published before 1931)",
+    "line_set": "bynli_lines_v2"
+   },
+   {
+    "source": "nli_free_use",
+    "record_id": "990020466440205171",
+    "book": "frischmann-yom-hakippurim-1881",
+    "title": "Be-Yom ha-Kippurim",
+    "creators": "David Frischmann (1859-1922)",
+    "published": "Warsaw: Y. Alapin, 1881",
+    "lines": 72,
+    "us_status": "pd_us (published before 1931)",
+    "line_set": "bynli_lines_v2"
+   },
+   {
+    "source": "nli_free_use",
+    "record_id": "990019385920205171",
+    "book": "frank-agadot-hazohar-1924",
+    "title": "Sefer Agadot ha-Zohar",
+    "creators": "Azriel Natan Frank (1863-1924)",
+    "published": "Warsaw: Ahiasaf, 1923-1924",
+    "lines": 8,
+    "us_status": "pd_us (published before 1931)",
+    "line_set": "bynli_lines_v2"
+   },
+   {
+    "source": "nli_free_use",
+    "record_id": "990013538860205171",
+    "book": "katzenelson-shirim-1938",
+    "title": "Shirim",
+    "creators": "Yitzhak Katzenelson (1885-1944); illustrations by Henoch Barczynski (1896-1944)",
+    "published": "Lodz: Hovevei Shira, 1938",
+    "lines": 1,
+    "us_status": "not_established",
+    "line_set": "bynli_lines_v2"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "kolsifreperetsbe03smoluoft",
+    "contributing_library": "Robarts - University of Toronto",
+    "lines": 6100,
+    "pby_works": [
+     {
+      "pby_id": "1289",
+      "rights_justification_id": "rj:kolsifreperetsbe03smoluoft:bcff8d04403a"
+     },
+     {
+      "pby_id": "3304",
+      "rights_justification_id": "rj:kolsifreperetsbe03smoluoft:dac2f231187a"
+     },
+     {
+      "pby_id": "6772",
+      "rights_justification_id": "rj:kolsifreperetsbe03smoluoft:05ce8d763f5f"
+     }
+    ],
+    "death_years": [
+     1885
+    ],
+    "publication_year": 1905,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1885, printed 1905); faithful scan digitized by Robarts - University of Toronto; fetched from the Internet Archive (kolsifreperetsbe03smoluoft); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Robarts - University of Toronto"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "sifrehazikhronot00mont",
+    "contributing_library": "Robarts - University of Toronto",
+    "lines": 6100,
+    "pby_works": [
+     {
+      "pby_id": "8515",
+      "rights_justification_id": "rj:sifrehazikhronot00mont:eadc780193cf"
+     }
+    ],
+    "death_years": [
+     1920
+    ],
+    "publication_year": 1898,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1920, printed 1898); faithful scan digitized by Robarts - University of Toronto; fetched from the Internet Archive (sifrehazikhronot00mont); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Robarts - University of Toronto"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "kolsifreperetsbe01smoluoft",
+    "contributing_library": "Robarts - University of Toronto",
+    "lines": 6096,
+    "pby_works": [
+     {
+      "pby_id": "1909",
+      "rights_justification_id": "rj:kolsifreperetsbe01smoluoft:552f7f51d96a"
+     },
+     {
+      "pby_id": "3814",
+      "rights_justification_id": "rj:kolsifreperetsbe01smoluoft:4bbf2669f758"
+     }
+    ],
+    "death_years": [
+     1885
+    ],
+    "publication_year": 1905,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1885, printed 1905); faithful scan digitized by Robarts - University of Toronto; fetched from the Internet Archive (kolsifreperetsbe01smoluoft); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Robarts - University of Toronto"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "kolsifreperetsbe05smoluoft",
+    "contributing_library": "Robarts - University of Toronto",
+    "lines": 5489,
+    "pby_works": [
+     {
+      "pby_id": "784",
+      "rights_justification_id": "rj:kolsifreperetsbe05smoluoft:f25549020da5"
+     }
+    ],
+    "death_years": [
+     1885
+    ],
+    "publication_year": 1905,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1885, printed 1905); faithful scan digitized by Robarts - University of Toronto; fetched from the Internet Archive (kolsifreperetsbe05smoluoft); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Robarts - University of Toronto"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "miyarketetevel008800",
+    "contributing_library": "University of Florida, George A. Smathers Libraries",
+    "lines": 4760,
+    "pby_works": [
+     {
+      "pby_id": "56747",
+      "rights_justification_id": "rj:miyarketetevel008800:a1b4450f7fda"
+     }
+    ],
+    "death_years": [
+     1937
+    ],
+    "publication_year": 1914,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1937, printed 1914); faithful scan digitized by University of Florida, George A. Smathers Libraries; fetched from the Internet Archive (miyarketetevel008800); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "University of Florida, George A. Smathers Libraries"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "ldpd_15772050_000",
+    "contributing_library": "Columbia University Libraries",
+    "lines": 4639,
+    "pby_works": [
+     {
+      "pby_id": "6383",
+      "rights_justification_id": "rj:ldpd_15772050_000:9ac4be8b8e29"
+     }
+    ],
+    "death_years": [
+     1889,
+     1891
+    ],
+    "publication_year": 1881,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1889, translator d. 1891, printed 1881); faithful scan digitized by Columbia University Libraries; fetched from the Internet Archive (ldpd_15772050_000); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Columbia University Libraries"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "mabeothayehudims00raff",
+    "contributing_library": "Robarts - University of Toronto",
+    "lines": 4137,
+    "pby_works": [
+     {
+      "pby_id": "49273",
+      "rights_justification_id": "rj:mabeothayehudims00raff:8d523062e6e8"
+     }
+    ],
+    "death_years": [
+     1923
+    ],
+    "publication_year": 1913,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1923, printed 1913); faithful scan digitized by Robarts - University of Toronto; fetched from the Internet Archive (mabeothayehudims00raff); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Robarts - University of Toronto"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "atn3681.0001.001.umich.edu",
+    "contributing_library": "University of Michigan",
+    "lines": 4065,
+    "pby_works": [
+     {
+      "pby_id": "36135",
+      "rights_justification_id": "rj:atn3681.0001.001.umich.edu:ef66ebd78fd4"
+     }
+    ],
+    "death_years": [
+     1931
+    ],
+    "publication_year": 1883,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1931, printed 1883); faithful scan digitized by University of Michigan; fetched from the Internet Archive (atn3681.0001.001.umich.edu); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "University of Michigan"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "maloketravseadya00bornuoft",
+    "contributing_library": "Robarts - University of Toronto",
+    "lines": 3658,
+    "pby_works": [
+     {
+      "pby_id": "34348",
+      "rights_justification_id": "rj:maloketravseadya00bornuoft:f1664ea52c1f"
+     }
+    ],
+    "death_years": [
+     1928
+    ],
+    "publication_year": 1904,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1928, printed 1904); faithful scan digitized by Robarts - University of Toronto; fetched from the Internet Archive (maloketravseadya00bornuoft); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Robarts - University of Toronto"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "mimitsrayimhusef00fran",
+    "contributing_library": "Robarts - University of Toronto",
+    "lines": 3590,
+    "pby_works": [
+     {
+      "pby_id": "43725",
+      "rights_justification_id": "rj:mimitsrayimhusef00fran:519f68b85d9a"
+     },
+     {
+      "pby_id": "65351",
+      "rights_justification_id": "rj:mimitsrayimhusef00fran:00eab6548f22"
+     }
+    ],
+    "death_years": [
+     1871,
+     1894,
+     1899
+    ],
+    "publication_year": 1862,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1894, translator d. 1899, printed 1862); faithful scan digitized by Robarts - University of Toronto; fetched from the Internet Archive (mimitsrayimhusef00fran); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Robarts - University of Toronto"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "ademataidibruivr00benyuoft",
+    "contributing_library": "Robarts - University of Toronto",
+    "lines": 2980,
+    "pby_works": [
+     {
+      "pby_id": "1198",
+      "rights_justification_id": "rj:ademataidibruivr00benyuoft:bc301519a438"
+     },
+     {
+      "pby_id": "1517",
+      "rights_justification_id": "rj:ademataidibruivr00benyuoft:81aed4e6b861"
+     },
+     {
+      "pby_id": "1693",
+      "rights_justification_id": "rj:ademataidibruivr00benyuoft:69c6f0cebb77"
+     },
+     {
+      "pby_id": "5250",
+      "rights_justification_id": "rj:ademataidibruivr00benyuoft:50ccfa1ddf99"
+     },
+     {
+      "pby_id": "5892",
+      "rights_justification_id": "rj:ademataidibruivr00benyuoft:99c53f1b327a"
+     },
+     {
+      "pby_id": "6217",
+      "rights_justification_id": "rj:ademataidibruivr00benyuoft:e3edbcbec5ab"
+     },
+     {
+      "pby_id": "7523",
+      "rights_justification_id": "rj:ademataidibruivr00benyuoft:78637c00cac4"
+     }
+    ],
+    "death_years": [
+     1922
+    ],
+    "publication_year": 1919,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1922, printed 1919); faithful scan digitized by Robarts - University of Toronto; fetched from the Internet Archive (ademataidibruivr00benyuoft); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Robarts - University of Toronto"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "agadothatanaim11bach",
+    "contributing_library": "University of Illinois Urbana-Champaign",
+    "lines": 2977,
+    "pby_works": [
+     {
+      "pby_id": "64894",
+      "rights_justification_id": "rj:agadothatanaim11bach:3c7a46662825"
+     }
+    ],
+    "death_years": [
+     1913,
+     1945
+    ],
+    "publication_year": 1922,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1913, translator d. 1945, printed 1922); faithful scan digitized by University of Illinois Urbana-Champaign; fetched from the Internet Archive (agadothatanaim11bach); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "University of Illinois Urbana-Champaign"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "motsaegolahzikhr00rabbuoft",
+    "contributing_library": "Robarts - University of Toronto",
+    "lines": 2852,
+    "pby_works": [
+     {
+      "pby_id": "28955",
+      "rights_justification_id": "rj:motsaegolahzikhr00rabbuoft:e66b73ec5b0a"
+     }
+    ],
+    "death_years": [
+     1910
+    ],
+    "publication_year": 1894,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1910, printed 1894); faithful scan digitized by Robarts - University of Toronto; fetched from the Internet Archive (motsaegolahzikhr00rabbuoft); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Robarts - University of Toronto"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "peereakhmemedina00gree",
+    "contributing_library": "Robarts - University of Toronto",
+    "lines": 2777,
+    "pby_works": [
+     {
+      "pby_id": "59411",
+      "rights_justification_id": "rj:peereakhmemedina00gree:9fcb52137c70"
+     }
+    ],
+    "death_years": [
+     1955
+    ],
+    "publication_year": 1910,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1955, printed 1910); faithful scan digitized by Robarts - University of Toronto; fetched from the Internet Archive (peereakhmemedina00gree); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Robarts - University of Toronto"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "imanuelharomimon0000tche",
+    "contributing_library": "University of Toronto, Downsview",
+    "lines": 2572,
+    "pby_works": [
+     {
+      "pby_id": "6829",
+      "rights_justification_id": "rj:imanuelharomimon0000tche:8841881bd30a"
+     }
+    ],
+    "death_years": [
+     1943
+    ],
+    "publication_year": 1924,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1943, printed 1924); faithful scan digitized by University of Toronto, Downsview; fetched from the Internet Archive (imanuelharomimon0000tche); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "University of Toronto, Downsview"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "mishnatrishonimt0000klat",
+    "contributing_library": "University of Toronto, Downsview",
+    "lines": 2553,
+    "pby_works": [
+     {
+      "pby_id": "47039",
+      "rights_justification_id": "rj:mishnatrishonimt0000klat:58324cac30a1"
+     }
+    ],
+    "death_years": [
+     1948
+    ],
+    "publication_year": 1924,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1948, printed 1924); faithful scan digitized by University of Toronto, Downsview; fetched from the Internet Archive (mishnatrishonimt0000klat); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "University of Toronto, Downsview"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "igrothaasirmeiha00drey",
+    "contributing_library": "Brandeis University Libraries",
+    "lines": 2498,
+    "pby_works": [
+     {
+      "pby_id": "32993",
+      "rights_justification_id": "rj:igrothaasirmeiha00drey:1cad7f866e81"
+     }
+    ],
+    "death_years": [
+     1902,
+     1939
+    ],
+    "publication_year": 1898,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1939, translator d. 1902, printed 1898); faithful scan digitized by Brandeis University Libraries; fetched from the Internet Archive (igrothaasirmeiha00drey); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Brandeis University Libraries"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "masaleeretsyirae00lewi",
+    "contributing_library": "The Ohio State University",
+    "lines": 1917,
+    "pby_works": [
+     {
+      "pby_id": "5579",
+      "rights_justification_id": "rj:masaleeretsyirae00lewi:b04645e09704"
+     }
+    ],
+    "death_years": [
+     1910
+    ],
+    "publication_year": 1922,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1910, printed 1922); faithful scan digitized by The Ohio State University; fetched from the Internet Archive (masaleeretsyirae00lewi); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "The Ohio State University"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "sepherhayyeyehud01mode",
+    "contributing_library": "Duke University Libraries",
+    "lines": 1491,
+    "pby_works": [
+     {
+      "pby_id": "31022",
+      "rights_justification_id": "rj:sepherhayyeyehud01mode:356fe16e8c30"
+     }
+    ],
+    "death_years": [
+     1648
+    ],
+    "publication_year": 1912,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1648, printed 1912); faithful scan digitized by Duke University Libraries; fetched from the Internet Archive (sepherhayyeyehud01mode); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Duke University Libraries"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "reginahashkenazi00ginsuoft",
+    "contributing_library": "Robarts - University of Toronto",
+    "lines": 1305,
+    "pby_works": [
+     {
+      "pby_id": "59442",
+      "rights_justification_id": "rj:reginahashkenazi00ginsuoft:875d6b610f91"
+     }
+    ],
+    "death_years": [
+     1947
+    ],
+    "publication_year": 1918,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1947, printed 1918); faithful scan digitized by Robarts - University of Toronto; fetched from the Internet Archive (reginahashkenazi00ginsuoft); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Robarts - University of Toronto"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "anshekayruan00pozn",
+    "contributing_library": "Robarts - University of Toronto",
+    "lines": 1218,
+    "pby_works": [
+     {
+      "pby_id": "44823",
+      "rights_justification_id": "rj:anshekayruan00pozn:5cf283e0fec1"
+     }
+    ],
+    "death_years": [
+     1921
+    ],
+    "publication_year": 1909,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1921, printed 1909); faithful scan digitized by Robarts - University of Toronto; fetched from the Internet Archive (anshekayruan00pozn); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Robarts - University of Toronto"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "maamarmagenetsin00mode",
+    "contributing_library": "Duke University Libraries",
+    "lines": 1145,
+    "pby_works": [
+     {
+      "pby_id": "31251",
+      "rights_justification_id": "rj:maamarmagenetsin00mode:77519724085d"
+     }
+    ],
+    "death_years": [
+     1648
+    ],
+    "publication_year": 1856,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1648, printed 1856); faithful scan digitized by Duke University Libraries; fetched from the Internet Archive (maamarmagenetsin00mode); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Duke University Libraries"
+   },
+   {
+    "source": "internet_archive",
+    "ia_identifier": "hegyoneshpinozah00rubi",
+    "contributing_library": "Robarts - University of Toronto",
+    "lines": 557,
+    "pby_works": [
+     {
+      "pby_id": "31623",
+      "rights_justification_id": "rj:hegyoneshpinozah00rubi:ed564ebedba9"
+     }
+    ],
+    "death_years": [
+     1910
+    ],
+    "publication_year": 1897,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1910, printed 1897); faithful scan digitized by Robarts - University of Toronto; fetched from the Internet Archive (hegyoneshpinozah00rubi); no new right in the scan and no contract binds its reuse.",
+    "line_set": "bynli_lines_v2",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Robarts - University of Toronto"
+   },
+   {
+    "source": "nli_free_use",
+    "line_set": "bynli_lines_v3",
+    "record_id": "990026910840205171",
+    "book": "bachrach-hamasa-1884",
+    "title": "Sefer ha-Massa le-Erets ha-Kedoshah",
+    "creators": "Yaakov Bachrach (1824-1896)",
+    "published": "Warsaw, 1884",
+    "lines": 2319,
+    "us_status": "pd_us (published before 1931)",
+    "manifest_upstream_sha256": "de43e7143ce453587a7623c56a1cfb89bebf0de082c26157c1167c019d07159c"
+   },
+   {
+    "source": "internet_archive",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "zikhronotlebetda01reck",
+    "title": "Zikhronot le-Vet David",
+    "creators": "Abraham Shalom Friedberg (d. 1902)",
+    "published": "Warsaw, 1893",
+    "contributing_library": "Robarts - University of Toronto",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Robarts - University of Toronto",
+    "lines": 6100,
+    "pby_works": [
+     {
+      "pby_id": "1959",
+      "rights_justification_id": "rj:zikhronotlebetda01reck:c66b429a14e0"
+     },
+     {
+      "pby_id": "2588",
+      "rights_justification_id": "rj:zikhronotlebetda01reck:49533807a706"
+     },
+     {
+      "pby_id": "3540",
+      "rights_justification_id": "rj:zikhronotlebetda01reck:f689cc78922a"
+     },
+     {
+      "pby_id": "5521",
+      "rights_justification_id": "rj:zikhronotlebetda01reck:14daf4733d9d"
+     },
+     {
+      "pby_id": "58439",
+      "rights_justification_id": "rj:zikhronotlebetda01reck:e735696e55c2"
+     }
+    ],
+    "death_years": [
+     1902
+    ],
+    "publication_year": 1893,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1902, printed 1893); faithful scan digitized by Robarts - University of Toronto; fetched from the Internet Archive (zikhronotlebetda01reck); no new right in the scan and no contract binds its reuse."
+   },
+   {
+    "source": "internet_archive",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "sifruthahisoriya11kaha",
+    "title": "Sifrut ha-Historiyah ha-Yisre'elit",
+    "creators": "Abraham Kahana (d. 1946)",
+    "published": "Warsaw, 1922",
+    "contributing_library": "Duke University Libraries",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Duke University Libraries",
+    "lines": 6094,
+    "pby_works": [
+     {
+      "pby_id": "53008",
+      "rights_justification_id": "rj:sifruthahisoriya11kaha:59a76b6ee5ca"
+     }
+    ],
+    "death_years": [
+     1946
+    ],
+    "publication_year": 1922,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1946, printed 1922); faithful scan digitized by Duke University Libraries; fetched from the Internet Archive (sifruthahisoriya11kaha); no new right in the scan and no contract binds its reuse."
+   },
+   {
+    "source": "internet_archive",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "yotsrehasifrutha00zitr",
+    "title": "Yotsre ha-Sifrut ha-Ivrit ha-Hadashah",
+    "creators": "Shmuel Leib Citron (d. 1930)",
+    "published": "Vilna, 1922",
+    "contributing_library": "Robarts - University of Toronto",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Robarts - University of Toronto",
+    "lines": 6039,
+    "pby_works": [
+     {
+      "pby_id": "3452",
+      "rights_justification_id": "rj:yotsrehasifrutha00zitr:c0f67db0ffcc"
+     },
+     {
+      "pby_id": "4422",
+      "rights_justification_id": "rj:yotsrehasifrutha00zitr:84465105b544"
+     },
+     {
+      "pby_id": "5465",
+      "rights_justification_id": "rj:yotsrehasifrutha00zitr:79976e6adc6c"
+     },
+     {
+      "pby_id": "5956",
+      "rights_justification_id": "rj:yotsrehasifrutha00zitr:b566ab064ddd"
+     },
+     {
+      "pby_id": "7259",
+      "rights_justification_id": "rj:yotsrehasifrutha00zitr:1bc209bf16ed"
+     },
+     {
+      "pby_id": "7806",
+      "rights_justification_id": "rj:yotsrehasifrutha00zitr:6b4338dcd66a"
+     },
+     {
+      "pby_id": "8073",
+      "rights_justification_id": "rj:yotsrehasifrutha00zitr:447d47e2e839"
+     },
+     {
+      "pby_id": "8202",
+      "rights_justification_id": "rj:yotsrehasifrutha00zitr:f6aaaf25d166"
+     }
+    ],
+    "death_years": [
+     1930
+    ],
+    "publication_year": 1922,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1930, printed 1922); faithful scan digitized by Robarts - University of Toronto; fetched from the Internet Archive (yotsrehasifrutha00zitr); no new right in the scan and no contract binds its reuse."
+   },
+   {
+    "source": "internet_archive",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "afahleneemaniml00fngoog",
+    "title": "Safah le-Ne'emanim",
+    "creators": "Samuel Joseph Fuenn (d. 1891)",
+    "published": "Vilna, 1881",
+    "contributing_library": "University of California",
+    "source_class": "ia_google_digitized_scan",
+    "digitizer": "Digitized by Google; retrieved via the Internet Archive",
+    "lines": 5750,
+    "pby_works": [
+     {
+      "pby_id": "32427",
+      "rights_justification_id": "rj:afahleneemaniml00fngoog:c8c573c32d3b"
+     }
+    ],
+    "death_years": [
+     1891
+    ],
+    "publication_year": 1881,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1891, printed 1881); faithful scan digitized by Google; fetched from the Internet Archive (afahleneemaniml00fngoog), not from Google; no new right in the scan and no contract binds its reuse.",
+    "google": {
+     "origin_label": "google_books_usage_guidelines (requests, not a contract; not binding: fetched from the Internet Archive, no terms accepted from Google)",
+     "hygiene": "canvas 0 (Google's usage-guidelines page) excluded; no 'Digitized by Google' watermark found on any other page; no training line from canvas 0",
+     "lines_from_canvas_0": 0,
+     "basis": "hocrgen planning/decisions/2026-11-10-legal-strategy.md rule 3 (Routes B and C: Google-digitized scans fetched from the Internet Archive or Wikimedia Commons are admitted) and rule 5 (hygiene); heocr-engine planning/decisions/0015-legal-strategy.md"
+    }
+   },
+   {
+    "source": "internet_archive",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "kolkitveylkatsen018800",
+    "title": "Kol Kitve Y. L. Katsenelson",
+    "creators": "Judah Leib Katzenelson (d. 1917)",
+    "published": "St Petersburg, 1905",
+    "contributing_library": "University of Illinois Urbana-Champaign",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "University of Illinois Urbana-Champaign",
+    "lines": 5716,
+    "pby_works": [
+     {
+      "pby_id": "1978",
+      "rights_justification_id": "rj:kolkitveylkatsen018800:59f0acc8a32b"
+     },
+     {
+      "pby_id": "2294",
+      "rights_justification_id": "rj:kolkitveylkatsen018800:1815681da980"
+     },
+     {
+      "pby_id": "2607",
+      "rights_justification_id": "rj:kolkitveylkatsen018800:0aac3fbe5339"
+     },
+     {
+      "pby_id": "2924",
+      "rights_justification_id": "rj:kolkitveylkatsen018800:83ab0ea1506a"
+     },
+     {
+      "pby_id": "3558",
+      "rights_justification_id": "rj:kolkitveylkatsen018800:de1e6434684d"
+     },
+     {
+      "pby_id": "3876",
+      "rights_justification_id": "rj:kolkitveylkatsen018800:ac47218d2ae4"
+     },
+     {
+      "pby_id": "4216",
+      "rights_justification_id": "rj:kolkitveylkatsen018800:aa004913dcff"
+     },
+     {
+      "pby_id": "4523",
+      "rights_justification_id": "rj:kolkitveylkatsen018800:bad4bbc2fe3a"
+     },
+     {
+      "pby_id": "4858",
+      "rights_justification_id": "rj:kolkitveylkatsen018800:71572ac1e0eb"
+     },
+     {
+      "pby_id": "5223",
+      "rights_justification_id": "rj:kolkitveylkatsen018800:105a55fdf5ac"
+     },
+     {
+      "pby_id": "5539",
+      "rights_justification_id": "rj:kolkitveylkatsen018800:47634da006c9"
+     },
+     {
+      "pby_id": "6186",
+      "rights_justification_id": "rj:kolkitveylkatsen018800:0af9fc6e48e9"
+     },
+     {
+      "pby_id": "6841",
+      "rights_justification_id": "rj:kolkitveylkatsen018800:a56bed353833"
+     },
+     {
+      "pby_id": "7170",
+      "rights_justification_id": "rj:kolkitveylkatsen018800:02d20f72ddd3"
+     },
+     {
+      "pby_id": "899",
+      "rights_justification_id": "rj:kolkitveylkatsen018800:b2472c69ddaa"
+     }
+    ],
+    "death_years": [
+     1917
+    ],
+    "publication_year": 1905,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1917, printed 1905); faithful scan digitized by University of Illinois Urbana-Champaign; fetched from the Internet Archive (kolkitveylkatsen018800); no new right in the scan and no contract binds its reuse."
+   },
+   {
+    "source": "internet_archive",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "seferhademaotmeo0000bern",
+    "title": "Sefer ha-Dema'ot",
+    "creators": "Simon Bernfeld (d. 1940)",
+    "published": "Berlin, 1923",
+    "contributing_library": "University of Toronto, Downsview",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "University of Toronto, Downsview",
+    "lines": 5350,
+    "pby_works": [
+     {
+      "pby_id": "44631",
+      "rights_justification_id": "rj:seferhademaotmeo0000bern:9e70fdd6fdd2"
+     },
+     {
+      "pby_id": "45818",
+      "rights_justification_id": "rj:seferhademaotmeo0000bern:c5341051cd56"
+     }
+    ],
+    "death_years": [
+     1940
+    ],
+    "publication_year": 1923,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1940, printed 1923); faithful scan digitized by University of Toronto, Downsview; fetched from the Internet Archive (seferhademaotmeo0000bern); no new right in the scan and no contract binds its reuse."
+   },
+   {
+    "source": "internet_archive",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "divreyemeolam02schuuoft",
+    "title": "Divre Yeme Olam",
+    "creators": "Kalman Schulman (d. 1899)",
+    "published": "Vilna, 1868",
+    "contributing_library": "Robarts - University of Toronto",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Robarts - University of Toronto",
+    "lines": 4668,
+    "pby_works": [
+     {
+      "pby_id": "15693",
+      "rights_justification_id": "rj:divreyemeolam02schuuoft:46f92243c625"
+     },
+     {
+      "pby_id": "15996",
+      "rights_justification_id": "rj:divreyemeolam02schuuoft:aa61dc8c2d5a"
+     },
+     {
+      "pby_id": "16017",
+      "rights_justification_id": "rj:divreyemeolam02schuuoft:44406186897a"
+     }
+    ],
+    "death_years": [
+     1899
+    ],
+    "publication_year": 1868,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1899, printed 1868); faithful scan digitized by Robarts - University of Toronto; fetched from the Internet Archive (divreyemeolam02schuuoft); no new right in the scan and no contract binds its reuse."
+   },
+   {
+    "source": "internet_archive",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "bioretletoldotha01gott",
+    "title": "Bikoret le-Toldot ha-Kara'im",
+    "creators": "Abraham Baer Gottlober (d. 1899)",
+    "published": "Vilna, 1865",
+    "contributing_library": "Duke University Libraries",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Duke University Libraries",
+    "lines": 4662,
+    "pby_works": [
+     {
+      "pby_id": "40683",
+      "rights_justification_id": "rj:bioretletoldotha01gott:9ea31fb45c58"
+     }
+    ],
+    "death_years": [
+     1899
+    ],
+    "publication_year": 1865,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1899, printed 1865); faithful scan digitized by Duke University Libraries; fetched from the Internet Archive (bioretletoldotha01gott); no new right in the scan and no contract binds its reuse."
+   },
+   {
+    "source": "internet_archive",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "zikhronotlevetda01frie",
+    "title": "Zikhronot le-Vet David",
+    "creators": "Abraham Shalom Friedberg (d. 1902)",
+    "published": "Warsaw, 1904",
+    "contributing_library": "University Library, University of North Carolina at Chapel Hill",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "University Library, University of North Carolina at Chapel Hill",
+    "lines": 4150,
+    "pby_works": [
+     {
+      "pby_id": "1959",
+      "rights_justification_id": "rj:zikhronotlevetda01frie:0e53076640f4"
+     },
+     {
+      "pby_id": "2588",
+      "rights_justification_id": "rj:zikhronotlevetda01frie:513666c5a25c"
+     },
+     {
+      "pby_id": "3540",
+      "rights_justification_id": "rj:zikhronotlevetda01frie:508859b7a6f4"
+     },
+     {
+      "pby_id": "5521",
+      "rights_justification_id": "rj:zikhronotlevetda01frie:e69090b80ff0"
+     },
+     {
+      "pby_id": "58439",
+      "rights_justification_id": "rj:zikhronotlevetda01frie:0547ab97eaf5"
+     }
+    ],
+    "death_years": [
+     1902
+    ],
+    "publication_year": 1904,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1902, printed 1904); faithful scan digitized by University Library, University of North Carolina at Chapel Hill; fetched from the Internet Archive (zikhronotlevetda01frie); no new right in the scan and no contract binds its reuse."
+   },
+   {
+    "source": "internet_archive",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "tserorperaimvehu00kovn",
+    "title": "Tseror Perahim",
+    "creators": "Abraham Uri Kovner (d. 1909)",
+    "published": "Odessa, 1868",
+    "contributing_library": "Robarts - University of Toronto",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Robarts - University of Toronto",
+    "lines": 3616,
+    "pby_works": [
+     {
+      "pby_id": "23923",
+      "rights_justification_id": "rj:tserorperaimvehu00kovn:4b8e8ab86525"
+     },
+     {
+      "pby_id": "23924",
+      "rights_justification_id": "rj:tserorperaimvehu00kovn:72724be11250"
+     },
+     {
+      "pby_id": "23925",
+      "rights_justification_id": "rj:tserorperaimvehu00kovn:00ded2e99ecc"
+     },
+     {
+      "pby_id": "23926",
+      "rights_justification_id": "rj:tserorperaimvehu00kovn:643a1ebc3696"
+     },
+     {
+      "pby_id": "23927",
+      "rights_justification_id": "rj:tserorperaimvehu00kovn:059c43687e29"
+     },
+     {
+      "pby_id": "23928",
+      "rights_justification_id": "rj:tserorperaimvehu00kovn:7d7de0be85fb"
+     },
+     {
+      "pby_id": "23929",
+      "rights_justification_id": "rj:tserorperaimvehu00kovn:3888c31adf0c"
+     },
+     {
+      "pby_id": "23930",
+      "rights_justification_id": "rj:tserorperaimvehu00kovn:d97c3eebe24d"
+     }
+    ],
+    "death_years": [
+     1909
+    ],
+    "publication_year": 1868,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1909, printed 1868); faithful scan digitized by Robarts - University of Toronto; fetched from the Internet Archive (tserorperaimvehu00kovn); no new right in the scan and no contract binds its reuse."
+   },
+   {
+    "source": "internet_archive",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "mikhtavimmiarsh00mezagoog",
+    "title": "Mikhtavim mi-Sar shel Yam",
+    "creators": "Yehoshua Mezah (d. 1917)",
+    "published": "Warsaw, 1886",
+    "contributing_library": "unknown library",
+    "source_class": "ia_google_digitized_scan",
+    "digitizer": "Digitized by Google; retrieved via the Internet Archive",
+    "lines": 3452,
+    "pby_works": [
+     {
+      "pby_id": "53495",
+      "rights_justification_id": "rj:mikhtavimmiarsh00mezagoog:4d0309173f6b"
+     }
+    ],
+    "death_years": [
+     1917
+    ],
+    "publication_year": 1886,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1917, printed 1886); faithful scan digitized by Google; fetched from the Internet Archive (mikhtavimmiarsh00mezagoog), not from Google; no new right in the scan and no contract binds its reuse.",
+    "google": {
+     "origin_label": "google_books_usage_guidelines (requests, not a contract; not binding: fetched from the Internet Archive, no terms accepted from Google)",
+     "hygiene": "canvas 0 (Google's usage-guidelines page) excluded; no 'Digitized by Google' watermark found on any other page; no training line from canvas 0",
+     "lines_from_canvas_0": 0,
+     "basis": "hocrgen planning/decisions/2026-11-10-legal-strategy.md rule 3 (Routes B and C: Google-digitized scans fetched from the Internet Archive or Wikimedia Commons are admitted) and rule 5 (hygiene); heocr-engine planning/decisions/0015-legal-strategy.md"
+    }
+   },
+   {
+    "source": "internet_archive",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "korothayehudimb00friegoog",
+    "title": "Korot ha-Yehudim bi-Sefarad",
+    "creators": "Abraham Shalom Friedberg (d. 1902)",
+    "published": "Warsaw, 1893",
+    "contributing_library": "University of California",
+    "source_class": "ia_google_digitized_scan",
+    "digitizer": "Digitized by Google; retrieved via the Internet Archive",
+    "lines": 2968,
+    "pby_works": [
+     {
+      "pby_id": "52246",
+      "rights_justification_id": "rj:korothayehudimb00friegoog:4e9e6ef8210c"
+     },
+     {
+      "pby_id": "52613",
+      "rights_justification_id": "rj:korothayehudimb00friegoog:2716eb03f636"
+     }
+    ],
+    "death_years": [
+     1902
+    ],
+    "publication_year": 1893,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1902, printed 1893); faithful scan digitized by Google; fetched from the Internet Archive (korothayehudimb00friegoog), not from Google; no new right in the scan and no contract binds its reuse.",
+    "google": {
+     "origin_label": "google_books_usage_guidelines (requests, not a contract; not binding: fetched from the Internet Archive, no terms accepted from Google)",
+     "hygiene": "canvas 0 (Google's usage-guidelines page) excluded; no 'Digitized by Google' watermark found on any other page; no training line from canvas 0",
+     "lines_from_canvas_0": 0,
+     "basis": "hocrgen planning/decisions/2026-11-10-legal-strategy.md rule 3 (Routes B and C: Google-digitized scans fetched from the Internet Archive or Wikimedia Commons are admitted) and rule 5 (hygiene); heocr-engine planning/decisions/0015-legal-strategy.md"
+    }
+   },
+   {
+    "source": "internet_archive",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "sipurim00nombuoft",
+    "title": "Sipurim",
+    "creators": "Hirsh David Nomberg (d. 1927)",
+    "published": "Warsaw, 1905",
+    "contributing_library": "Robarts - University of Toronto",
+    "source_class": "ia_library_scan_no_licence_field",
+    "digitizer": "Robarts - University of Toronto",
+    "lines": 1291,
+    "pby_works": [
+     {
+      "pby_id": "18741",
+      "rights_justification_id": "rj:sipurim00nombuoft:f41d9896bf92"
+     },
+     {
+      "pby_id": "18742",
+      "rights_justification_id": "rj:sipurim00nombuoft:2d8516e07075"
+     },
+     {
+      "pby_id": "18743",
+      "rights_justification_id": "rj:sipurim00nombuoft:46fdb2e80600"
+     },
+     {
+      "pby_id": "18744",
+      "rights_justification_id": "rj:sipurim00nombuoft:ec6ef8157bea"
+     }
+    ],
+    "death_years": [
+     1927
+    ],
+    "publication_year": 1905,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1927, printed 1905); faithful scan digitized by Robarts - University of Toronto; fetched from the Internet Archive (sipurim00nombuoft); no new right in the scan and no contract binds its reuse."
+   },
+   {
+    "source": "internet_archive",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "tsitsimuferaimm00geiggoog",
+    "title": "Tsitsim u-Ferahim",
+    "creators": "Abraham Geiger (d. 1874)",
+    "published": "Leipzig, 1856",
+    "contributing_library": "University of California",
+    "source_class": "ia_google_digitized_scan",
+    "digitizer": "Digitized by Google; retrieved via the Internet Archive",
+    "lines": 633,
+    "pby_works": [
+     {
+      "pby_id": "57759",
+      "rights_justification_id": "rj:tsitsimuferaimm00geiggoog:f85d73f605f5"
+     }
+    ],
+    "death_years": [
+     1874
+    ],
+    "publication_year": 1856,
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "justification_summary": "Public-domain book (author d. 1874, printed 1856); faithful scan digitized by Google; fetched from the Internet Archive (tsitsimuferaimm00geiggoog), not from Google; no new right in the scan and no contract binds its reuse.",
+    "google": {
+     "origin_label": "google_books_usage_guidelines (requests, not a contract; not binding: fetched from the Internet Archive, no terms accepted from Google)",
+     "hygiene": "canvas 0 (Google's usage-guidelines page) excluded; no 'Digitized by Google' watermark found on any other page; no training line from canvas 0",
+     "lines_from_canvas_0": 0,
+     "basis": "hocrgen planning/decisions/2026-11-10-legal-strategy.md rule 3 (Routes B and C: Google-digitized scans fetched from the Internet Archive or Wikimedia Commons are admitted) and rule 5 (hygiene); heocr-engine planning/decisions/0015-legal-strategy.md"
+    }
+   },
+   {
+    "source": "wikimedia_commons",
+    "line_set": "wslines_v1",
+    "record_id": "ws_index_332490",
+    "title": "Sifrei de-Agadeta al Megillat Ester",
+    "creators": "Salomon Buber (d. 1906)",
+    "published": "Vilna, 1886",
+    "lines": 11,
+    "page": 136,
+    "commons_file": "File:Salomon Buber. Sifre de-agadeta al megilat Ester.1886.pdf",
+    "commons_file_sha1": "1fb3d04815dbac77ba9b51c22c2b3ef73d849831",
+    "digitizer": "Internet Archive, from a copy at Robarts - University of Toronto (not Google)",
+    "rights_justification_id": "rj:ws_index_332490:0b20c1d7e01b",
+    "text_licence": "CC BY-SA 4.0",
+    "text_attribution": "Hebrew Wikisource contributors",
+    "text_permalink": "https://he.wikisource.org/w/index.php?oldid=763704",
+    "basis": "heocr-engine planning/decisions/0016-weights-trained-on-wikisource-transcriptions.md",
+    "israel_status": "pd_il (author_died_over_70_years_ago)",
+    "us_status": "pd_us",
+    "note": "the other 3,801 wslines_v1 train lines R8a used were dropped: they come from Indexes with verified line_verify references (eval's check_train_overlap.py)"
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_6517",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "6517",
+    "published": "2006-09-13",
+    "lines": 252,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "808ecb1f80ddc5426801d9ebb5634b7cabf79010184fe8f41789e986ee41fa7c",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/2bo4DuR3XqFqPW9Wbw9zG+tpaphsiXJlbWUHxAlrlkk="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_6609",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "6609",
+    "published": "2007-08-15",
+    "lines": 806,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "2bac096212a9353b5687e1774df5760893103b8eb60bd0ee70cc2b169610733d",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/yC2TN9CtZzPO8Yj5JpRxmTugNmENKcUIwHrUSZW9ZBg="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_6610",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "6610",
+    "published": "2007-08-22",
+    "lines": 465,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "c04503761e4329696bfdbc3a14da875cce1b87b159e2dc2e37acd9fb0d11b0dd",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/yC2TN9CtZzPO8Yj5JpRxmaFMu~gaFd8B712DWCy4Y4U="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_6708",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "6708",
+    "published": "2008-09-09",
+    "lines": 206,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "b8d2f40bd9e386ea3bf0b42e85ae903a38a1d5a9ff26e22e2bddf0a5f7eb4ee8",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/X8UPttnXEhbMHtFNZ65fo9KfrHTbxV+I6j6rPwNUBG8="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_6710",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "6710",
+    "published": "2008-09-10",
+    "lines": 118,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "c56b94f69db4e76a8cd55c970342839686ceacbca90beb712f62a728cffca120",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/X8UPttnXEhbMHtFNZ65fo6N3kl+I5LC73EDY12vXHrY="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_6903",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "6903",
+    "published": "2010-06-30",
+    "lines": 1227,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "afa43afeac20ad5ac8dc5e25780ec4c1f59ba32ffb1c0a58b76e70839c8c286e",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/RATI4pBLty7qGIwDdx4vQxMtgDYe905e7yl3FzaU57w="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_6926",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "6926",
+    "published": "2010-09-07",
+    "lines": 247,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "31343dd707f1ee16b8624ad144a450d7c09ec03089785ec2bb47cf5335332371",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/RATI4pBLty7qGIwDdx4vQ9ijD~ZGoNGUM1vS5QiZpiQ="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_7070",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "7070",
+    "published": "2012-11-01",
+    "lines": 7,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "e4201317686a06d5e700da00f85dbaebd15ca1f928dd339d984d1a074050934a",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/DzPczTmtrnGUHE0weL5DG9VvfSwYcIRTflS31cR5DX8="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_7285",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "7285",
+    "published": "2013-09-01",
+    "lines": 464,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "cbfd0b0c432f870d3cf24a36d3eed6de276e7bba0999369f56d32b3ca9a51838",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/fPB4dujKOkayyk80A5Uooa+KZgiP3gQMbNvgYn3yiIA="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_7422",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "7422",
+    "published": "2014-09-11",
+    "lines": 437,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "40271f6ae7274d1cb4717eaf9a7ab0224197d1da547d6fe8a1d66385dd3caf78",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/bfvsjLN+leExZ3ArqQksAeFO8Ifvd7pgd9fiHDieoHk="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_7708",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "7708",
+    "published": "2016-09-05",
+    "lines": 112,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "1dc5f0de00de90061b589a4f75bf515619638f781b5f8d77fbdfc23234ee5f5d",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/4A49CqZQMS1fP4a9tebtooLzSKDavNUuaofS~~Bmd0Y="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_7862",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "7862",
+    "published": "2017-09-12",
+    "lines": 108,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "2d63775f0ddc21d29e0db7ac275962c2e8a36d4f5558c568aa92758adb772f39",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/iXRl3JX663X67T342MLtmD5fn1+AAXnatlrRzmSDmgU="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_7865",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "7865",
+    "published": "2017-09-19",
+    "lines": 275,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "c45f6ff98d6873139864581ca2f33246cf9cfcb31f6b9cb69c785398a918f001",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/iXRl3JX663X67T342MLtmM3a7jRlxMc9Hxd9WYiCoV8="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_8062",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "8062",
+    "published": "2018-08-21",
+    "lines": 287,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "4e8ff2892c1a1893a3d69497fb78349fa0686c2598a4ed1d23f37df1ba911589",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/gn7IC+aIZEm7OUAcU0QB418atlZ6DA9COmXqHnfYq~w="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_8065",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "8065",
+    "published": "2018-08-27",
+    "lines": 244,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "d2cf16c31e35a81574044397d10f72e1707a8a50ad88647d2ed0e6c8f8271e92",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/bCjbWPXeGMqIzaJ94ohBapxSSIhX5r5z+gWmLnaYamk="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_8268",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "8268",
+    "published": "2019-09-03",
+    "lines": 292,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "59d260200da2d63023cc83a9bf6ecf2ecfbab772761c0976a243cafd11057ed9",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/7~oT7KwUCNEQ17lpCxCozS4mKrdHjqlFnJGIkeJTwgM="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_8767",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "8767",
+    "published": "2020-09-17",
+    "lines": 51,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "7cfb1951da526d3486280ff74b6c6d240ff4b06f025c42c8987098a38c61521d",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/xKWjPGeVw1skVzKd6s1gC5nuotCxbJ8rwxSTE+FU8x4="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_9606",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "9606",
+    "published": "2021-09-02",
+    "lines": 36,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "b864fe7808d88d9f7649654d13fd5cf8d92b13dee83c6e51c3a450555ef554a9",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/~WAsvflvAYiGDVNm4Q2luU1lx7Z8cUfvITWITL~PqMk="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_10333",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "10333",
+    "published": "2022-09-19",
+    "lines": 201,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "767dc68fd160eee3f577f902b2960d2a311099cfa4359620689982e099b49bef",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/l~XpSZohpyOH4FFVkQ6FpXkfhgkwDrxGtbZst12EvMU="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_10780",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "10780",
+    "published": "2023-09-05",
+    "lines": 21,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "c307c0a6d273a5c5ea2b33199d0d028406717630d74c05195393a26a62e05759",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/U68PJUOEXTPbL90mI30IPPhisSwYaWoih38RREw1Fow="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_11496",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "11496",
+    "published": "2024-10-01",
+    "lines": 95,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "b120047b0b13c6eb85c449fb862e8a42c3356340bfd07191a9e2a0e74afea73a",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/MMCaMh1tGwuV5bQu9QVDJiS8IxaC+5xpWP15DngYBPA="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_12040",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "12040",
+    "published": "2025-09-15",
+    "lines": 132,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "21c633ebb1f1b0d252e428d0bb6286e14377086f7c7219e91dcab1d5d30eac53",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/nJWFDynWSvUwumJ5mlb~fdSqe1tCqxT3nG3mmfA4sKk="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_12521",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "12521",
+    "published": "2026-09-03",
+    "lines": 497,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "e7d2d4c52b5a078a548d8c168b35b1228a0c8eb20032a0e7f3a0e8aff5793004",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/VQj7A5lht3jHuwjg63E5Epp1mDnev2jPv1RheM1yRBA="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_12562",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "12562",
+    "published": "2026-11-01",
+    "lines": 26,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "fd4ad9964acd400f18b208ff847bec133e3b2067ee22023e7c65a2aa90443a61",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/ZVveZMQvnnqOsVI7G9PTFPi4NdgUvf6VCOkioxLxhww="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "kovetz_hatakanot_12565",
+    "series": "kovetz_hatakanot",
+    "booklet_number": "12565",
+    "published": "2026-11-02",
+    "lines": 325,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "99a64dd97acb5690cac919b09270ec9dd87259e371696b0752c73d5ea8e8d172",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/ZVveZMQvnnqOsVI7G9PTFKVrslpfDfHOCSxkAJutTmc="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_2063",
+    "series": "sefer_hachukim",
+    "booklet_number": "2063",
+    "published": "2006-07-27",
+    "lines": 214,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "24c63959c899ef2d4f16260b29b3b09a8b277f501c1f3d9b2c99e9d6ad582fbf",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/tPX8wESM0iYrtcgLLyI32KEXUIxCOqxwgZP+dXKIgLc="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_2108",
+    "series": "sefer_hachukim",
+    "booklet_number": "2108",
+    "published": "2007-08-07",
+    "lines": 662,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "b44eae8f65d5459ce46e7656ec0f5d073738fecc1548812d9e42bfeecac7b6ac",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/tPX8wESM0iYrtcgLLyI32Ho6grUDhu5W48u1QfArlqk="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_2110",
+    "series": "sefer_hachukim",
+    "booklet_number": "2110",
+    "published": "2007-08-19",
+    "lines": 259,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "8f202ad8b0c08ce66a9f5ec99a44648ec0b22baa029c8476e20807983942a7b0",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/tPX8wESM0iYrtcgLLyI32HI~QS~kE6USk5aDgJ7yV5k="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_2180",
+    "series": "sefer_hachukim",
+    "booklet_number": "2180",
+    "published": "2008-08-07",
+    "lines": 476,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "6fe24838b3b93f97f2b2dbd9476ab1ec6e54f21369d2afd66652b1c2e5831e3b",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/yW39Z5Sxr3f8peanRE2xqpe3OjfjzR4xRWOr1MaQ+ak="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_2209",
+    "series": "sefer_hachukim",
+    "booklet_number": "2209",
+    "published": "2009-08-10",
+    "lines": 747,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "6c505cae516a345334ce0a4cb27923f43744948630b938d491772a4ceaebac5c",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/yW39Z5Sxr3f8peanRE2xqh76ZSHTQvlQDXFfSF4rjwM="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_2256",
+    "series": "sefer_hachukim",
+    "booklet_number": "2256",
+    "published": "2010-07-29",
+    "lines": 457,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "4bd26b9af26a06c8f4aaf676190c41555f52c2726be194f12331f0a135532a52",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/E~UT4ynCNCyubyPxgEgN9KMe7C0j9+rr3R8eRIdS+RQ="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_2314",
+    "series": "sefer_hachukim",
+    "booklet_number": "2314",
+    "published": "2011-08-15",
+    "lines": 900,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "f8a991561fa12dcf443ded7045740d1ebc838ffe399b1105f1a387fd8972153c",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/E~UT4ynCNCyubyPxgEgN9OfPbfUj0r6VU+bs8HvFvO8="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_2378",
+    "series": "sefer_hachukim",
+    "booklet_number": "2378",
+    "published": "2012-08-07",
+    "lines": 614,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "41c0bf2df6b704ce62345dcba4f8f1517c4e3f476eea84d9c7be4035f3708c93",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/J10xautqGmXPEvWsrEdgS6rCuBOOowe8nNHk2vZsQD8="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_2382",
+    "series": "sefer_hachukim",
+    "booklet_number": "2382",
+    "published": "2012-08-13",
+    "lines": 198,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "d261959651e0b7d644737e8e3945e2590f3e331eac9c20f7ffab18dfde4319b8",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/J10xautqGmXPEvWsrEdgS0CWhFjE35RgeFaVsH7JklI="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_2405",
+    "series": "sefer_hachukim",
+    "booklet_number": "2405",
+    "published": "2013-08-05",
+    "lines": 3461,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "cd72bdc6a63add4c1fc12225a7ea919f35cdf51ee5aa1a42ea7b19af8f018409",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/Asm~N1lH2fl09nuXwxvSB9I5T0JU9JWV23mSag+CAVc="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_2464",
+    "series": "sefer_hachukim",
+    "booklet_number": "2464",
+    "published": "2014-08-06",
+    "lines": 427,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "aef9a324a50741ceb6dc39f57b908e02a54b8d47c2db8141b491d4be5d3f391a",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/Asm~N1lH2fl09nuXwxvSB1Ty40NVvDiN1D52LNdZG9I="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_2497",
+    "series": "sefer_hachukim",
+    "booklet_number": "2497",
+    "published": "2015-08-03",
+    "lines": 659,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "470ce460c643ae863233257629f1b65a009065bddb5a03a1644dfae67b9161e6",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/KVryoXRv40u7s~OpPj7hOKbUR5LG64LQGyfrqMy2nDk="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_2578",
+    "series": "sefer_hachukim",
+    "booklet_number": "2578",
+    "published": "2016-08-16",
+    "lines": 275,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "3be14a6b7eb76a7ea58ed6228679f3f61478378e745197ad4dc5ac8a7f36cf16",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/4A49CqZQMS1fP4a9tebtol58UWIkHghg+Cq6qp67jH4="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_2656",
+    "series": "sefer_hachukim",
+    "booklet_number": "2656",
+    "published": "2017-08-06",
+    "lines": 787,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "484b66cd189adadfc4f48d41b41652ac807a6b586d69782f1c87fb7b622a256e",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/A3WeOJSroi+fz145tSRXHxicCMCFTnDxdycpZaHpmE0="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_2663",
+    "series": "sefer_hachukim",
+    "booklet_number": "2663",
+    "published": "2017-08-09",
+    "lines": 718,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "15dcd43cc602cb7dd43c05557b2b234f6818b744b20c663847d6c2598337e14c",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/A3WeOJSroi+fz145tSRXH8zWwyoJXPwIk+oGwxQn5Yk="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_2745",
+    "series": "sefer_hachukim",
+    "booklet_number": "2745",
+    "published": "2018-07-26",
+    "lines": 287,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "298467ac42e1454409a6aa31833035d8493216052d36ec8b74cfad6562fcc28a",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/MOnw27H4IBa9ZTkifP5j55TFRHNQwWumxVrou2TE1Es="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_2779",
+    "series": "sefer_hachukim",
+    "booklet_number": "2779",
+    "published": "2019-01-10",
+    "lines": 334,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "37ce67ccab0e6eaceb3162f15024dd5c1c777d1ae09fb07a259f111d1f1915e0",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/zjG2Ng7eGz93Ldbl7ExQGyxvtrae4tw9AE1N0yhtxSQ="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_2918",
+    "series": "sefer_hachukim",
+    "booklet_number": "2918",
+    "published": "2021-07-20",
+    "lines": 27,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "0b24bc115e6e3a12120ad73967397b0caef2028d8feef43e4e269a60bf65de1e",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/9sKQN2NyWUSwwCBhuR4uEKL4j6FbJK2lB4P~9iWwG2I="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_3001",
+    "series": "sefer_hachukim",
+    "booklet_number": "3001",
+    "published": "2022-07-07",
+    "lines": 267,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "fda886340013e13eb622e02e317ffadeb5daa37166a9c795906676d17b65fdce",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/qCynMwZB6U9~o0SN+~4rmpYFTvb5QzcuOYJLJf2SwI8="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_3009",
+    "series": "sefer_hachukim",
+    "booklet_number": "3009",
+    "published": "2022-09-19",
+    "lines": 65,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "18947a80c833935fd88bad521a4663be636c9abc96ebb82bf06971de464c148c",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/l~XpSZohpyOH4FFVkQ6FpZFfovBoUTCMEKawE0Y1074="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_3085",
+    "series": "sefer_hachukim",
+    "booklet_number": "3085",
+    "published": "2023-08-06",
+    "lines": 689,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "f181d8cc55f44a3e2a127cf5c8da3ff5a1993527fc394b7de99e288b5bbb76d7",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/kq7C0KfJo~~3sSo8raflWMG+ceOsSs5hywJpbuin~E0="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_3293",
+    "series": "sefer_hachukim",
+    "booklet_number": "3293",
+    "published": "2024-09-30",
+    "lines": 30,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "510b320bf072908a14d8605bcb1a0a9ec0df9d5210fd55001f7735d30a19fc35",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/MMCaMh1tGwuV5bQu9QVDJmu4N8b1JzaWMOyX4CLVXIk="
+   },
+   {
+    "source": "reshumot_born_digital",
+    "line_set": "reshumotlines_v1",
+    "booklet": "sefer_hachukim_3452",
+    "series": "sefer_hachukim",
+    "booklet_number": "3452",
+    "published": "2025-08-13",
+    "lines": 49,
+    "licence": "PD-IL (Copyright Act 2007 section 6)",
+    "pdf_sha256": "55c159083ab8535a735161c5d121458a73e2cd18c86533dfec928b260b3d86e3",
+    "publisher_url": "https://free-justice.openapi.gov.il/free/moj/portal/rest/searchpredefinedapi/v1/SearchPredefinedApi/Documents/RMRipaVWNWZpL~jU6G6UZsNK52SbniiLCIQ4SrBGSmA="
+   },
+   {
+    "source": "synthetic",
+    "line_set": "s17a_addon_v1.1",
+    "lines": 18627,
+    "licence": "CC0-1.0",
+    "manifest_sha256": "3f79461b6842b396d62139ddf6501554428abfe735e7e8274cd1bf8261355f1e",
+    "generator_sha256": "efdb5f82e150bfa3f9886406182f1fc52cd39d22bcd28629776087285d7d8e3a",
+    "generator": "HeOCR S17a scan-ifier (U-Net + PatchGAN), trained from scratch by HeOCR on bynli_lines_v2 train pairs; no pretrained weights",
+    "code": {
+     "repository": "https://github.com/HeOCR/hocrsyngen",
+     "commit": "3b55d4aff3de9f3211bc1573f2e0644748e84d63",
+     "path": "experiments/learned_generation_v0/s17a_scanifier/",
+     "covers": "the generator (train_scanifier.py, generate.py) and the build recipe (build_pairs*.py, make_texts.py, gates.py, export_addon.py, make_v1_1.py)"
+    },
+    "typeface": "Frank Ruhl Libre (SIL Open Font License 1.1)",
+    "style_sources": "line crops from 29 of the 30 bynli_lines_v2 train books (NLI free-use or Internet Archive university-library scans; none digitized by Google; 28 rights justification ids, all among R7's verified 33)",
+    "text": "Project Ben-Yehuda public_domain_dump 2026-03"
+   }
+  ],
+  "selection": [
+   {
+    "source": "internet_archive",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "kevarpirezikhron00haco",
+    "title": "Kevar: Pirke Zikhronot",
+    "creators": "Mordechai ben Hillel Hacohen (d. 1936)",
+    "published": "Warsaw, 1922",
+    "contributing_library": "Robarts - University of Toronto",
+    "source_class": "ia_library_scan_no_licence_field",
+    "lines": 1500,
+    "book_lines": 6100,
+    "held_out_lines": 4600,
+    "rights_justification_ids": [
+     "rj:kevarpirezikhron00haco:bd8921800cfb"
+    ]
+   },
+   {
+    "source": "internet_archive",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "yediothateva06bernuoft",
+    "title": "Yedi'ot ha-Teva",
+    "creators": "Aaron Bernstein (d. 1884); translated by David Frischmann (d. 1922)",
+    "published": "Warsaw, 1883",
+    "contributing_library": "Gerstein - University of Toronto",
+    "source_class": "ia_library_scan_no_licence_field",
+    "lines": 1500,
+    "book_lines": 6100,
+    "held_out_lines": 4600,
+    "rights_justification_ids": "every Yedi'ot work's id is in bynli_lines_v3/manifest.jsonl (17 works)"
+   }
+  ],
+  "selection_bias": "selection used 1,500 seeded lines of each selection book; the held-out figures use the other 4,600 lines of the same books, so they carry some selection optimism",
+  "conversion": "each line's label is written in training order to <line>.gt.txt and a WordStr <line>.box, then commands.make_lstmf writes <line>.lstmf (R6-R8 make_lstmf.py); R7's and R8a's .lstmf files are reused for their lines",
+  "rights_verification": {
+   "checked": "2026-11-12, every row of the training list, by line set",
+   "bynli_lines_v2": "95,296 rows: 19,820 NLI (7 records, free-use manifests) and 75,476 Internet Archive rows pointing to the 33 justifications R7 verified; all accepted, ids match",
+   "bynli_lines_v3": "62,808 rows: 2,319 NLI (Bachrach, free-use manifest, sha256 matches) and 60,489 Internet Archive rows in 14 books; every row's justification is accepted, its id matches, the book is pd_il (latest death 1946) and pd_us; 10 university-library scans and 4 Google scans retrieved via the Internet Archive",
+   "reshumotlines_v1": "19,533 rows in 48 booklets: PD-IL, born-digital check passed, eval-reserve guard passed",
+   "wslines_v1": "11 rows: justification accepted; text CC BY-SA 4.0 (decision 0016)",
+   "s17a_addon_v1.1": "18,627 rows: CC0; style sources a subset of R7's verified books",
+   "gaps": 0
+  }
+ },
+ "truth_order": {
+  "ground_truth": "logical",
+  "training_order": "Tesseract LSTM order: the logical line reversed as a whole, punctuation not mirrored, then each digit run (with internal . , : /) reversed back to left to right",
+  "inference_output": "logical"
+ },
+ "commands": {
+  "make_lstmf": [
+   "<tesseract>",
+   "<line>.png",
+   "<line>",
+   "--psm",
+   "13",
+   "lstm.train"
+  ],
+  "train_main": [
+   "<lstmtraining>",
+   "--continue_from",
+   "<r7_work>/lr1e4/heb_0.634_52608_117100.checkpoint",
+   "--old_traineddata",
+   "<r7_starter>/heb/heb.traineddata",
+   "--traineddata",
+   "<starter>/heb/heb.traineddata",
+   "--model_output",
+   "<work>/main/heb",
+   "--train_listfile",
+   "<data>/train_main.list",
+   "--learning_rate",
+   "0.0001",
+   "--reset_learning_rate",
+   "--max_iterations",
+   "196275",
+   "--target_error_rate",
+   "0.01",
+   "--debug_interval",
+   "-1"
+  ],
+  "select_build": [
+   "<python>",
+   "eval-domains/scripts/score_lines.py",
+   "build",
+   "sel"
+  ],
+  "select_run": [
+   "<python>",
+   "eval-domains/scripts/score_lines.py",
+   "run",
+   "sel",
+   "<name>=<checkpoint>",
+   "--starter"
+  ],
+  "select_score": [
+   "<python>",
+   "eval-domains/scripts/score_lines.py",
+   "score",
+   "sel",
+   "<name>",
+   "...",
+   "--profile",
+   "line_fold_v1"
+  ],
+  "convert": [
+   "<lstmtraining>",
+   "--stop_training",
+   "--continue_from",
+   "<work>/main/heb_snap_final.checkpoint",
+   "--traineddata",
+   "<starter>/heb/heb.traineddata",
+   "--model_output",
+   "<out>/heb.traineddata"
+  ]
+ },
+ "hyperparameters": {
+  "arms": {
+   "main": {
+    "learning_rate": 0.0001,
+    "reset_learning_rate": true,
+    "train": "bynli_lines_v2 + bynli_lines_v3 + reshumotlines_v1 + wslines_v1 + s17a_addon_v1.1"
+   },
+   "rab": {
+    "note": "main plus rablines_v1 (old printed, rabbinic); not released: it tied main, lost on rendered Reshumot dev, and was dropped from the recipe (decision 0018)"
+   }
+  },
+  "max_iterations": 196275,
+  "max_iterations_note": "one epoch of the seeded-shuffle list",
+  "target_error_rate": 0.01,
+  "eval_listfile": null,
+  "eval_listfile_note": "not set: lstmtraining's background tester thread crashed both arms (SIGSEGV in LSTMTester::RunEvalSync) on the first launches; selection runs afterwards on saved checkpoints and 20-minute snapshots"
+ },
+ "run": {
+  "date": "2026-11-12",
+  "device": "cpu",
+  "machine": "Apple silicon Mac",
+  "deterministic": false,
+  "scheduler": "both arms ran concurrently under HeOCR's power scheduler (AC power only)",
+  "wall_time_per_arm": "about 3 h (01:47-04:46)",
+  "voided_runs": "two earlier launches (01:04 and 01:13) are void: list contamination found by eval's check, then the tester-thread crash"
+ },
+ "outcome": {
+  "iterations_completed": {
+   "main": 196275
+  },
+  "learning_iterations_completed": {
+   "main": 78107
+  },
+  "exit": "0, 'Finished!' logged",
+  "checkpoints_evaluated": {
+   "main": 28,
+   "rab": 28
+  },
+  "selection_rule": "lowest CER under eval's line_fold_v1 profile (score_lines.py, every line charged) on the 3,000 selection lines, within arm main (rab dropped from the recipe)",
+  "selected": {
+   "arm": "main",
+   "checkpoint": "heb_snap_final",
+   "training_iteration": 196275,
+   "checkpoint_sha256": "5526f71348ac5a67bc32b245fda0f2bd14fd7db257b84513d2d3bc8d10b21843",
+   "selection_cer_percent": 0.873,
+   "selection_wer_percent": 3.954,
+   "train_bcer_percent_at_end": 2.698
+  },
+  "superseded_selection": "the first pick, by raw lstmeval BCER (iteration 139,700, model 9eee56cf…), was withdrawn after eval found two measurement problems (lines lstmeval drops, and inconsistent maqaf in the references); it ranks 8th of 28 under line_fold_v1",
+  "best_other_arm": {
+   "arm": "rab",
+   "checkpoint": "heb_2.240_68527_171600",
+   "selection_cer_percent": 0.872,
+   "note": "0.001 lower than main's pick on the selection lines; rab is not a release candidate (see hyperparameters.arms.rab)"
+  },
+  "validation_metric_definition": "CER/WER %, eval-domains/scripts/score_lines.py, profile line_fold_v1; not hocrgen primary.v1"
+ },
+ "evaluation": {
+  "figures": "eval-domains/outputs/r8b_release_figures_v1.json (frozen 2026-11-12 by heocr-eval)",
+  "figures_sha256": "22c0305ddafe6f436599df115c1c71345fed3685feae2c3cd9198b5e989909d9",
+  "profile": {
+   "name": "line_fold_v1",
+   "sha256": "2e2627104be4f27dc3204787dd3ff4f8591d95d1d96294c65833d2773041d317",
+   "folds": "־→-, ׳→', ״→\", “ ” „→\", —→– (signs the references write inconsistently); NFC; whitespace collapsed",
+   "lines_a_model_cannot_output": "charged"
+  },
+  "scorer_sha256": "1b7e6fd8dc4710e95c6457ed70679410b13d1b9ebe5f42170325236f6bade477",
+  "test_score": "none yet: no human-reviewed test set has scored R8b",
+  "olb_reshumot_dev": {
+   "status": "silver dev set used for the release decision; not a test score",
+   "set": "olbreshumotlines_v1_dev",
+   "manifest_sha256": "e2101b5810bc5f1ecc54ea1458010f488885d705dcecaad3f83a04821f499be7",
+   "bootstrap": {
+    "B": 10000,
+    "seed": 0,
+    "cluster": "unit_id"
+   },
+   "views": {
+    "all": {
+     "lines": 3254,
+     "units": 55,
+     "chars": 106536,
+     "cer": {
+      "r8b-main-fold": 2.129,
+      "s17a-addon": 2.471,
+      "r7": 2.934
+     },
+     "paired": {
+      "s17a-addon_minus_main": {
+       "delta": 0.342,
+       "ci95": [
+        0.154,
+        0.47
+       ],
+       "main_loses": false,
+       "main_wins": true
+      },
+      "r7_minus_main": {
+       "delta": 0.805,
+       "ci95": [
+        0.665,
+        0.98
+       ],
+       "main_loses": false,
+       "main_wins": true
+      }
+     }
+    },
+    "excluded": {
+     "lines": 3243,
+     "units": 55,
+     "chars": 105884,
+     "cer": {
+      "r8b-main-fold": 2.139,
+      "s17a-addon": 2.48,
+      "r7": 2.944
+     },
+     "paired": {
+      "s17a-addon_minus_main": {
+       "delta": 0.341,
+       "ci95": [
+        0.154,
+        0.471
+       ],
+       "main_loses": false,
+       "main_wins": true
+      },
+      "r7_minus_main": {
+       "delta": 0.805,
+       "ci95": [
+        0.669,
+        0.975
+       ],
+       "main_loses": false,
+       "main_wins": true
+      }
+     }
+    },
+    "exact": {
+     "lines": 2028,
+     "units": 54,
+     "chars": 61343,
+     "cer": {
+      "r8b-main-fold": 0.735,
+      "s17a-addon": 0.901,
+      "r7": 1.32
+     },
+     "paired": {
+      "s17a-addon_minus_main": {
+       "delta": 0.166,
+       "ci95": [
+        0.056,
+        0.294
+       ],
+       "main_loses": false,
+       "main_wins": true
+      },
+      "r7_minus_main": {
+       "delta": 0.585,
+       "ci95": [
+        0.401,
+        0.821
+       ],
+       "main_loses": false,
+       "main_wins": true
+      }
+     }
+    },
+    "exact_excluded": {
+     "lines": 2023,
+     "units": 54,
+     "chars": 61073,
+     "cer": {
+      "r8b-main-fold": 0.737,
+      "s17a-addon": 0.899,
+      "r7": 1.321
+     },
+     "paired": {
+      "s17a-addon_minus_main": {
+       "delta": 0.162,
+       "ci95": [
+        0.055,
+        0.295
+       ],
+       "main_loses": false,
+       "main_wins": true
+      },
+      "r7_minus_main": {
+       "delta": 0.584,
+       "ci95": [
+        0.392,
+        0.826
+       ],
+       "main_loses": false,
+       "main_wins": true
+      }
+     }
+    },
+    "not_exact": {
+     "lines": 1226,
+     "units": 44,
+     "chars": 45193,
+     "cer": {
+      "r8b-main-fold": 4.021,
+      "s17a-addon": 4.6,
+      "r7": 5.125
+     },
+     "paired": {
+      "s17a-addon_minus_main": {
+       "delta": 0.579,
+       "ci95": [
+        0.274,
+        0.775
+       ],
+       "main_loses": false,
+       "main_wins": true
+      },
+      "r7_minus_main": {
+       "delta": 1.104,
+       "ci95": [
+        0.838,
+        1.311
+       ],
+       "main_loses": false,
+       "main_wins": true
+      }
+     }
+    },
+    "all_cap60": {
+     "lines": 1484,
+     "units": 55,
+     "chars": 45276,
+     "cer": {
+      "r8b-main-fold": 1.473,
+      "s17a-addon": 1.736,
+      "r7": 2.271
+     },
+     "paired": {
+      "s17a-addon_minus_main": {
+       "delta": 0.263,
+       "ci95": [
+        0.13,
+        0.391
+       ],
+       "main_loses": false,
+       "main_wins": true
+      },
+      "r7_minus_main": {
+       "delta": 0.798,
+       "ci95": [
+        0.617,
+        0.988
+       ],
+       "main_loses": false,
+       "main_wins": true
+      }
+     }
+    }
+   }
+  },
+  "selection_books_held_out": {
+   "caveat": "checkpoint re-selection (sel.list, 28 checkpoints) used lines from these same two books; margins carry selection optimism, and the Kevar margin over s17a-addon is small (-0.022)",
+   "kevarpirezikhron00haco heldout": {
+    "r7": {
+     "lines": 4600,
+     "cer": 0.848,
+     "wer": 4.018
+    },
+    "s17a-addon": {
+     "lines": 4600,
+     "cer": 0.779,
+     "wer": 3.717
+    },
+    "r8b-main-fold": {
+     "lines": 4600,
+     "cer": 0.757,
+     "wer": 3.542
+    }
+   },
+   "yediothateva06bernuoft heldout": {
+    "r7": {
+     "lines": 4600,
+     "cer": 1.336,
+     "wer": 5.927
+    },
+    "s17a-addon": {
+     "lines": 4600,
+     "cer": 1.071,
+     "wer": 4.664
+    },
+    "r8b-main-fold": {
+     "lines": 4600,
+     "cer": 1.019,
+     "wer": 4.322
+    }
+   }
+  },
+  "report_sets": {
+   "silman": {
+    "label": "Silman (report, exposed: R7-era selection)",
+    "r7": {
+     "lines": 3046,
+     "cer": 1.001,
+     "wer": 4.896
+    },
+    "s17a-addon": {
+     "lines": 3046,
+     "cer": 0.872,
+     "wer": 4.377
+    },
+    "r8b-main-fold": {
+     "lines": 3046,
+     "cer": 0.869,
+     "wer": 4.202
+    }
+   },
+   "brainin_nli": {
+    "label": "Brainin, NLI scan (report)",
+    "r7": {
+     "lines": 4046,
+     "cer": 1.355,
+     "wer": 5.615
+    },
+    "s17a-addon": {
+     "lines": 4046,
+     "cer": 1.121,
+     "wer": 4.515
+    },
+    "r8b-main-fold": {
+     "lines": 4046,
+     "cer": 1.073,
+     "wer": 4.205
+    }
+   },
+   "brainin_v3": {
+    "label": "Brainin, IA scan (bynli_lines_v3 dev; R8c dev unit from now)",
+    "r7": {
+     "lines": 6257,
+     "cer": 0.635,
+     "wer": 2.616
+    },
+    "s17a-addon": {
+     "lines": 6257,
+     "cer": 0.665,
+     "wer": 2.823
+    },
+    "r8b-main-fold": {
+     "lines": 6257,
+     "cer": 0.743,
+     "wer": 3.233
+    }
+   },
+   "reshumot_dev": {
+    "label": "Reshumot rendered born-digital dev (in-domain)",
+    "r7": {
+     "lines": 2716,
+     "cer": 7.789,
+     "wer": 19.649
+    },
+    "s17a-addon": {
+     "lines": 2716,
+     "cer": 6.009,
+     "wer": 16.781
+    },
+    "r8b-main-fold": {
+     "lines": 2716,
+     "cer": 1.179,
+     "wer": 4.035
+    }
+   },
+   "rab_dev": {
+    "label": "Mekhilta / rabbinic dev",
+    "r7": {
+     "lines": 3141,
+     "cer": 1.896,
+     "wer": 7.065
+    },
+    "s17a-addon": {
+     "lines": 3141,
+     "cer": 1.027,
+     "wer": 2.742
+    },
+    "r8b-main-fold": {
+     "lines": 3141,
+     "cer": 1.056,
+     "wer": 2.885
+    }
+   },
+   "ws_dev": {
+    "label": "Wikisource rendered dev",
+    "r7": {
+     "lines": 257,
+     "cer": 8.03,
+     "wer": 27.882
+    },
+    "s17a-addon": {
+     "lines": 257,
+     "cer": 6.906,
+     "wer": 23.646
+    },
+    "r8b-main-fold": {
+     "lines": 257,
+     "cer": 6.932,
+     "wer": 23.727
+    }
+   },
+   "bodek": {
+    "label": "Bodek (report)",
+    "r7": {
+     "lines": 21,
+     "cer": 6.166,
+     "wer": 22.378
+    },
+    "s17a-addon": {
+     "lines": 21,
+     "cer": 4.826,
+     "wer": 15.385
+    },
+    "r8b-main-fold": {
+     "lines": 21,
+     "cer": 5.094,
+     "wer": 18.182
+    }
+   }
+  },
+  "s17a_addon": "an unreleased A/B arm (R7 continued on R8a's lines plus the S17a add-on), reported for context",
+  "brainin_ia_regression": "Brainin IA: r8b-main-fold 0.743 vs R7 0.635 CER: R8b regresses on this scan (dark, fine-grained, small line height); R8c targets it, and it is R8c's dev unit, so not an unseen result for R8c",
+  "text_overlap_check": {
+   "method": "word 6-grams, Hebrew letters only, marks U+0591-U+05C7 stripped, NFC",
+   "eval_check_train_overlap": {
+    "script_sha256": "856dc9a3a8ecf47b2655230e17341aaaefa6f924162658a81aa730be543d1aff",
+    "run": "2026-11-12, on R8b's training list",
+    "lines_sharing_a_6gram": {
+     "pmod_eval_pages": 0,
+     "wave1": 0,
+     "line_verify": 0,
+     "tenders": 0,
+     "rseries_dev_report": 158,
+     "olb_reshumot_dev": 13,
+     "line_verify_units_by_path": 0,
+     "rseries_dev_units_by_path": 0
+    },
+    "rseries_dev_report_by_set": {
+     "brainin_ia": 62,
+     "rab_dev_mekhilta": 56,
+     "reshumot_dev": 40,
+     "kevar": 0,
+     "yediot_ha_teva": 0
+    },
+    "note": "the 158 come mostly from R8a's train and the S17a add-on (agadothatanaim 45, kolsifreperetz 36, s17a 26) and Reshumot boilerplate (21); they flatter R8b on Brainin IA, Mekhilta and reshumot dev. The 13 OLB lines are Reshumot boilerplate and touch 11 dev lines; the gate's 'excluded' views leave those out"
+   },
+   "audit2_references": {
+    "references": 38,
+    "training_labels": 196275,
+    "labels_sharing_a_6gram": 1,
+    "finding": "one bynli_lines_v3 label (ia_afahleneemaniml00fngoog_c0102_l009) shares the rabbinic title formula אב\"ד ור\"מ דק\"ק with reference page ws_index_381649__p0002; the method splits the three abbreviations into six tokens. Boilerplate, not shared text. R8b has no audit2 score"
+   },
+   "checked": "2026-11-12"
+  },
+  "word_list_check": {
+   "method": "combine_tessdata -u, then dawg2wordlist with each model's own lstm-unicharset; sorted entry sets compared",
+   "replaces": "a byte-identity check, which cannot pass: the dawg is rebuilt for a larger unicharset, so its bytes differ from the base's (as R7's did)",
+   "lstm_word_dawg_sha256": {
+    "tessdata_best_heb": "f34e9fa5165077f285ccff7c0f53a8e96b74ef37c92038e472770cfc83433171",
+    "r7": "cddcc086c241eeaf0f29b77f7955770d4fe3b2832f8fec986e53c7a0a579fcdb",
+    "r8b": "a618186eb88789a203c2475ec30fbe2277427f97d063a8bf91cc564c0a166649"
+   },
+   "entries": {
+    "tessdata_best_heb": 70171,
+    "r7": 70171,
+    "r8b": 70171
+   },
+   "r8b_equals_r7": true,
+   "r8b_vs_tessdata_best": "the same list in right-to-left order: reversed, the entries agree except 24 bracket or arrow tokens whose ( ) and < > are mirrored",
+   "entries_from_training_text": 0,
+   "decision": "heocr-engine planning/decisions/0016-weights-trained-on-wikisource-transcriptions.md item 3 holds: no word list or dawg was built from Wikisource or any other training text",
+   "checked": "2026-11-12"
+  }
+ },
+ "output": {
+  "model_sha256": "8cb22dbeb195c3c0ffbe9c66cf956d8c2052d3b1c4a872234a85c975c4526117",
+  "bytes": 3633477,
+  "file_name": "heb.traineddata",
+  "release_file_name": "heocr_r8b.traineddata",
+  "language_name": "heocr_r8b",
+  "eval_name": "r8b-main-fold",
+  "format": "Tesseract traineddata, LSTM only (components: lstm, lstm-punc-dawg, lstm-word-dawg, lstm-number-dawg, lstm-unicharset, lstm-recoder, version)",
+  "version_string": "5.5.3",
+  "byte_reproducible": false
+ },
+ "model_licence": {
+  "status": "Apache-2.0",
+  "owner": "maintainer",
+  "basis": "planning/decisions/0014-open-release-always.md",
+  "published": false
+ }
+}

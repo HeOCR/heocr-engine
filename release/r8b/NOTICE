@@ -1,0 +1,327 @@
+HeOCR R8b Hebrew printed-text recognition model for Tesseract
+Copyright (c) 2026 HeOCR maintainers
+
+This model (heocr_r8b.traineddata, trained as heb.traineddata, sha256
+8cb22dbeb195c3c0ffbe9c66cf956d8c2052d3b1c4a872234a85c975c4526117, 3,633,477
+bytes) is licensed under the Apache License, Version 2.0. See LICENSE.
+
+Base model
+----------
+
+This model is a modified version of the tessdata_best Hebrew model
+(heb.traineddata) of the Tesseract OCR project,
+https://github.com/tesseract-ocr/tessdata_best, commit
+e12c65a915945e4c28e237a9b52bc4a8f39a0cec, sha256
+dbaa827aea6bc21215638447f17783a1004987c2d0bf5573d111fee397abdae5, licensed
+under the Apache License, Version 2.0.
+
+HeOCR modified it in two stages. HeOCR R7 (2026-11-11) fine-tuned its LSTM
+network on real scanned Hebrew lines. R8b (2026-11-12) continued training
+from R7's weights on more real lines, rendered born-digital lines and
+synthetic lines. Five characters were added to the base's character set: the
+maqaf U+05BE, the en dash U+2013, the geresh U+05F3, the gershayim U+05F4
+and the em dash U+2014. The dictionary components were rebuilt from the
+base model's own word list with build files from
+https://github.com/tesseract-ocr/langdata_lstm, commit
+07930fd9f246622c26eb5de794d9212ceac432d3, licensed under the Apache License,
+Version 2.0. No word list was built from any training text.
+
+Software
+--------
+
+The model was trained with, and runs in, Tesseract 5.5.3
+(https://github.com/tesseract-ocr/tesseract), licensed under the Apache
+License, Version 2.0. The model file contains no Tesseract code.
+
+Training data: National Library of Israel scans
+-----------------------------------------------
+
+From the collections of the National Library of Israel / מאוסף הספרייה הלאומית
+
+Training lines were cut from these National Library of Israel (NLI) scans.
+Each record's IIIF manifest carries NLI's licence "public domain, free use"
+(https://www.nli.org.il/contenteditors/pages-for-terms-of-use/public-domain-free-use)
+and the attribution "מאוסף הספרייה הלאומית". They were fetched from NLI's
+IIIF service (https://iiif.nli.org.il/IIIFv21/<record>/manifest), the
+route HeOCR's legal strategy calls nli_free_use. None is a Google-digitized
+"public domain, non-commercial use" scan.
+
+  NLI record 990017640460205171: Leo Tolstoy (1828-1910), Anna Karenina,
+    Hebrew translation by Yosef Eliyahu Triwosch (1855-1940). Moscow: A. Y.
+    Stybel, 1918-1922. 6,100 lines.
+  NLI record 990020308000205171: Yeshayahu Berashadsky (1871-1908), Ketavim
+    Aharonim, with a biography by Pesach Kaplan (1870-1943) and an essay by
+    Ben-Avigdor (1866-1921). Warsaw: Tushiya, 1910. 6,076 lines.
+  NLI record 990020495520205171: Shmuel Leib Citron (1860-1930), Me-Ahorei
+    ha-Pargod. Vilna: Z. Matz, 1923-1925. 6,052 lines.
+  NLI record 990026910840205171: Yaakov Bachrach (1824-1896), Sefer ha-Massa
+    le-Erets ha-Kedoshah. Warsaw, 1884. 2,319 lines.
+  NLI record 990020522850205171: Shmuel Tchernowitz (1879-1929), Im Shahar.
+    Jerusalem: Ha-Madpis, 1927. 1,511 lines.
+  NLI record 990020466440205171: David Frischmann (1859-1922), Be-Yom
+    ha-Kippurim. Warsaw: Y. Alapin, 1881. 72 lines.
+  NLI record 990019385920205171: Azriel Natan Frank (1863-1924), Sefer
+    Agadot ha-Zohar. Warsaw: Ahiasaf, 1923-1924. 8 lines.
+  NLI record 990013538860205171: Yitzhak Katzenelson (1885-1944), Shirim.
+    Lodz: Hovevei Shira, 1938. 1 line.
+
+Training data: Internet Archive scans
+-------------------------------------
+
+Training lines were also cut from these Internet Archive items
+(https://archive.org/details/<identifier>), scans of public-domain books.
+They were fetched from the Internet Archive (its metadata and IIIF
+services), the route HeOCR's legal strategy calls internet_archive. The
+Internet Archive publishes them without an explicit licence: none carries a
+licenseurl or rights field. The original conditions of each item on the
+Internet Archive still apply. None comes from NLI.
+
+Each item passed HeOCR's Internet Archive rights gate
+(hocrgen.fetchers.ia_iiif.decide_ia_rights; hocrgen decision
+planning/decisions/2026-11-09-internet-archive-library-scans.md), and each
+Ben-Yehuda work aligned to it has its own rights justification
+(hocrgen.rights_justification.v1; hocrgen decision
+planning/decisions/2026-11-10-legal-strategy.md). In short: a public-domain
+book, a faithful scan, fetched from the Internet Archive; no new right
+arises in the scan and no contract binds its reuse. The justification ids
+are listed in r8b_training_run.json. Death years are the ones those
+justifications record, with one exception: Alfred Dreyfus died in 1935
+(Wikidata), but his justification conservatively records 1939, the Internet
+Archive's creator dates. Either year puts the book in the public domain.
+
+Scans made by university libraries (source class
+ia_library_scan_no_licence_field; none was digitized by Google):
+
+  kolsifreperetsbe03smoluoft: Peretz Smolenskin (d. 1885), Kol Sifre, vol.
+    3. Vilna: M. Katzenellenbogen, 1905. Robarts - University of Toronto.
+    6,100 lines.
+  sifrehazikhronot00mont: Israel Hayyim Tavyov (d. 1920), Sifre
+    ha-Zikhronot le-Sir Moshe Montefiore ve-Ra'ayato Yehudit. Warsaw:
+    Tushiya, 1898. Robarts - University of Toronto. 6,100 lines.
+  zikhronotlebetda01reck: Abraham Shalom Friedberg (d. 1902), Zikhronot
+    le-Vet David. Warsaw, 1893. Robarts - University of Toronto. 6,100
+    lines.
+  kolsifreperetsbe01smoluoft: Peretz Smolenskin (d. 1885), Kol Sifre, vol.
+    1. Vilna: M. Katzenellenbogen, 1905. Robarts - University of Toronto.
+    6,096 lines.
+  sifruthahisoriya11kaha: Abraham Kahana (d. 1946), Sifrut ha-Historiyah
+    ha-Yisre'elit. Warsaw, 1922. Duke University Libraries. 6,094 lines.
+  yotsrehasifrutha00zitr: Shmuel Leib Citron (d. 1930), Yotsre ha-Sifrut
+    ha-Ivrit ha-Hadashah. Vilna, 1922. Robarts - University of Toronto.
+    6,039 lines.
+  kolkitveylkatsen018800: Judah Leib Katzenelson (d. 1917), Kol Kitve
+    Y. L. Katsenelson. St Petersburg, 1905. University of Illinois
+    Urbana-Champaign. 5,716 lines.
+  kolsifreperetsbe05smoluoft: Peretz Smolenskin (d. 1885), Kol Sifre, vol.
+    5. Vilna: M. Katzenellenbogen, 1905. Robarts - University of Toronto.
+    5,489 lines.
+  seferhademaotmeo0000bern: Simon Bernfeld (d. 1940), Sefer ha-Dema'ot.
+    Berlin, 1923. University of Toronto, Downsview. 5,350 lines.
+  miyarketetevel008800: Zvi Kasdai (d. 1937), Mi-Yarkete Tevel. Jerusalem:
+    A. M. Luncz, 1914. University of Florida, George A. Smathers Libraries.
+    4,760 lines.
+  divreyemeolam02schuuoft: Kalman Schulman (d. 1899), Divre Yeme Olam.
+    Vilna, 1868. Robarts - University of Toronto. 4,668 lines.
+  bioretletoldotha01gott: Abraham Baer Gottlober (d. 1899), Bikoret
+    le-Toldot ha-Kara'im. Vilna, 1865. Duke University Libraries. 4,662
+    lines.
+  ldpd_15772050_000: Ludwig Philippson (d. 1889), Ya'akov Tirado,
+    translated by Samuel Joseph Fuenn (d. 1891). Vilna: S. Y. Fuenn, 1881.
+    Columbia University Libraries. 4,639 lines.
+  zikhronotlevetda01frie: Abraham Shalom Friedberg (d. 1902), Zikhronot
+    le-Vet David. Warsaw, 1904. University Library, University of North
+    Carolina at Chapel Hill. 4,150 lines.
+  mabeothayehudims00raff: Samuel Raffaeli (d. 1923), Matbe'ot ha-Yehudim.
+    Jerusalem: E. Dainard, 1913. Robarts - University of Toronto. 4,137
+    lines.
+  atn3681.0001.001.umich.edu: Menahem Mendel Dolitzky (d. 1931), Shevet
+    Sofer. Vienna: G. Brag, 1883. University of Michigan. 4,065 lines.
+  maloketravseadya00bornuoft: Hayyim Yehiel Bornstein (d. 1928), Mahloket
+    Rav Sa'adyah Ga'on u-Ben Meir. Warsaw: Schuldberg, 1904. Robarts -
+    University of Toronto. 3,658 lines.
+  tserorperaimvehu00kovn: Abraham Uri Kovner (d. 1909), Tseror Perahim.
+    Odessa, 1868. Robarts - University of Toronto. 3,616 lines.
+  mimitsrayimhusef00fran: Ludwig August Frankl (d. 1894), Mi-Mitsrayim,
+    translated by Abraham Baer Gottlober (d. 1899) and Meir Halevi Letteris
+    (d. 1871). Vienna: J. Holzwarth, 1862. Robarts - University of Toronto.
+    3,590 lines.
+  ademataidibruivr00benyuoft: Eliezer Ben-Yehuda (d. 1922), Ad Ematai Dibru
+    Ivrit? New York: Kadima, 1919. Robarts - University of Toronto. 2,980
+    lines.
+  agadothatanaim11bach: Wilhelm Bacher (d. 1913), Agadot ha-Tanna'im,
+    translated by Alexander Siskind Rabinovitz (d. 1945). Berlin and
+    Jerusalem: Dvir, 1922. University of Illinois Urbana-Champaign. 2,977
+    lines.
+  motsaegolahzikhr00rabbuoft: Saul Pinchas Rabinowitz (d. 1910), Motsa'e
+    Golah. Warsaw: Ahiasaf, 1894. Robarts - University of Toronto. 2,852
+    lines.
+  peereakhmemedina00gree: Jekuthiel Judah Greenwald (d. 1955), Pe'ere
+    Hakhme Medinatenu. Sighet: A. Kaufman, 1910. Robarts - University of
+    Toronto. 2,777 lines.
+  imanuelharomimon0000tche: Shaul Tchernichovsky (d. 1943), Immanuel
+    ha-Romi. Berlin: Eshkol, 1924. University of Toronto, Downsview. 2,572
+    lines.
+  mishnatrishonimt0000klat: Jacob Klatzkin (d. 1948), Mishnat Rishonim.
+    Berlin: Eshkol, 1924. University of Toronto, Downsview. 2,553 lines.
+  igrothaasirmeiha00drey: Alfred Dreyfus (d. 1935), Igrot ha-Asir me-I
+    ha-Shedim, translated by Abraham Shalom Friedberg (d. 1902). Warsaw: M.
+    Spektor and E. Berman, 1898. Brandeis University Libraries. 2,498 lines.
+  masaleeretsyirae00lewi: Elhanan Leib Lewinsky (d. 1910), Massa le-Erets
+    Yisra'el bi-Shnat 800. Berlin: Kelal, 1922. The Ohio State University.
+    1,917 lines.
+  sepherhayyeyehud01mode: Leon of Modena (d. 1648), Sefer Hayye Yehudah.
+    Kiev, 1912. Duke University Libraries. 1,491 lines.
+  reginahashkenazi00ginsuoft: Pesach Ginzburg (d. 1947), Regina Ashkenazi.
+    London: Iyim, 1918. Robarts - University of Toronto. 1,305 lines.
+  sipurim00nombuoft: Hirsh David Nomberg (d. 1927), Sipurim. Warsaw, 1905.
+    Robarts - University of Toronto. 1,291 lines.
+  anshekayruan00pozn: Samuel Abraham Poznanski (d. 1921), Anshe Kairuan.
+    Berlin, 1909. Robarts - University of Toronto. 1,218 lines.
+  maamarmagenetsin00mode: Leon of Modena (d. 1648), Ma'amar Magen
+    ve-Tsinah, edited by Abraham Geiger (d. 1874). Breslau: H. Sulzbach,
+    1856. Duke University Libraries. 1,145 lines.
+  hegyoneshpinozah00rubi: Salomon Rubin (d. 1910), Hegyone Shpinozah.
+    Krakow: A. Faust, 1897. Robarts - University of Toronto. 557 lines.
+
+Scans digitized by Google (source class ia_google_digitized_scan). Each was
+digitized by Google; retrieved via the Internet Archive, not from Google or
+NLI. They are admitted under hocrgen's legal strategy, rule 3 (Routes B and
+C: Google-digitized scans fetched from the Internet Archive or Wikimedia
+Commons; planning/decisions/2026-11-10-legal-strategy.md), and heocr-engine
+decision 0015 (planning/decisions/0015-legal-strategy.md). Google's
+front-page usage guidelines are requests, not a contract, and HeOCR accepted
+no terms from Google for these files. Hygiene (legal strategy, rule 5): for
+each item, canvas 0, Google's usage-guidelines page, was excluded; no
+"Digitized by Google" watermark was found on any other page; and no
+training line comes from canvas 0. Neither Google nor the contributing
+library endorses HeOCR.
+
+  afahleneemaniml00fngoog: Samuel Joseph Fuenn (d. 1891), Safah
+    le-Ne'emanim. Vilna, 1881. Digitized by Google; retrieved via the
+    Internet Archive; contributing library: University of California.
+    5,750 lines.
+  mikhtavimmiarsh00mezagoog: Yehoshua Mezah (d. 1917), Mikhtavim mi-Sar
+    shel Yam. Warsaw, 1886. Digitized by Google; retrieved via the
+    Internet Archive; contributing library: unknown library. 3,452 lines.
+  korothayehudimb00friegoog: Abraham Shalom Friedberg (d. 1902), Korot
+    ha-Yehudim bi-Sefarad. Warsaw, 1893. Digitized by Google; retrieved via
+    the Internet Archive; contributing library: University of California.
+    2,968 lines.
+  tsitsimuferaimm00geiggoog: Abraham Geiger (d. 1874), Tsitsim u-Ferahim.
+    Leipzig, 1856. Digitized by Google; retrieved via the Internet Archive;
+    contributing library: University of California. 633 lines.
+
+Checkpoint selection used 3,000 lines (1,500 each) from two further
+Internet Archive university-library scans, fetched the same way and each
+with its own rights justifications. They were not trained on:
+
+  kevarpirezikhron00haco: Mordechai ben Hillel Hacohen (d. 1936), Kevar:
+    Pirke Zikhronot. Warsaw, 1922. Robarts - University of Toronto.
+  yediothateva06bernuoft: Aaron Bernstein (d. 1884), Yedi'ot ha-Teva,
+    translated by David Frischmann (d. 1922). Warsaw, 1883. Gerstein -
+    University of Toronto.
+
+Every author, translator, editor and other named contributor of the books
+above died more than 70 years ago, so the books are in the public domain in
+Israel. Every book except Shirim was printed before 1931 and is also past
+the United States copyright term. The US status of Shirim (1938, one
+training line) is not established.
+
+Training data: Reshumot (laws and regulations)
+----------------------------------------------
+
+Training lines were rendered by HeOCR (pdftoppm, 150 dpi grey) from 48
+born-digital PDF booklets of ספר החוקים (Sefer ha-Hukim, 12,602 lines) and
+קובץ התקנות (Kovetz ha-Takanot, 6,931 lines), published 2006-2026 by
+Reshumot (רשומות), the official gazette of the State of Israel. Each line is
+labelled with the publisher's own PDF text layer for that line. Laws and
+regulations carry no copyright in Israel (Copyright Act 2007, section 6;
+PD-IL). Their status outside Israel, including the United States, is not
+asserted here. Every booklet passed HeOCR's born-digital check and its
+evaluation-reserve guard: none is an evaluation booklet. The booklet
+numbers, publisher URLs and PDF sha256 values are in r8b_training_run.json.
+
+  Sefer ha-Hukim 2063, 2108, 2110, 2180, 2209, 2256, 2314, 2378, 2382,
+    2405, 2464, 2497, 2578, 2656, 2663, 2745, 2779, 2918, 3001, 3009, 3085,
+    3293 and 3452.
+  Kovetz ha-Takanot 6517, 6609, 6610, 6708, 6710, 6903, 6926, 7070, 7285,
+    7422, 7708, 7862, 7865, 8062, 8065, 8268, 8767, 9606, 10333, 10780,
+    11496, 12040, 12521, 12562 and 12565.
+
+Training data: Hebrew Wikisource (text) and Wikimedia Commons (scan)
+--------------------------------------------------------------------
+
+Eleven training lines come from one Hebrew Wikisource proofread page
+(line set wslines_v1): Salomon Buber (d. 1906), Sifrei de-Agadeta al
+Megillat Ester, Vilna, 1886, page 136. The scan is
+File:Salomon Buber. Sifre de-agadeta al megilat Ester.1886.pdf on Wikimedia
+Commons (https://commons.wikimedia.org/wiki/File:Salomon_Buber._Sifre_de-agadeta_al_megilat_Ester.1886.pdf;
+an Internet Archive scan from a copy at Robarts - University of Toronto,
+not digitized by Google), the route HeOCR's legal strategy calls
+wikimedia_commons; its rights justification is
+rj:ws_index_332490:0b20c1d7e01b. The labels are the proofread
+transcription by Hebrew Wikisource contributors,
+https://he.wikisource.org/w/index.php?oldid=763704, licensed under the
+Creative Commons Attribution-ShareAlike 4.0 licence (CC BY-SA 4.0,
+https://creativecommons.org/licenses/by-sa/4.0/). Per heocr-engine decision
+0016 the weights stay Apache-2.0 with this credit, and no word list or dawg
+was built from Wikisource text: the model's word list is the base model's.
+
+Training data: synthetic lines
+------------------------------
+
+18,627 synthetic lines are HeOCR's s17a_addon_v1.1 set (CC0 1.0): images
+made by HeOCR's S17a generator, trained from scratch by HeOCR, from renders
+in the Frank Ruhl Libre typeface (SIL Open Font License 1.1; the font is
+not distributed with the model), styled after line crops from 29 of the
+NLI and Internet Archive books above (all university-library or NLI scans;
+none digitized by Google). Their text is from Project Ben-Yehuda. The
+generator and the set's build recipe are in HeOCR/hocrsyngen
+(https://github.com/HeOCR/hocrsyngen), commit
+3b55d4aff3de9f3211bc1573f2e0644748e84d63, under
+experiments/learned_generation_v0/s17a_scanifier/.
+
+Training data: text
+-------------------
+
+The scanned book lines and the synthetic lines are labelled with
+transcriptions from Project Ben-Yehuda (https://benyehuda.org), public
+domain dump release 2026-03
+(https://github.com/projectbenyehuda/public_domain_dump). Its licence states
+that the data files are in the public domain. Credit: Project Ben-Yehuda
+volunteers.
+
+The model contains no scan images, no rendered pages and no text files. The
+line crops are not distributed with it.
+
+Evaluation data (not used for training)
+---------------------------------------
+
+The model was scored on held-out lines whose reference text comes from
+these sources. They were used only to choose and score the model, never for
+training:
+  - lines of scanned Reshumot booklets labelled with the text of ספר החוקים
+    הפתוח on Hebrew Wikisource (CC BY-SA 4.0, Hebrew Wikisource
+    contributors), and Hebrew Wikisource proofread pages (CC BY-SA 4.0);
+  - Project Ben-Yehuda transcriptions of further Internet Archive and NLI
+    scans (public domain);
+  - rendered Reshumot booklets (PD-IL);
+  - a Sefaria transcription of an Internet Archive scan (public domain).
+The model contains no evaluation text.
+
+No endorsement
+--------------
+
+Neither the National Library of Israel, the Internet Archive, Google, the
+libraries named above, Reshumot or the State of Israel, Project Ben-Yehuda,
+the Tesseract OCR project, the Frank Ruhl Libre authors, Wikimedia Commons
+nor Wikisource endorses HeOCR or this model.
+
+Rights concerns
+---------------
+
+If you believe a source item is subject to a valid copyright or another
+binding restriction, email heocrproject@gmail.com or open an issue at
+https://github.com/HeOCR/heocr-engine/issues, and name its NLI record id,
+Internet Archive identifier, Reshumot booklet or Wikisource page. The
+takedown procedure is at https://heocr.github.io/rights.html.

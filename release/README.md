@@ -331,3 +331,90 @@ python release/hf_upload.py --models r7 --zenodo-state $S --weights r7=…/heb.t
 7. **Mirror to Hugging Face:** `HeOCR/heocr-r7-tesseract-heb`.
 
 `plan` was run offline on this branch with no state file, once without weights and once with the trained `heb.traineddata`: the plain card check passed, the weights matched the record's sha256 (3,628,595 bytes), and it listed 5 files, 32 related links and the `heocr` community.
+
+# Fourth release: R8b (Tesseract), a deposit of its own
+
+**Status: drafts, nothing reserved or published.** Decision 0014 needs no per-step go-ahead. Terms: Apache-2.0, licensed by "HeOCR maintainers", as R6 and R7. Inputs follow decisions 0015 and 0016, and every one is credited in the NOTICE.
+
+| Model | Release file | Trained as | sha256 | Folder |
+|---|---|---|---|---|
+| R8b | `heocr_r8b.traineddata` | `heb.traineddata` | `8cb22dbeb195c3c0ffbe9c66cf956d8c2052d3b1c4a872234a85c975c4526117` | `r8b/` |
+
+R8b continues from R7's weights (the checkpoint R7 was packed from) for one epoch over 196,275 lines:
+- R7's lines plus 145 lines with ׳ ״ —;
+- 15 more books (`bynli_lines_v3`);
+- 48 born-digital Reshumot booklets;
+- 11 Wikisource lines;
+- 18,627 synthetic lines.
+
+Its character set is the R8 starter's (73 codes), and it is 3,633,477 bytes. Users run it as `tesseract … -l heocr_r8b --tessdata-dir DIR --psm 3`.
+
+**What the card says.** All figures come from eval's frozen `r8b_release_figures_v1.json` (sha256 `22c0305d…`), under the `line_fold_v1` profile.
+- **OLB Reshumot dev set (silver; not a test score):** R8b beats R7 on all lines (2.129 against 2.934 CER) and on the exact stratum (0.735 against 1.320), and no interval reaches zero.
+- **Held-out selection books:** R8b beats R7 on both, with a selection-optimism caveat.
+- **Brainin's Internet Archive scan:** R8b is worse than R7 (0.743 against 0.635).
+- **No human-reviewed test score yet.**
+- **R8b supersedes nothing; R7 remains valid.** R7's card, record and deposit are unchanged.
+
+**How it differs from R7:**
+- **Four Google-digitized Internet Archive scans.** Each is credited as "Digitized by Google; retrieved via the Internet Archive" with its contributing library ("unknown library" for `mikhtavimmiarsh00mezagoog`). They are admitted under rule 3 of hocrgen's legal strategy and decision 0015. The NOTICE and the record give each one's hygiene: canvas 0 excluded, no watermark found, no training line from canvas 0.
+- **New sources:**
+  - Reshumot laws and regulations: PD-IL under Copyright Act 2007 §6, with no status asserted outside Israel;
+  - one Wikisource page: CC BY-SA 4.0 text, credited under decision 0016;
+  - the CC0 synthetic add-on: generator and recipe in HeOCR/hocrsyngen `3b55d4a`, under `experiments/learned_generation_v0/s17a_scanifier/`.
+- **Word list:** checked by decoding rather than by bytes. The dawg is rebuilt for a larger character set, so byte identity with tessdata_best cannot hold. Decoded, R8b's list is identical to R7's: tessdata_best's 70,171 entries in right-to-left order. No entry comes from any training text.
+- **`related` links:** 49 in all:
+  - the base and R7 (`https://doi.org/10.5281/zenodo.24126449`) as `software`. R8b is derived from R7, so `isDerivedFrom` is right here. It is still a record of its own, not a Zenodo version of R7's;
+  - 8 NLI manifests, 37 `archive.org` items and the Commons file as `image`;
+  - the Ben-Yehuda dump as `dataset`.
+
+  The 48 Reshumot booklets are not linked, because their publisher URLs are opaque API links. Each one's URL and PDF sha256 are in the record.
+- **Hugging Face:** `base_model: HeOCR/heocr-r7-tesseract-heb` (`finetune`), since R7 is on the Hub.
+
+## Files in `r8b/`
+
+The same set as `r7/`: `card_body.md`, `zenodo.yaml`, `huggingface.yaml` (for `HeOCR/heocr-r8b-tesseract-heb`), `NOTICE`, `LICENSE` (byte-identical) and `r8b_training_run.json`. `tests/test_release_r8b.py` checks them, including that the card's figures match the record's copy of eval's frozen figures.
+
+The record is `heocr_tesseract_training_run.v1`, with R7's top-level sections in R7's order. Where R8b differs:
+- `init.kind` is `continue_from_project_model`, and `init.from_model` names R7's checkpoint, DOI and sha256s.
+- `data.line_sets` replaces the single `line_set` and `manifest_sha256`, with one entry per line set.
+- Each `data.train` entry has a `line_set` and a `source`:
+  - `nli_free_use`;
+  - `internet_archive`, with `source_class`, `digitizer` and, for Google scans, a `google` block;
+  - `reshumot_born_digital`, one entry per booklet;
+  - `wikimedia_commons`;
+  - `synthetic`.
+- `data.rights_verification` records the per-row check.
+- `evaluation`:
+  - cites the frozen figures and their sha256;
+  - copies the OLB gate, the held-out books and the report sets from them;
+  - adds `text_overlap_check` (eval's `check_train_overlap.py` counts, and the audit2 6-gram check) and `word_list_check`.
+
+## The scripts for R8b
+
+Both scripts take `--models r8b`, exactly as `--models r7`. `SEPARATE_RELEASES` is now `("r6", "r7", "r8b")`, and the default `--models` stays `r4d a1 r3h`. Use an R8b-only state file, for example `~/.config/heocr/zenodo-production-r8b-state.json`.
+
+## Plan for R8b
+
+The same seven steps as R7:
+
+```sh
+S=~/.config/heocr/zenodo-production-r8b-state.json   # outside the repository; R8b only
+python release/zenodo_deposit.py --models r8b --production --state $S plan --weights r8b=…/heb.traineddata  # any time, offline
+python release/zenodo_deposit.py --models r8b --production --state $S reserve                              # step 1
+python release/zenodo_deposit.py --models r8b --production --state $S upload --weights r8b=…/heb.traineddata  # step 3
+python release/zenodo_deposit.py --models r8b --production --state $S metadata                             # step 4
+python release/zenodo_deposit.py --models r8b --production --state $S publish                              # step 6
+python release/zenodo_deposit.py --models r8b --production --state $S accept                               # step 6: heocr
+python release/hf_upload.py --models r8b --zenodo-state $S --weights r8b=…/heb.traineddata                  # step 7
+```
+
+1. **Reserve** one draft and its DOI.
+2. **Fill the card by PR:** replace the `DRAFT` comment in the Citation section of `r8b/card_body.md` with the reserved version DOI, and update `tests/test_release_r8b.py` to expect it, as #71 did for R7.
+3. **Upload** the card as `README.md`, then `heocr_r8b.traineddata` (refused unless its sha256 matches the record), `LICENSE`, `NOTICE` and `r8b_training_run.json`.
+4. **Set the metadata.**
+5. **Check the draft** in Zenodo's preview, including the 49 related links and R7's DOI among them.
+6. **Publish,** then request inclusion in `heocr` and accept it with `accept`.
+7. **Mirror to Hugging Face:** `HeOCR/heocr-r8b-tesseract-heb`.
+
+`plan` was run offline on this branch with no state file, once without weights and once with the packed `r8b-main-fold` `heb.traineddata`. The plain card check passed, and the weights matched the record's sha256 (3,633,477 bytes). It listed 5 files, 49 related links and the `heocr` community. No state file was written.
