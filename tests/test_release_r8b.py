@@ -107,7 +107,8 @@ class R8bReleaseFilesTests(unittest.TestCase):
         self.assertIn('tesseract line.png out -l heocr_r8b --tessdata-dir DIR --psm 13', card)
         for needle in ('R8b supersedes nothing. R7 remains valid.', 'not a test score',
                        'There is no human-reviewed test score yet.', 'No human-reviewed test score yet.',
-                       '0.743 against 0.635', 'small, sharpened and grainy', 'unreleased A/B arm',
+                       '0.743 against 0.635', 'small, dark and grainy', 'two independent readings confirm the label',
+                       'unreleased A/B arm',
                        'line_fold_v1', PROFILE_SHA, FIGURES_SHA, STARTER_SHA, '3,633,477 bytes', '73 codes',
                        # OLB dev, all lines and the exact stratum, with intervals
                        '+0.805 [+0.665, +0.980]', '+0.585 [+0.401, +0.821]', '+0.342 [+0.154, +0.470]',
@@ -148,6 +149,8 @@ class R8bReleaseFilesTests(unittest.TestCase):
     def test_card_doi_is_still_a_draft_and_links_no_pipeline_record(self):
         card = read('card_body.md')
         self.assertIn("<!-- DRAFT: R8b's reserved version DOI", card)
+        self.assertNotIn('sharp', card.lower())  # eval: the two sharpness measures disagree on Brainin IA
+        self.assertNotIn('whose labels are exact', card)  # every OLB dev line is layer-exact; 'exact' is the tier
         citation = card.split('## Citation', 1)[1]
         self.assertNotIn(R7_DOI, citation)  # R8b cites its own DOI, once reserved (plan step 2)
         for doi in PIPELINE_DOIS:

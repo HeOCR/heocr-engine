@@ -9,12 +9,12 @@ R8b is a [Tesseract](https://github.com/tesseract-ocr/tesseract) language model 
 No label is OCR output.
 
 **What it gains, and what it does not.** R8b reads modern Hebrew print better than R7, and its character set adds geresh ׳, gershayim ״ and the em dash —. It is worse than R7 on one scanned book:
-- **On 3,254 lines of scanned Reshumot booklets (laws and regulations, 1953–2003),** a silver dev set, it lowers the character error rate (CER) from R7's 2.934% to 2.129%; on the 2,028 lines whose labels are exact, from 1.320% to 0.735%. Both intervals exclude zero (see [Evaluation](#evaluation)). This dev set decided the release; it is **not a test score**.
+- **On 3,254 lines of scanned Reshumot booklets (laws and regulations, 1953–2003),** a silver dev set, it lowers the character error rate (CER) from R7's 2.934% to 2.129%; on the 2,028 lines whose labels two readings confirm, from 1.320% to 0.735%. Both intervals exclude zero (see [Evaluation](#evaluation)). This dev set decided the release; it is **not a test score**.
 - **On the two held-out selection books,** from the 1920s and the 1880s, it lowers CER from 0.848% to 0.757% and from 1.336% to 1.019%. Those books also chose its checkpoint, so these margins are optimistic.
-- **It is worse than R7 on Brainin's collected works as scanned on the Internet Archive:** 0.743% CER against R7's 0.635%. The likely cause is that scan: small, sharpened and grainy, unlike anything in R8b's training lines.
+- **It is worse than R7 on Brainin's collected works as scanned on the Internet Archive:** 0.743% CER against R7's 0.635%. The likely cause is that scan: small, dark and grainy, and little like R8b's training lines.
 - **There is no human-reviewed test score yet.** R8b has not been scored on the 38 E2d4c pages that R6's and R7's cards report.
 
-**R8b supersedes nothing. R7 remains valid.** Use R8b for modern printed Hebrew, and for text with ׳ ״ —, which R7 cannot output. R7 may still read small, grainy scans like Brainin's Internet Archive copy better. R7's card, record and deposit are unchanged.
+**R8b supersedes nothing. R7 remains valid.** Use R8b for modern printed Hebrew, and for text with ׳ ״ —, which R7 cannot output. R7 may still read small, dark, grainy scans like Brainin's Internet Archive copy better. R7's card, record and deposit are unchanged.
 
 It is released on its own, with no link to HeOCR's kraken pipeline (R4d, A1, R3h).
 
@@ -144,7 +144,7 @@ So decision 0016 holds: no word list was built from Wikisource text.
 
 ### Scanned Reshumot booklets (OLB dev set): the release gate
 
-3,254 lines from 55 scanned Reshumot dev booklets of 1953–2003 (`olbreshumotlines_v1_dev`), labelled with the same-wording text of the Open Law Book on Hebrew Wikisource (ספר החוקים הפתוח, CC BY-SA 4.0). It is a **silver dev set**, used for the release decision only, and **not a test score**. "Exact" lines are those whose label is known to match the print; the rest carry an estimated 6.7% line-level label error, which inflates every model's CER equally. Intervals are 95% paired bootstrap over booklets (10,000 resamples, seed 0).
+3,254 lines from 55 scanned Reshumot dev booklets of 1953–2003 (`olbreshumotlines_v1_dev`), labelled with the same-wording text of the Open Law Book on Hebrew Wikisource (ספר החוקים הפתוח, CC BY-SA 4.0). It is a **silver dev set**, used for the release decision only, and **not a test score**. "Exact" lines are those that stock Tesseract also read exactly as the label, so two independent readings confirm the label (agent audit of the matching training tier: 1 error in 350); they are also lines stock Tesseract reads easily. The rest carry an estimated 6.7% line-level label error, which adds roughly the same error to every model. Intervals are 95% paired bootstrap over booklets (10,000 resamples, seed 0).
 
 | View | Lines / booklets | **R8b** | R7 | s17a-addon (unreleased) | R7 − R8b [95%] | s17a-addon − R8b [95%] |
 |---|---|---|---|---|---|---|
@@ -185,7 +185,7 @@ Not used for selection (CER / WER %):
 | Bodek, *Pe'er mi-Kedoshim* | 21 | 5.094 / 18.182 | 6.166 / 22.378 | **4.826 / 15.385** |
 
 - **The Brainin IA regression against R7: 0.743 against 0.635.** In the breakdown done for the R8b arms, the added errors are letters (ה/ח, ר/ד, כ/ב), spread over most pages, not a sign convention.
-  - **Likely cause: the scan.** It has the smallest letters of any set measured (a letter band of about 31 px, against 35–42.5 px in the training and dev samples), the sharpest edges, the finest grain and the most speckle, on the darkest background. Nothing like it is in R8b's training lines.
+  - **Likely cause: the scan.** It has the smallest letters of any set measured (a letter band of about 31 px, against 35–42.5 px in the training and dev samples), the darkest background, the most fine grain and speckle, and it is not blurry. Little like it is in R8b's training lines.
   - **It is not a contrast problem.** Stretching the contrast changes nothing, because Tesseract normalises each line's levels. Binarising makes every model worse.
   - The next model, R8c, targets it with scan augmentation, and uses this book as a dev set.
 - **Against s17a-addon,** R8b is slightly worse on Mekhilta (+0.03), Wikisource dev (+0.03), Bodek (+0.27) and Brainin IA (+0.08). Only Brainin IA and Bodek are clear regressions, and Bodek has 21 lines.
@@ -204,7 +204,7 @@ The training labels were checked against the evaluation text with word 6-grams (
 
 ## Bias, risks and limitations
 
-- **A regression on one scan.** R8b reads Brainin's Internet Archive scan worse than R7 (0.743 against 0.635 CER). Small, sharpened, grainy scans may lose in the same way.
+- **A regression on one scan.** R8b reads Brainin's Internet Archive scan worse than R7 (0.743 against 0.635 CER). Small, dark, grainy scans may lose in the same way.
 - **No test score.** Every figure here is from a dev set that chose a checkpoint or decided the release. The OLB dev set is silver and covers few pre-1957 regulation booklets. R8b has no whole-page score.
 - **Training data** from 45 books printed between 1856 and 1938, most of them between 1865 and 1925, and from modern Reshumot booklets (2006–2026). Smolenskin's collected works are 9.0% of the lines, and the largest Reshumot booklet 1.8%. Other typefaces, layouts and periods may gain less, or lose.
 - **Printed Hebrew only.** Not for handwriting, Rashi script or non-Hebrew text, and no Latin letters.

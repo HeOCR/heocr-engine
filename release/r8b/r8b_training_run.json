@@ -2193,6 +2193,13 @@
    "status": "silver dev set used for the release decision; not a test score",
    "set": "olbreshumotlines_v1_dev",
    "manifest_sha256": "e2101b5810bc5f1ecc54ea1458010f488885d705dcecaad3f83a04821f499be7",
+   "views_definition": {
+    "all": "every dev line; every line is layer-exact (the publisher's OCR text layer matched the Open Law Book wording)",
+    "exact": "lines that stock Tesseract also read exactly as the label, so two independent readings confirm the label (agent audit of the matching training tier: 1 error in 350); they are also lines stock Tesseract reads easily",
+    "not_exact": "the rest; an estimated 6.7% line-level label error, which adds roughly the same error to every model",
+    "excluded": "without the 11 dev lines that share a word 6-gram with training",
+    "all_cap60": "at most 60 lines per booklet"
+   },
    "bootstrap": {
     "B": 10000,
     "seed": 0,
