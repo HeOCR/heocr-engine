@@ -1,0 +1,146 @@
+# Zenodo deposit metadata for R8b, read by release/zenodo_deposit.py (`--models r8b`).
+# R8b is a Tesseract model, as R6 and R7 are, so this is NOT HTRMoPo front matter: it is not
+# validated against the HTRMoPo v1 schema, has no `software_hints`, and R8b does not go to the
+# `ocr_models` community, which `kraken list` and `htrmopo list` read. It uses the same keys as
+# R6's and R7's records (release/README.md, "R6", "R7" and "R8b"). The deposit card is this front
+# matter between `---` lines, with `id` added, followed by card_body.md. `id` is added at R8b plan
+# step 2: the version DOI reserved for this record's draft.
+summary: Hebrew printed-text recognition for Tesseract, continued from HeOCR R7 on real NLI and Internet Archive scans, born-digital Reshumot lines and synthetic lines (HeOCR R8b)
+# Creators: as the R4d, A1, R3h, R6 and R7 records (release/README.md, "Deposits"). Person names
+# are "Family, Given"; `type` is the InvenioRDM creator type.
+authors:
+  - name: Palachy Affek, Shay
+    type: personal
+    orcid: https://orcid.org/0000-0002-1459-9320
+  - name: HeOCR maintainers
+    type: organizational
+license: Apache-2.0
+software_name: tesseract
+language:
+  - heb
+script:
+  - Hebr
+tags:
+  - tesseract
+  - traineddata
+  - hebrew
+  - printed
+  - ocr
+  - text-recognition
+  - real scans
+  - HeOCR
+model_type:
+  - recognition
+metrics:  # CER percent, eval line_fold_v1, every line charged (eval-domains/outputs/r8b_release_figures_v1.json); dev sets, not test scores
+  cer_olb_reshumot_dev_all: 2.129
+  cer_olb_reshumot_dev_exact: 0.735
+  cer_kevar_heldout: 0.757
+  cer_yediot_heldout: 1.019
+# isDerivedFrom links (InvenioRDM related identifiers): the base model, HeOCR R7 (R8b continues
+# from R7's weights, so it is derived from R7; it is a record of its own, not a Zenodo version of
+# R7's, and R7 is not superseded), the training scans (8 NLI IIIF manifests, 37 Internet Archive
+# items and 1 Wikimedia Commons file) and the transcription source. The 48 Reshumot booklets are
+# not linked here: their publisher URLs are opaque API links; each booklet's number, URL and PDF
+# sha256 are in r8b_training_run.json.
+related:
+  - identifier: https://github.com/tesseract-ocr/tessdata_best/blob/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/heb.traineddata
+    resource_type: software
+  - identifier: https://doi.org/10.5281/zenodo.24126449
+    resource_type: software
+  - identifier: https://iiif.nli.org.il/IIIFv21/990017640460205171/manifest
+    resource_type: image
+  - identifier: https://iiif.nli.org.il/IIIFv21/990020308000205171/manifest
+    resource_type: image
+  - identifier: https://iiif.nli.org.il/IIIFv21/990020495520205171/manifest
+    resource_type: image
+  - identifier: https://iiif.nli.org.il/IIIFv21/990020522850205171/manifest
+    resource_type: image
+  - identifier: https://iiif.nli.org.il/IIIFv21/990020466440205171/manifest
+    resource_type: image
+  - identifier: https://iiif.nli.org.il/IIIFv21/990019385920205171/manifest
+    resource_type: image
+  - identifier: https://iiif.nli.org.il/IIIFv21/990013538860205171/manifest
+    resource_type: image
+  - identifier: https://iiif.nli.org.il/IIIFv21/990026910840205171/manifest
+    resource_type: image
+  - identifier: https://archive.org/details/kolsifreperetsbe03smoluoft
+    resource_type: image
+  - identifier: https://archive.org/details/sifrehazikhronot00mont
+    resource_type: image
+  - identifier: https://archive.org/details/kolsifreperetsbe01smoluoft
+    resource_type: image
+  - identifier: https://archive.org/details/kolsifreperetsbe05smoluoft
+    resource_type: image
+  - identifier: https://archive.org/details/miyarketetevel008800
+    resource_type: image
+  - identifier: https://archive.org/details/ldpd_15772050_000
+    resource_type: image
+  - identifier: https://archive.org/details/mabeothayehudims00raff
+    resource_type: image
+  - identifier: https://archive.org/details/atn3681.0001.001.umich.edu
+    resource_type: image
+  - identifier: https://archive.org/details/maloketravseadya00bornuoft
+    resource_type: image
+  - identifier: https://archive.org/details/mimitsrayimhusef00fran
+    resource_type: image
+  - identifier: https://archive.org/details/ademataidibruivr00benyuoft
+    resource_type: image
+  - identifier: https://archive.org/details/agadothatanaim11bach
+    resource_type: image
+  - identifier: https://archive.org/details/motsaegolahzikhr00rabbuoft
+    resource_type: image
+  - identifier: https://archive.org/details/peereakhmemedina00gree
+    resource_type: image
+  - identifier: https://archive.org/details/imanuelharomimon0000tche
+    resource_type: image
+  - identifier: https://archive.org/details/mishnatrishonimt0000klat
+    resource_type: image
+  - identifier: https://archive.org/details/igrothaasirmeiha00drey
+    resource_type: image
+  - identifier: https://archive.org/details/masaleeretsyirae00lewi
+    resource_type: image
+  - identifier: https://archive.org/details/sepherhayyeyehud01mode
+    resource_type: image
+  - identifier: https://archive.org/details/reginahashkenazi00ginsuoft
+    resource_type: image
+  - identifier: https://archive.org/details/anshekayruan00pozn
+    resource_type: image
+  - identifier: https://archive.org/details/maamarmagenetsin00mode
+    resource_type: image
+  - identifier: https://archive.org/details/hegyoneshpinozah00rubi
+    resource_type: image
+  - identifier: https://archive.org/details/zikhronotlebetda01reck
+    resource_type: image
+  - identifier: https://archive.org/details/sifruthahisoriya11kaha
+    resource_type: image
+  - identifier: https://archive.org/details/yotsrehasifrutha00zitr
+    resource_type: image
+  - identifier: https://archive.org/details/afahleneemaniml00fngoog
+    resource_type: image
+  - identifier: https://archive.org/details/kolkitveylkatsen018800
+    resource_type: image
+  - identifier: https://archive.org/details/seferhademaotmeo0000bern
+    resource_type: image
+  - identifier: https://archive.org/details/divreyemeolam02schuuoft
+    resource_type: image
+  - identifier: https://archive.org/details/bioretletoldotha01gott
+    resource_type: image
+  - identifier: https://archive.org/details/zikhronotlevetda01frie
+    resource_type: image
+  - identifier: https://archive.org/details/tserorperaimvehu00kovn
+    resource_type: image
+  - identifier: https://archive.org/details/mikhtavimmiarsh00mezagoog
+    resource_type: image
+  - identifier: https://archive.org/details/korothayehudimb00friegoog
+    resource_type: image
+  - identifier: https://archive.org/details/sipurim00nombuoft
+    resource_type: image
+  - identifier: https://archive.org/details/tsitsimuferaimm00geiggoog
+    resource_type: image
+  - identifier: https://commons.wikimedia.org/wiki/File:Salomon_Buber._Sifre_de-agadeta_al_megilat_Ester.1886.pdf
+    resource_type: image
+  - identifier: https://github.com/projectbenyehuda/public_domain_dump
+    resource_type: dataset
+# Zenodo communities, read by the deposit script. heocr only: not ocr_models (kraken/HTRMoPo).
+communities:
+  - heocr
