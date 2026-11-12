@@ -334,7 +334,7 @@ python release/hf_upload.py --models r7 --zenodo-state $S --weights r7=…/heb.t
 
 # Fourth release: R8b (Tesseract), a deposit of its own
 
-**Status: drafts, nothing reserved or published.** Decision 0014 needs no per-step go-ahead. Terms: Apache-2.0, licensed by "HeOCR maintainers", as R6 and R7. Inputs follow decisions 0015 and 0016, and every one is credited in the NOTICE.
+**Status: published on 2026-11-12** (see [Plan for R8b](#plan-for-r8b)). Decision 0014 needs no per-step go-ahead. Terms: Apache-2.0, licensed by "HeOCR maintainers", as R6 and R7. Inputs follow decisions 0015 and 0016, and every one is credited in the NOTICE.
 
 | Model | Release file | Trained as | sha256 | Folder |
 |---|---|---|---|---|
@@ -395,6 +395,12 @@ The record is `heocr_tesseract_training_run.v1`, with R7's top-level sections in
 Both scripts take `--models r8b`, exactly as `--models r7`. `SEPARATE_RELEASES` is now `("r6", "r7", "r8b")`, and the default `--models` stays `r4d a1 r3h`. Use an R8b-only state file, for example `~/.config/heocr/zenodo-production-r8b-state.json`.
 
 ## Plan for R8b
+
+**Status: published on 2026-11-12.**
+- **Where:** Zenodo [10.5281/zenodo.24156688](https://doi.org/10.5281/zenodo.24156688) (record 24156688, concept 24156687; community request 452272b4 accepted into `heocr`), mirrored on Hugging Face as [HeOCR/heocr-r8b-tesseract-heb](https://huggingface.co/HeOCR/heocr-r8b-tesseract-heb) (`base_model` HeOCR/heocr-r7-tesseract-heb).
+- **No sandbox run.** R8b reuses R6's and R7's code path.
+- **Checks before publishing:** the reserved DOI is the version DOI (prereserve recid 24156688; the concept record is 24156687); the production draft's 5 files were complete; the weights' md5 (`74f05d63…`) matched the local model; the creators, the Apache-2.0 licence and the 49 related links (R7's DOI among them, as `isDerivedFrom`) were all right; the description carries the DOI.
+- **After publishing:** the files downloaded from Zenodo and from Hugging Face both have sha256 `8cb22dbe…`, and Tesseract 5.5.3 loads `-l heocr_r8b` from the Zenodo copy and reads a Kevar selection line as its label.
 
 The same seven steps as R7:
 
