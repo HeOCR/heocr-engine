@@ -213,6 +213,7 @@ The training labels were checked against the evaluation text with word 6-grams (
   - An earlier check used an incomplete version of this text and found 81 lines.
   - When R8b gets a mid-century score, the headline will cover only pages with no exposure to R8b's or R7's training lines. The full set will be reported second, with its exposure stated.
 - **Why the overlap reached training** (found 2026-11-13). R8b's list builder checked only its newly added sources against the dev and report text. The lines it carried over from R8a, and the S17a add-on, were checked only against the two new dev units. Its letters-only 6-grams also let through some Reshumot lines that share word 6-grams with Reshumot dev. The OLB dev set was built after training.
+  - **Rule from R9 on:** a training list counts as clean only when HeOCR's evaluation check (`check_train_overlap.py`: word 6-grams after folding, every target) passes on the whole list, inherited parts included. Builders may pre-filter, but their own checks don't count.
 - **The 38 E2d4c reference pages:** 1 of the 196,275 training labels shares a 6-gram, the abbreviated rabbinic title formula אב"ד ור"מ דק"ק. The method splits it into six tokens; it is boilerplate, not shared text. R8b has no score on those pages.
 
 ## Bias, risks and limitations
