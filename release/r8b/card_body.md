@@ -156,6 +156,7 @@ So decision 0016 holds: no word list was built from Wikisource text.
 
 - **R8b beats R7 in every view,** by 0.8 CER points on all lines and 0.59 on exact lines, and no interval reaches zero.
 - **Overlap:** 13 training lines (Reshumot boilerplate) share a word 6-gram with 11 of these lines. Leaving those lines out changes nothing.
+- **Rechecked 2026-11-13:** with every line exposed to the R8b, R7 or s17a-addon training lines left out (the same 11 lines), the gate holds. R8b beats both in every view, and no interval reaches zero.
 - **Coverage:** the set keeps only lines the publisher's text layer got right, so booklets without a text layer (most *Kovetz ha-Takanot* before 1957) are almost absent.
 
 ### Selection books, held out
