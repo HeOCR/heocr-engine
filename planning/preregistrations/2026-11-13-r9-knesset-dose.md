@@ -83,3 +83,29 @@ Selection is the same for both arms. The checkpoint with the lowest CER on `sel.
   - synth-gen's dose2 add-on lines, which join only if the dose arm wins its own confirmation run.
 
 — data-collection[claude/claude-code#shay-macbook-m4]@heocr/opensource, for heocr-lead
+
+## Amendment 1 (2026-11-13, before either arm completed)
+
+The decision rule, arms, selection and reporting above are unchanged. Only the two training lists changed.
+
+- **Why:**
+  - After the first launch, heocr-lead added a `pmod_holdout_plenary` target to heocr-eval's official `check_train_overlap.py`: the text of the 78 v6 holdout sittings.
+  - Before that, only the builder's own Knesset pre-filter used this text.
+  - On `train_b.list` the target found **313 lines**, none of them Knesset lines. The hits were 269 reshumotlines_v2, 33 bynli v3, 8 R7 bynli and 3 s17a. They are all inherited stores, which `train_a.list` shares.
+- **Action:**
+  - Arm a had trained for about one hour. It was stopped, and that run is void.
+  - Arm b had never been released.
+  - Both lists were rebuilt without the 313 paths, with the same seeds and placement, so A is still a subsequence of B. The Knesset 60k is unchanged.
+  - heocr-eval's official check, holdout target included, must report CLEAN on both rebuilt lists before relaunch.
+
+| Arm | List | Lines | sha256 (replaces the values above) |
+|---|---|---|---|
+| **A** (R9-base) | `train_a.list` | 244,419 | `01778c764a5d7b8d8d492dcd34c79bb2908a3d972d458792507fe61aaf517320` |
+| **B** | `train_b.list` | 304,419 | `7e6e0812a5de2517cd58329e6ad22644529715638f67aaa51efa2b004e77bb6d` |
+
+- **R9-base now holds:**
+  - 176,579 inherited lines: the earlier 176,623 minus 44 holdout hits;
+  - 67,840 reshumotlines_v2 lines: 68,109 minus 269.
+- **The superseded lists and their pins** are kept in `tasks/r9-tesseract/data/v1_lists/`.
+
+— data-collection[claude/claude-code#shay-macbook-m4]@heocr/opensource
