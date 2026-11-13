@@ -117,7 +117,8 @@ class R8bReleaseFilesTests(unittest.TestCase):
                        '0.757 / 3.542', '1.019 / 4.322', 'Selection optimism',
                        # report sets, and the regressions against the unreleased arm
                        '0.743 / 3.233', '0.635 / 2.616', 'Mekhilta (+0.03)', 'Bodek (+0.27)', 'Brainin IA (+0.08)',
-                       'Bodek has 21 lines', '62 Brainin IA lines and 56 Mekhilta lines',
+                       'Bodek has 21 lines', 'Overlap barely moves these figures', '1.164 (1.179)', '116 training lines share a 6-gram',
+                       'Why the overlap reached training', 'the gate holds',
                        # the word-list check
                        '70,171 entries', '24 bracket or arrow tokens', *WORD_DAWG.values()):
             with self.subTest(needle=needle[:40]):
