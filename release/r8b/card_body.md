@@ -190,7 +190,15 @@ Not used for selection (CER / WER %):
   - The next model, R8c, targets it with scan augmentation, and uses this book as a dev set.
 - **Against s17a-addon,** R8b is slightly worse on Mekhilta (+0.03), Wikisource dev (+0.03), Bodek (+0.27) and Brainin IA (+0.08). Only Brainin IA and Bodek are clear regressions, and Bodek has 21 lines.
 - **Against R7,** R8b is better on every report set except Brainin IA.
-- **Overlap flatters R8b on two sets.** 62 Brainin IA lines and 56 Mekhilta lines share a word 6-gram with R8b's training lines, so R8b's figures there are slightly optimistic. R8b still loses to R7 on Brainin IA.
+- **Overlap barely moves these figures** (rechecked 2026-11-13). A line counts as exposed when it shares a word 6-gram with the training lines of R8b, R7 or s17a-addon. Leaving exposed lines out moves R8b's CER by at most 0.015 points, and no comparison changes:
+
+  | Set | Exposed lines | **R8b** without them (with) | R7 without them (with) | s17a-addon without them (with) |
+  |---|---|---|---|---|
+  | Brainin, IA scan | 62 of 6,257 | 0.743 (0.743) | 0.634 (0.635) | 0.665 (0.665) |
+  | Reshumot, rendered dev | 29 of 2,716 | 1.164 (1.179) | 7.594 (7.789) | 5.862 (6.009) |
+  | Mekhilta | 63 of 3,141 | 1.056 (1.056) | 1.899 (1.896) | 1.026 (1.027) |
+
+  The other four report sets have no exposed line. R8b still loses to R7 on Brainin IA.
 - **Exposed sets.** Silman and the NLI Brainin scan chose R6's and R7's checkpoints, so R7's figures there are optimistic.
 - **Rendered Reshumot** is in domain: R8b trained on other booklets of the same series. It is a sanity check, not evidence on scans.
 
@@ -200,6 +208,11 @@ The training labels were checked against the evaluation text with word 6-grams (
 - **HeOCR's evaluation check** finds no training line sharing a 6-gram with the P-mod evaluation booklets, wave 1, the verified line references or the restricted tender pages.
   - 158 training lines share one with the dev and report sets: 62 with Brainin IA, 56 with Mekhilta and 40 with Reshumot dev; none with *Kevar* or *Yedi'ot ha-Teva*.
   - 13 share one with the OLB dev set, all Reshumot boilerplate.
+- **Mid-century test pages** (heocr-eval's human-reviewed set, not yet scored), rechecked 2026-11-13 with their full text: the batch v1 pre-fills, the blind pre-fills and Claude's readings.
+  - 116 training lines share a 6-gram with that text, and 33 of the 298 pages hold a training 6-gram, all under 30% of their lines.
+  - An earlier check used an incomplete version of this text and found 81 lines.
+  - When R8b gets a mid-century score, the headline will cover only pages with no exposure to R8b's or R7's training lines. The full set will be reported second, with its exposure stated.
+- **Why the overlap reached training** (found 2026-11-13). R8b's list builder checked only its newly added sources against the dev and report text. The lines it carried over from R8a, and the S17a add-on, were checked only against the two new dev units. Its letters-only 6-grams also let through some Reshumot lines that share word 6-grams with Reshumot dev. The OLB dev set was built after training.
 - **The 38 E2d4c reference pages:** 1 of the 196,275 training labels shares a 6-gram, the abbreviated rabbinic title formula אב"ד ור"מ דק"ק. The method splits it into six tokens; it is boilerplate, not shared text. R8b has no score on those pages.
 
 ## Bias, risks and limitations
