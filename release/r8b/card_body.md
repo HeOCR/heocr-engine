@@ -139,21 +139,23 @@ So decision 0016 holds: no word list was built from Wikisource text.
 - **Figures:** all from HeOCR's frozen release figures, `eval-domains/outputs/r8b_release_figures_v1.json` (sha256 `22c0305ddafe6f436599df115c1c71345fed3685feae2c3cd9198b5e989909d9`).
 - **Metric:** line CER and WER (%), per line, psm 13. Every reference line is scored for every model, and characters a model cannot output are charged.
 - **Scoring profile `line_fold_v1`** (sha256 `2e2627104be4f27dc3204787dd3ff4f8591d95d1d96294c65833d2773041d317`): NFC, whitespace collapsed, and five folds of signs the references write inconsistently: `־`→`-`, `׳`→`'`, `״`→`"`, `“ ” „`→`"`, `—`→`–`. Nothing else is folded.
-- **Comparisons:** R7, the released model, is the comparison that matters for users. *s17a-addon* is an unreleased A/B arm (R7 continued for one epoch on R7's lines, the ׳ ״ — lines, 3,812 Wikisource lines and the synthetic lines), reported for context only.
+- **Comparisons:** stock Tesseract (tessdata_best `heb` at `e12c65a`, the base model) is shown on every set, decoded exactly as our models (psm 13, same profile); it is a reference reader, not a decision arm. R7, the released model, is the comparison that matters for users. *s17a-addon* is an unreleased A/B arm (R7 continued for one epoch on R7's lines, the ׳ ״ — lines, 3,812 Wikisource lines and the synthetic lines), reported for context only.
 - **No human-reviewed test score yet.** The sets below are dev sets: they decided checkpoints and the release.
 
 ### Scanned Reshumot booklets (OLB dev set): the release gate
 
 3,254 lines from 55 scanned Reshumot dev booklets of 1953–2003 (`olbreshumotlines_v1_dev`), labelled with the same-wording text of the Open Law Book on Hebrew Wikisource (ספר החוקים הפתוח, CC BY-SA 4.0). It is a **silver dev set**, used for the release decision only, and **not a test score**. "Exact" lines are those that stock Tesseract also read exactly as the label, so two independent readings confirm the label (agent audit of the matching training tier: 1 error in 350); they are also lines stock Tesseract reads easily. The rest carry an estimated 6.7% line-level label error, which adds roughly the same error to every model. Intervals are 95% paired bootstrap over booklets (10,000 resamples, seed 0).
 
-| View | Lines / booklets | **R8b** | R7 | s17a-addon (unreleased) | R7 − R8b [95%] | s17a-addon − R8b [95%] |
-|---|---|---|---|---|---|---|
-| all lines | 3,254 / 55 | **2.129** | 2.934 | 2.471 | +0.805 [+0.665, +0.980] | +0.342 [+0.154, +0.470] |
-| exact | 2,028 / 54 | **0.735** | 1.320 | 0.901 | +0.585 [+0.401, +0.821] | +0.166 [+0.056, +0.294] |
-| not exact | 1,226 / 44 | **4.021** | 5.125 | 4.600 | +1.104 [+0.838, +1.311] | +0.579 [+0.274, +0.775] |
-| all, at most 60 lines per booklet | 1,484 / 55 | **1.473** | 2.271 | 1.736 | +0.798 [+0.617, +0.988] | +0.263 [+0.130, +0.391] |
-| all, without the 11 overlap lines | 3,243 / 55 | **2.139** | 2.944 | 2.480 | +0.805 [+0.669, +0.975] | +0.341 [+0.154, +0.471] |
+| View | Lines / booklets | **R8b** | R7 | s17a-addon (unreleased) | stock Tesseract | R7 − R8b [95%] | s17a-addon − R8b [95%] |
+|---|---|---|---|---|---|---|---|
+| all lines | 3,254 / 55 | **2.129** | 2.934 | 2.471 | 5.428 | +0.805 [+0.665, +0.980] | +0.342 [+0.154, +0.470] |
+| exact | 2,028 / 54 | **0.735** | 1.320 | 0.901 | 3.965† | +0.585 [+0.401, +0.821] | +0.166 [+0.056, +0.294] |
+| not exact | 1,226 / 44 | **4.021** | 5.125 | 4.600 | 7.415 | +1.104 [+0.838, +1.311] | +0.579 [+0.274, +0.775] |
+| all, at most 60 lines per booklet | 1,484 / 55 | **1.473** | 2.271 | 1.736 | 4.987 | +0.798 [+0.617, +0.988] | +0.263 [+0.130, +0.391] |
+| all, without the 11 overlap lines | 3,243 / 55 | **2.139** | 2.944 | 2.480 | 5.440 | +0.805 [+0.669, +0.975] | +0.341 [+0.154, +0.471] |
 
+- **† Stock on "exact" lines is not a fair comparison.** Those lines were selected where stock Tesseract (the fast `heb` model, psm 7) read the crop exactly as the label, so the tier favours stock by construction. The tessdata_best model still makes errors there.
+- **Stock Tesseract:** R8b is better by 3.3 CER points on all lines [95%: +3.03, +3.77]; stock is reported, not part of the gate.
 - **R8b beats R7 in every view,** by 0.8 CER points on all lines and 0.59 on exact lines, and no interval reaches zero.
 - **Overlap:** 13 training lines (Reshumot boilerplate) share a word 6-gram with 11 of these lines. Leaving those lines out changes nothing.
 - **Rechecked 2026-11-13:** with every line exposed to the R8b, R7 or s17a-addon training lines left out (the same 11 lines), the gate holds. R8b beats both in every view, and no interval reaches zero.
@@ -163,10 +165,10 @@ So decision 0016 holds: no word list was built from Wikisource text.
 
 Each book's 4,600 lines that were not selection lines (CER / WER %):
 
-| Book | **R8b** | R7 | s17a-addon (unreleased) |
-|---|---|---|---|
-| *Kevar* (1922) | **0.757 / 3.542** | 0.848 / 4.018 | 0.779 / 3.717 |
-| *Yedi'ot ha-Teva* (1883) | **1.019 / 4.322** | 1.336 / 5.927 | 1.071 / 4.664 |
+| Book | **R8b** | R7 | s17a-addon (unreleased) | stock Tesseract |
+|---|---|---|---|---|
+| *Kevar* (1922) | **0.757 / 3.542** | 0.848 / 4.018 | 0.779 / 3.717 | 5.664 / 21.115 |
+| *Yedi'ot ha-Teva* (1883) | **1.019 / 4.322** | 1.336 / 5.927 | 1.071 / 4.664 | 9.168 / 35.055 |
 
 - **R8b beats R7 on both books,** by 0.09 and 0.32 CER points.
 - **Selection optimism:** the checkpoint was chosen on other lines of these same two books, so the margins carry some optimism. The margin over s17a-addon on *Kevar* is small (−0.022). With two books there is no interval.
@@ -175,15 +177,15 @@ Each book's 4,600 lines that were not selection lines (CER / WER %):
 
 Not used for selection (CER / WER %):
 
-| Set | Lines | **R8b** | R7 | s17a-addon (unreleased) |
-|---|---|---|---|---|
-| Silman, *Sansinim* (NLI; exposed: chose R6's and R7's checkpoints) | 3,046 | **0.869 / 4.202** | 1.001 / 4.896 | 0.872 / 4.377 |
-| Brainin, *Avraham Mapu*, NLI scan (exposed: chose R6's and R7's checkpoints) | 4,046 | **1.073 / 4.205** | 1.355 / 5.615 | 1.121 / 4.515 |
-| **Brainin, collected works, Internet Archive scan** | 6,257 | 0.743 / 3.233 | **0.635 / 2.616** | 0.665 / 2.823 |
-| Reshumot, rendered born-digital dev (in domain) | 2,716 | **1.179 / 4.035** | 7.789 / 19.649 | 6.009 / 16.781 |
-| Mekhilta de-Rabbi Shimon (rabbinic, old printed) | 3,141 | 1.056 / 2.885 | 1.896 / 7.065 | **1.027 / 2.742** |
-| Wikisource dev (*Sippurei Ma'asiyot*) | 257 | 6.932 / 23.727 | 8.030 / 27.882 | **6.906 / 23.646** |
-| Bodek, *Pe'er mi-Kedoshim* | 21 | 5.094 / 18.182 | 6.166 / 22.378 | **4.826 / 15.385** |
+| Set | Lines | **R8b** | R7 | s17a-addon (unreleased) | stock Tesseract |
+|---|---|---|---|---|---|
+| Silman, *Sansinim* (NLI; exposed: chose R6's and R7's checkpoints) | 3,046 | **0.869 / 4.202** | 1.001 / 4.896 | 0.872 / 4.377 | 5.824 / 22.327 |
+| Brainin, *Avraham Mapu*, NLI scan (exposed: chose R6's and R7's checkpoints) | 4,046 | **1.073 / 4.205** | 1.355 / 5.615 | 1.121 / 4.515 | 10.450 / 41.046 |
+| **Brainin, collected works, Internet Archive scan** | 6,257 | 0.743 / 3.233 | **0.635 / 2.616** | 0.665 / 2.823 | 5.071 / 20.845 |
+| Reshumot, rendered born-digital dev (in domain) | 2,716 | **1.179 / 4.035** | 7.789 / 19.649 | 6.009 / 16.781 | 6.613 / 23.775 |
+| Mekhilta de-Rabbi Shimon (rabbinic, old printed) | 3,141 | 1.056 / 2.885 | 1.896 / 7.065 | **1.027 / 2.742** | 7.512 / 24.212 |
+| Wikisource dev (*Sippurei Ma'asiyot*) | 257 | 6.932 / 23.727 | 8.030 / 27.882 | **6.906 / 23.646** | 14.672 / 48.686 |
+| Bodek, *Pe'er mi-Kedoshim* | 21 | 5.094 / 18.182 | 6.166 / 22.378 | **4.826 / 15.385** | 15.684 / 51.049 |
 
 - **The Brainin IA regression against R7: 0.743 against 0.635.** In the breakdown done for the R8b arms, the added errors are letters (ה/ח, ר/ד, כ/ב), spread over most pages, not a sign convention.
   - **Likely cause: the scan.** It has the smallest letters of any set measured (a letter band of about 31 px, against 35–42.5 px in the training and dev samples), the darkest background, the most fine grain and speckle, and it is not blurry. Little like it is in R8b's training lines.
@@ -191,6 +193,7 @@ Not used for selection (CER / WER %):
   - The next model, R8c, targets it with scan augmentation, and uses this book as a dev set.
 - **Against s17a-addon,** R8b is slightly worse on Mekhilta (+0.03), Wikisource dev (+0.03), Bodek (+0.27) and Brainin IA (+0.08). Only Brainin IA and Bodek are clear regressions, and Bodek has 21 lines.
 - **Against R7,** R8b is better on every report set except Brainin IA.
+- **Against stock Tesseract,** R8b is better on every set, by 4.3 to 10.6 CER points (paired intervals in HeOCR eval's `r8b_report_sets_stock_v1.json`; none reaches zero). Stock cannot output `׳ ״ —`, and those characters are charged, as for every model.
 - **Overlap barely moves these figures** (rechecked 2026-11-13). A line counts as exposed when it shares a word 6-gram with the training lines of R8b, R7 or s17a-addon. Leaving exposed lines out moves R8b's CER by at most 0.015 points, and no comparison changes:
 
   | Set | Exposed lines | **R8b** without them (with) | R7 without them (with) | s17a-addon without them (with) |

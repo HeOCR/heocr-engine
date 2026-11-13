@@ -119,6 +119,9 @@ class R8bReleaseFilesTests(unittest.TestCase):
                        '0.743 / 3.233', '0.635 / 2.616', 'Mekhilta (+0.03)', 'Bodek (+0.27)', 'Brainin IA (+0.08)',
                        'Bodek has 21 lines', 'Overlap barely moves these figures', '1.164 (1.179)', '116 training lines share a 6-gram',
                        'Why the overlap reached training', 'the gate holds',
+                       # stock Tesseract (tessdata_best e12c65a) on every set; the exact tier is marked
+                       '| 2.471 | 5.428 |', '3.965†', 'not a fair comparison', '5.664 / 21.115', '15.684 / 51.049',
+                       'a reference reader, not a decision arm',
                        # the word-list check
                        '70,171 entries', '24 bracket or arrow tokens', *WORD_DAWG.values()):
             with self.subTest(needle=needle[:40]):
