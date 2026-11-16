@@ -40,3 +40,9 @@ Proposals are drafts for the maintainer's decision. They decide nothing; an acce
 | [0011](decisions/0011-first-release-adds-r4d-and-a1.md) | The first release is R3h + R4d + A1 under 0010's terms, after the R3h + `blla` scores; supersedes 0010's scope and, for R4d and A1, 0008's licence and publication clauses |
 | [0012](decisions/0012-real-page-scored-sets.md) | Real pages with human-adjudicated hocrgen references (e.g. E2d3d) are a scored set beside synthetic gold; pseudo-labels and silver text are dev signals only; supersedes 0004 |
 | [0013](decisions/0013-fine-tune-project-recognizers.md) | A recognizer may be fine-tuned from a recognizer heocr-engine trained, pinned by model and record hash; amends 0007 for recognizers; licence and publication unchanged |
+| [0014](decisions/0014-open-release-always.md) | Every trained model is released openly; no licence-tainted inputs |
+| [0015](decisions/0015-legal-strategy.md) | Training inputs follow HeOCR's legal strategy for public-domain scans |
+| [0016](decisions/0016-weights-trained-on-wikisource-transcriptions.md) | Weights trained on Hebrew Wikisource transcriptions of public-domain works stay Apache-2.0, with attribution |
+| [0017](decisions/0017-domain-separated-evaluation.md) | Separate evaluation sets per kind of Hebrew document, with character, word, line and page measures |
+| [0018](decisions/0018-document-taxonomy-and-vertical.md) | A hierarchy of Hebrew document sets; new printed is the vertical |
+| [0019](decisions/0019-top-goal-document-pipeline.md) | **Top goal:** a simple Python package with the best open pipeline for Hebrew text from any document, routing each kind of input to the right tool; models are a means |

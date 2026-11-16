@@ -1,5 +1,7 @@
 # HeOCR Engine
 
+**Goal ([decision 0019](planning/decisions/0019-top-goal-document-pipeline.md)):** HeOCR's top goal is a simple Python package that returns the Hebrew text of any document through the best open pipeline for that kind of document: born-digital or scanned PDF, Word, images and more. It detects the kind of document, page and PDF text encoding, and routes each to the right tool. HeOCR's models are a means to that end. That package does not exist yet; what follows describes this repository today.
+
 A small local OCR baseline for PNG and JPEG pages using an independently installed Tesseract and its language models. No network access, model download, or paid service is used by the program. Python 3.11+, Pillow, and a POSIX system are required; Windows is not supported by this baseline. Install dependencies separately in your environment and run `pip install .`.
 
 ```sh
