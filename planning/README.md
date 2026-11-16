@@ -21,6 +21,7 @@ Planned work uses `R<milestone><slice>`, for example `R1a`. `R` stands for the r
 
 Proposals are drafts for the maintainer's decision. They decide nothing; an accepted proposal becomes a decision record.
 
+- [`heocr`, a Python package that gets Hebrew text out of any document](proposals/document-pipeline-package.md): routing by document, page and PDF text-layer class; own code vs dependencies; licences; the D-bench benchmark; milestones D1–D5 (serves decision 0019)
 - [Releasing HeOCR's trained weights (R3h first)](proposals/model-release.md): training inputs and licences, candidate weights licence, model card outline, hosting, sign-offs
 
 ## Decisions
