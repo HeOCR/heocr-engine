@@ -10,8 +10,8 @@
 
 1. **Name and home.**
    - The package is `heocr` on PyPI.
-   - It lives in a new repository, `HeOCR/heocr-py`, under Apache-2.0. The PyPI and import name stays `heocr`.
-   - **Repository name amended by the lead (2026-11-16):** the maintainer chose `HeOCR/heocr`. GitHub repository names are case-insensitive, and `HeOCR/HeOCR` (the public dataset release repository) already holds that name. Renaming that repository would break its links, so the package repository is `HeOCR/heocr-py`.
+   - It lives in a new repository, `HeOCR/heocr`, under Apache-2.0. The PyPI and import name is `heocr` too.
+   - **Repository name (2026-11-16):** GitHub repository names are case-insensitive, and the public dataset release repository `HeOCR/HeOCR` held the name. The lead first used `HeOCR/heocr-py` instead. The same day, the maintainer decided to rename the dataset repository to `HeOCR/heocr-datasets` and give the package `HeOCR/heocr`, its chosen name.
    - heocr-engine stays the research runtime for training and evaluating models. The package uses the models heocr-engine releases.
 2. **Copyleft only as an optional extra.**
    - The core and its default install have permissive dependencies only.
@@ -49,6 +49,6 @@
 
 ## Consequences
 
-- **Next step:** open the `pipeline` session and the `HeOCR/heocr-py` repository. D1, as defined in the proposal, comes first.
+- **Next step:** open the `pipeline` session and the `HeOCR/heocr` repository. D1, as defined in the proposal, comes first.
 - **Evaluation:** eval gets D-bench as a task. It also gets the internal corpus, which goes into the restricted evaluation material.
 - **The VLM route** is planned in D2, after the other routes exist, so that hard pages are defined by their failure.
