@@ -1,6 +1,6 @@
 # Proposal: `heocr`, a Python package that gets Hebrew text out of any document
 
-- Status: **proposal**, for the maintainer's decision. The maintainer decided §9 item 5 and the first half of item 4 on 2026-11-16; nothing else here is decided. The other decisions it needs are in §9.
+- Status: **accepted with changes**, on 2026-11-16, by [decision 0020](../decisions/0020-heocr-package-plan.md). Where this proposal and decision 0020 differ, the decision wins: copyleft libraries are allowed as optional extras (§9 item 2), and a VLM route is in v1, off by default (§9 item 7).
 - Date: 2026-11-16
 - Written by: `lead[claude/claude-code#shay-macbook-m4]@heocr/opensource`, at the maintainer's request.
 - Serves: [decision 0019](../decisions/0019-top-goal-document-pipeline.md), the top goal.

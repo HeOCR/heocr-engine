@@ -21,7 +21,7 @@ Planned work uses `R<milestone><slice>`, for example `R1a`. `R` stands for the r
 
 Proposals are drafts for the maintainer's decision. They decide nothing; an accepted proposal becomes a decision record.
 
-- [`heocr`, a Python package that gets Hebrew text out of any document](proposals/document-pipeline-package.md): routing by document, page and PDF text-layer class; own code vs dependencies; licences; the D-bench benchmark; milestones D1–D5 (serves decision 0019)
+- [`heocr`, a Python package that gets Hebrew text out of any document](proposals/document-pipeline-package.md): routing by document, page and PDF text-layer class; own code vs dependencies; licences; the D-bench benchmark; milestones D1–D5 (serves decision 0019; accepted with changes by 0020)
 - [Releasing HeOCR's trained weights (R3h first)](proposals/model-release.md): training inputs and licences, candidate weights licence, model card outline, hosting, sign-offs
 
 ## Decisions
@@ -47,3 +47,4 @@ Proposals are drafts for the maintainer's decision. They decide nothing; an acce
 | [0017](decisions/0017-domain-separated-evaluation.md) | Separate evaluation sets per kind of Hebrew document, with character, word, line and page measures |
 | [0018](decisions/0018-document-taxonomy-and-vertical.md) | A hierarchy of Hebrew document sets; new printed is the vertical |
 | [0019](decisions/0019-top-goal-document-pipeline.md) | **Top goal:** a simple Python package with the best open pipeline for Hebrew text from any document, routing each kind of input to the right tool; models are a means |
+| [0020](decisions/0020-heocr-package-plan.md) | The `heocr` package: PyPI `heocr` in `HeOCR/heocr` (Apache-2.0); copyleft only as optional extras; Tesseract and LibreOffice optional, never bundled; specific tendex pieces may be ported; the government-document corpus is private, for internal evaluation; a new `pipeline` role builds it; an optional VLM route in v1, off by default |
