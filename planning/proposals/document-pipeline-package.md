@@ -56,7 +56,7 @@ doc.to_json()   # heocr_document.v1: every block with its route, tool, repairs a
 heocr tender.pdf -o tender.md
 ```
 
-- **Name and repository:** the package is `heocr`; the name is free on PyPI as of 2026-11-16. It lives in a new repository, `HeOCR/heocr-py`, under Apache-2.0.
+- **Name and repository:** the package is `heocr`; the name is free on PyPI as of 2026-11-16. It lives in a new repository, `HeOCR/heocr`, under Apache-2.0.
 - **What heocr-engine stays:** the research runtime for training and evaluating models. The package uses the models it releases.
 - **Requirements:** Python 3.11 or later, on Linux, macOS and Windows.
 - **Offline:** the core makes no network calls. Optional model downloads are explicit and pinned by sha256.
@@ -237,7 +237,7 @@ No local paths are recorded, following heocr-engine's prediction contract.
 
 ## 9. Decisions needed from the maintainer
 
-1. **Name and home.** `heocr` on PyPI, in a new repository `HeOCR/heocr-py`, Apache-2.0. *Recommended.*
+1. **Name and home.** `heocr` on PyPI, in a new repository `HeOCR/heocr`, Apache-2.0. *Recommended.*
 2. **No copyleft in the package.** No AGPL, GPL or LGPL Python dependencies; PyMuPDF and Poppler are out. Copyleft tools may run only as benchmark baselines. *Recommended.*
 3. **Optional external tools.** Tesseract and LibreOffice may be used when the user has them installed, and are never bundled. *Recommended.*
 4. **Code from Adanim.**
