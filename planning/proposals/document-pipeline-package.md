@@ -240,9 +240,9 @@ No local paths are recorded, following heocr-engine's prediction contract.
 1. **Name and home.** `heocr` on PyPI, in a new repository `HeOCR/heocr`, Apache-2.0. *Recommended.*
 2. **No copyleft in the package.** No AGPL, GPL or LGPL Python dependencies; PyMuPDF and Poppler are out. Copyleft tools may run only as benchmark baselines. *Recommended.*
 3. **Optional external tools.** Tesseract and LibreOffice may be used when the user has them installed, and are never bundled. *Recommended.*
-4. **Code from Adanim.**
+4. **Ported code.**
    - **Volunteer's repository:** the maintainer released it for reuse on 2026-11-16, and will add the licence file himself. *Decided.*
-   - **Production pipeline:** does the same release cover its code (`adanim-govil-scraper`, `tendex_l4/`)?
+   - **Production pipeline:** may specific pieces of it be ported? *Decided:* yes, under Apache-2.0, with a general credit only (decision 0020, item 4).
 5. **Real government documents in D-bench.** *Decided by the maintainer on 2026-11-16:* they form a private internal corpus, used for internal evaluation only.
    - The corpus is never published.
    - It lives with HeOCR's restricted evaluation material, not in a public repository.
