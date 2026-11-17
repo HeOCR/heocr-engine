@@ -1,4 +1,4 @@
-# 0020 — The `heocr` package: name, licences, external tools, Adanim code, team and VLMs
+# 0020 — The `heocr` package: name, licences, external tools, ported code, team and VLMs
 
 - Status: accepted
 - Date: 2026-11-16
@@ -22,9 +22,9 @@
 3. **External programs are optional and never bundled.**
    - Tesseract and LibreOffice are used when the user has installed them.
    - Without them the core still runs. For each page or file, it records which route was unavailable.
-4. **Adanim code.**
-   - **The volunteer's repository** (`AdanimInstitute/social-procurement-yonatan-amster-project`) is released for reuse. The maintainer adds its licence file.
-   - **The production tender pipeline** (`AdanimInstitute/adanim-govil-scraper`, `tendex_l4/`) may have specific pieces ported into `heocr` under Apache-2.0, credited in the commit that ports them. The pieces:
+4. **Ported code.**
+   - Code from a volunteer's evaluation project is released for reuse.
+   - Specific pieces of internal tools of the Adanim Research Institute may be ported into `heocr` under Apache-2.0, with its permission. The package's NOTICE carries one general credit line, and the code names no source tool or repository (maintainer, 2026-11-18). The pieces:
      - file-type identification;
      - the text-layer warning flags;
      - right-to-left line building;
