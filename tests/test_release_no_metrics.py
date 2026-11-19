@@ -6,8 +6,6 @@ the deposit README's HTRMoPo `metrics`) nor the Hugging Face front matter (`mode
 import unittest
 from pathlib import Path
 
-import yaml
-
 RELEASE = Path(__file__).resolve().parents[1] / "release"
 
 
@@ -21,9 +19,11 @@ class NoMetricsInFrontMatter(unittest.TestCase):
                 if not path.exists():
                     continue
                 with self.subTest(model=folder.name, file=name):
-                    front = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
-                    self.assertNotIn("metrics", front)
-                    self.assertNotIn("model-index", front)
+                    # top-level keys only (no yaml dependency, as in CI)
+                    keys = {line.split(":", 1)[0] for line in path.read_text(encoding="utf-8").splitlines()
+                            if line and not line[0].isspace() and not line.startswith(("#", "-")) and ":" in line}
+                    self.assertNotIn("metrics", keys)
+                    self.assertNotIn("model-index", keys)
 
 
 if __name__ == "__main__":
