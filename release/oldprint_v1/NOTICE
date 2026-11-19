@@ -137,12 +137,13 @@ The line crops are not distributed with it.
 Evaluation data (not used for training)
 ---------------------------------------
 
-The model was chosen on old-print page images with reference
-transcriptions (HeOCR's audit2 dev pages) and scored on held-out line sets whose
-references come from Hebrew Wikisource (CC BY-SA 4.0, Hebrew Wikisource
-contributors), Project Ben-Yehuda (public domain), Sefaria (public domain)
-and Reshumot (PD-IL), and on HeOCR's open synthetic document sets. They
-were never trained on. The model contains no evaluation text.
+The model was chosen on old-print page images with reference transcriptions
+(HeOCR's audit2 dev pages), on development line sets whose references come
+from Hebrew Wikisource (CC BY-SA 4.0, Hebrew Wikisource contributors),
+Project Ben-Yehuda (public domain), Sefaria (public domain) and Reshumot
+(PD-IL), and on HeOCR's open synthetic document sets. They were never
+trained on. The model contains no evaluation text. Its accuracy is not
+measured on a held-out set yet.
 
 No endorsement
 --------------
