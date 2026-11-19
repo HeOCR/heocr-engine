@@ -35,8 +35,8 @@ It is a research baseline. All of its evaluation is on synthetic pages; no revie
 | Step | Model | Record |
 |---|---|---|
 | Segmentation: baselines, line polygons, typed regions | R4d, this model | [10.5281/zenodo.24023070](https://doi.org/10.5281/zenodo.24023070) |
-| Reading order: line order from each line's region type | A1, `heocr-a1-reading-order.safetensors` (`69aa1946…`) | [10.5281/zenodo.24023072](https://doi.org/10.5281/zenodo.24023072) |
-| Recognition | R3h, `heocr-r3h-recognition.safetensors` (`f76affa8…`) | [10.5281/zenodo.24023074](https://doi.org/10.5281/zenodo.24023074) |
+| Reading order: line order from each line's region type | A1, `heocr-a1-reading-order.safetensors` (`69aa1946…`) | [10.5281/zenodo.24023071](https://doi.org/10.5281/zenodo.24023071) |
+| Recognition | R3h, `heocr-r3h-recognition.safetensors` (`f76affa8…`) | [10.5281/zenodo.24023073](https://doi.org/10.5281/zenodo.24023073) |
 
 > **A1 needs heocr-engine.** kraken 7.0.2 cannot run A1 by itself, for two reasons:
 > - its neural reading order passes the segmenter's line types to A1, while A1 was trained on region types. kraken rejects the class-mapping mismatch;

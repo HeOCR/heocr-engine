@@ -10,6 +10,7 @@ BASE_SHA = 'dbaa827aea6bc21215638447f17783a1004987c2d0bf5573d111fee397abdae5'
 STARTER_SHA = '8b9d798a456bd1d4cd8bdf71b3d7b9d7579cea6cbd51302accd57f521669b846'  # R6's starter, byte for byte
 MANIFEST_SHA = '53dd7f1a10929ad4a60020ad7f42be62f27ee905cb7e6cfb0e319c5b2f5db7ca'  # bynli_lines_v2
 R6_DOI = '10.5281/zenodo.24109989'
+R6_CONCEPT = '10.5281/zenodo.24109988'  # cards link concepts, which survive a deleted version
 NLI_CREDIT = 'From the collections of the National Library of Israel / מאוסף הספרייה הלאומית'
 # The wording decided for Internet Archive scans published without an explicit licence (hocrgen decision
 # 2026-11-10-open-release-and-clean-inputs.md, item 2; the F8f R7 hand-off's release notice).
@@ -81,7 +82,7 @@ class R7ReleaseFilesTests(unittest.TestCase):
                        'No text overlap with training.'):
             with self.subTest(needle=needle):
                 self.assertIn(needle, card)
-        self.assertIn(f'https://doi.org/{R6_DOI}', card)  # R6 is named, not replaced
+        self.assertIn(f'https://doi.org/{R6_CONCEPT}', card)  # R6 is named, not replaced
 
     def test_card_reports_no_dev_or_selection_figures(self):
         # held-out figures only (maintainer, 2026-11-19): the E2d4c pages and the selection lines chose and
@@ -185,7 +186,8 @@ class R7ReleaseFilesTests(unittest.TestCase):
         self.assertEqual(settings[settings.index('communities:') + 1:], ['  - heocr'])
         self.assertNotIn('ocr_models', '\n'.join(settings))
         self.assertNotIn('software_hints:', settings)
-        self.assertNotIn(R6_DOI, '\n'.join(settings))  # no relation to R6: see the comment in zenodo.yaml
+        self.assertNotIn(R6_DOI, '\n'.join(settings))
+        self.assertNotIn(R6_CONCEPT, '\n'.join(settings))  # no relation to R6: see the comment in zenodo.yaml
         self.assertIn('license: Apache-2.0', settings)
         first = (ROOT / 'release' / 'r3h' / 'zenodo.yaml').read_text(encoding='utf-8')
         authors = re.search(r'^authors:\n(?:  .*\n)+', first, re.M)[0]

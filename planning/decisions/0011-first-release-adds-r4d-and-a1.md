@@ -59,9 +59,9 @@ On 2026-11-06 the maintainer approved the three model cards as they stand on mai
 
 | Card | sha256, with the production DOIs (plan step 2) |
 |---|---|
-| `release/r3h/card_body.md` | `d5d5dcd605a63f700c0fb2ef0f471a49f5f1ad0f70c2fd8afd8a4c47b195f1b2` |
-| `release/r4d/card_body.md` | `799d59b2274f52676ea4e99a00af8be7a1119aa1a42d06664d6166d41cb127e1` |
-| `release/a1/card_body.md` | `90da51f6914edeb94082d743f177af00e2d7410a48b1df9b1ce92752654e36bc` |
+| `release/r3h/card_body.md` | `f2fdf6893e9d8dc25071a95abd3ca4793786e6e456fbb4c147b7829c64d94ea2` |
+| `release/r4d/card_body.md` | `d94e14ce5e2a60a6df7ac3a7b6bd94cc7b774bbbbec4c8183636f77f91c1e22c` |
+| `release/a1/card_body.md` | `15561298bebf8a684aca0ce2d6ff069a5b695bc0f1fed40114d4308ddb272304` |
 
 In a separate approval the same day, the maintainer approved the three NOTICE files. That decides item 4's NOTICE text. The approval came with one change, a grammar fix in R4d's NOTICE: it names one corpus, so "The corpus is dedicated" replaces "The corpora are dedicated". The approved files, after that fix, are:
 
@@ -72,7 +72,7 @@ In a separate approval the same day, the maintainer approved the three NOTICE fi
 | `release/a1/NOTICE` | `c8b3ca662a59dfbc39a1df08a2f2589b174104ba9122fe0bb0f6822522349fae` (unchanged from `952e5b5`) |
 
 - **The one planned change:** the reserved version DOIs go into each card's pipeline table and Citation section (`release/README.md`, plan step 2). Any other change to a card or a NOTICE needs the maintainer's review again.
-- **Amendment, 2026-11-19 (held-out figures only):** the maintainer's rule is "we only produce metrics on held-out sets", and his decision is to replace every card with dev-set results. HeOCR evaluation found that none of the six synthetic sets these cards scored on is a registered held-out set. So the three cards drop every figure, and say "not measured on a held-out set yet". The pins above are the held-out-only cards; the earlier pins were r3h `da8b4e84…`, r4d `0b4c4313…` and a1 `6a03f50b…`. **This change needs the maintainer's review**, which is requested in the PR that made it.
+- **Amendment, 2026-11-19 (held-out figures only):** the maintainer's rule is "we only produce metrics on held-out sets", and his decision is to replace every card with dev-set results. HeOCR evaluation found that none of the six synthetic sets these cards scored on is a registered held-out set. So the three cards drop every figure, and say "not measured on a held-out set yet". The pins above are the held-out-only cards, whose links to the sibling models use their concept DOIs (which survive a deleted version); the earlier pins were r3h `da8b4e84…`, r4d `0b4c4313…` and a1 `6a03f50b…`. **This change needs the maintainer's review**, which is requested in the PR that made it.
 - **2026-11-06, plan step 2, pending the maintainer's approval of the diff:** only the DOI lines changed, four per card:
   - three pipeline-table rows, each with that model's production version DOI and its `https://doi.org/` link;
   - the Citation line.

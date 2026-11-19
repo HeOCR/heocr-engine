@@ -34,7 +34,7 @@ model_type:
 # No metrics: HeOCR reports figures only on held-out sets, and this model has none yet (see the card).
 # isDerivedFrom links (InvenioRDM related identifiers): the base model, the training scans
 # (the 7 NLI IIIF manifests and the 23 Internet Archive items) and the transcription source.
-# No link to R6 (10.5281/zenodo.24109989): the script maps every `related` item to
+# No link to R6 (10.5281/zenodo.24109988): the script maps every `related` item to
 # isDerivedFrom, and R7 is not derived from R6 (it starts from the same base). Nor
 # isNewVersionOf: R7 supersedes nothing, and it is a record of its own, not a Zenodo version
 # of R6's. The card body names R6 and its DOI.

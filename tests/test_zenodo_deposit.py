@@ -828,7 +828,7 @@ class R8bTests(unittest.TestCase):
         self.assertEqual(len(links), len(set(links)))
         self.assertIn(('https://github.com/tesseract-ocr/tessdata_best/blob/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/'
                        'heb.traineddata', 'software'), links)
-        self.assertIn(('https://doi.org/10.5281/zenodo.24126449', 'software'), links)  # continued from R7
+        self.assertIn(('https://doi.org/10.5281/zenodo.24126448', 'software'), links)  # continued from R7
         self.assertIn(('https://github.com/projectbenyehuda/public_domain_dump', 'dataset'), links)
         for record in R8B_NLI:
             self.assertIn((f'https://iiif.nli.org.il/IIIFv21/{record}/manifest', 'image'), links)
@@ -987,7 +987,7 @@ class ModernOldprintV1Tests(unittest.TestCase):
             links = [r['identifier'] for r in zd.record_metadata(front, '<p></p>', '2026-11-19')['related_identifiers']]
             self.assertIn('https://github.com/tesseract-ocr/tessdata_best/blob/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/'
                           'heb.traineddata', links)
-        self.assertIn('https://doi.org/10.5281/zenodo.24126449', [
+        self.assertIn('https://doi.org/10.5281/zenodo.24126448', [
             r['identifier'] for r in zd.record_metadata(zd.read_front('oldprint_v1'), '<p></p>', '2026-11-19')[
                 'related_identifiers']])  # continued from R7
 

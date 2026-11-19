@@ -29,8 +29,8 @@ It is a research baseline, not a production transcriber. All of its evaluation i
 
 | Step | Model | Record |
 |---|---|---|
-| Segmentation: baselines, line polygons, typed regions | R4d, `heocr-r4d-segmentation.safetensors` (`d32cd1a8…`) | [10.5281/zenodo.24023070](https://doi.org/10.5281/zenodo.24023070) |
-| Reading order: line order from each line's region type | A1, `heocr-a1-reading-order.safetensors` (`69aa1946…`) | [10.5281/zenodo.24023072](https://doi.org/10.5281/zenodo.24023072) |
+| Segmentation: baselines, line polygons, typed regions | R4d, `heocr-r4d-segmentation.safetensors` (`d32cd1a8…`) | [10.5281/zenodo.24023069](https://doi.org/10.5281/zenodo.24023069) |
+| Reading order: line order from each line's region type | A1, `heocr-a1-reading-order.safetensors` (`69aa1946…`) | [10.5281/zenodo.24023071](https://doi.org/10.5281/zenodo.24023071) |
 | Recognition | R3h, this model | [10.5281/zenodo.24023074](https://doi.org/10.5281/zenodo.24023074) |
 
 > **A1 needs heocr-engine.** kraken 7.0.2 cannot run A1 by itself, for two reasons:

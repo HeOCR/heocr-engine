@@ -2,7 +2,7 @@
 
 R7 is a [Tesseract](https://github.com/tesseract-ocr/tesseract) language model (`.traineddata`) for printed modern Hebrew. HeOCR made it by fine-tuning Tesseract's own `heb` model from [tessdata_best](https://github.com/tesseract-ocr/tessdata_best) on 95,151 real scanned lines from 30 public-domain books. Seven of the books are National Library of Israel "public domain, free use" scans; 23 are university-library scans from the Internet Archive. Each line is labelled with the Project Ben-Yehuda transcription of the same edition, never with OCR output.
 
-It has the same recipe and the same base as [HeOCR R6](https://doi.org/10.5281/zenodo.24109989), on about seven times as many lines from six times as many books. It does not continue from R6.
+It has the same recipe and the same base as [HeOCR R6](https://doi.org/10.5281/zenodo.24109988), on about seven times as many lines from six times as many books. It does not continue from R6.
 
 **Performance: not measured on a held-out set yet.** No held-out score yet; HeOCR will score it once in a registered held-out run. HeOCR reports accuracy only on held-out sets. The result will be added to this card in a new version.
 

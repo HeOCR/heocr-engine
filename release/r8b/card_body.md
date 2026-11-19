@@ -1,6 +1,6 @@
 # HeOCR R8b: Hebrew printed-text recognition for Tesseract
 
-R8b is a [Tesseract](https://github.com/tesseract-ocr/tesseract) language model (`.traineddata`) for printed Hebrew. HeOCR made it by continuing to train [HeOCR R7](https://doi.org/10.5281/zenodo.24126449), itself a fine-tune of Tesseract's own `heb` model from [tessdata_best](https://github.com/tesseract-ocr/tessdata_best), for one pass over 196,275 lines:
+R8b is a [Tesseract](https://github.com/tesseract-ocr/tesseract) language model (`.traineddata`) for printed Hebrew. HeOCR made it by continuing to train [HeOCR R7](https://doi.org/10.5281/zenodo.24126448), itself a fine-tune of Tesseract's own `heb` model from [tessdata_best](https://github.com/tesseract-ocr/tessdata_best), for one pass over 196,275 lines:
 - 158,104 real scanned lines from 45 public-domain books (8 National Library of Israel "public domain, free use" scans and 37 Internet Archive scans), labelled with the Project Ben-Yehuda transcription of the same edition;
 - 19,533 lines rendered from 48 born-digital booklets of Israel's laws and regulations (Reshumot), labelled with the publisher's own text layer;
 - 11 lines of one Hebrew Wikisource proofread page;
@@ -26,7 +26,7 @@ It is released on its own, with no link to HeOCR's kraken pipeline (R4d, A1, R3h
 | sha256 | `8cb22dbeb195c3c0ffbe9c66cf956d8c2052d3b1c4a872234a85c975c4526117` |
 | Model type | recognition (line-level LSTM, CTC); Tesseract does the page layout |
 | Format | Tesseract 4/5 LSTM `traineddata`, LSTM only (`--oem 1`; no legacy engine). Trained and tested with Tesseract 5.5.3 |
-| Continued from | HeOCR R7 ([10.5281/zenodo.24126449](https://doi.org/10.5281/zenodo.24126449)), the checkpoint R7 was packed from |
+| Continued from | HeOCR R7 ([10.5281/zenodo.24126448](https://doi.org/10.5281/zenodo.24126448)), the checkpoint R7 was packed from |
 | Base model | tessdata_best `heb.traineddata` at [`e12c65a`](https://github.com/tesseract-ocr/tessdata_best/tree/e12c65a915945e4c28e237a9b52bc4a8f39a0cec) (Apache-2.0), sha256 `dbaa827aea6bc21215638447f17783a1004987c2d0bf5573d111fee397abdae5`, fine-tuned (modified) by HeOCR as R7 and then R8b |
 | Licence | Apache-2.0, Copyright (c) 2026 HeOCR maintainers (see LICENSE and NOTICE) |
 | Training record | `r8b_training_run.json` (`heocr_tesseract_training_run.v1`) |

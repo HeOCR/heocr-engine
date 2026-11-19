@@ -17,7 +17,7 @@ dbaa827aea6bc21215638447f17783a1004987c2d0bf5573d111fee397abdae5, licensed
 under the Apache License, Version 2.0.
 
 HeOCR modified it in two stages. HeOCR R7 (2026-11-11,
-https://doi.org/10.5281/zenodo.24126449) fine-tuned its LSTM network on
+https://doi.org/10.5281/zenodo.24126448) fine-tuned its LSTM network on
 real scanned Hebrew lines and added the maqaf U+05BE and the en dash U+2013
 to its character set. oldprint-v1 (2026-11-18) continued training from R7's
 weights on more real scanned lines and rendered born-digital lines. Its

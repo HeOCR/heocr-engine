@@ -11,6 +11,7 @@ BASE_SHA = 'dbaa827aea6bc21215638447f17783a1004987c2d0bf5573d111fee397abdae5'
 STARTER_SHA = '202272593630b4eddba57d5b09f5d3a142ed551b9550094e2885eb1b359fe037'  # the R8 starter, 73 codes
 R7_SHA = '95faab81fba6fe57f854f973c1ccad2b0d1059fb951f34b17277385ceea8b303'
 R7_DOI = '10.5281/zenodo.24126449'
+R7_CONCEPT = '10.5281/zenodo.24126448'  # cards and links use the concept; the record keeps the exact version
 FIGURES_SHA = '22c0305ddafe6f436599df115c1c71345fed3685feae2c3cd9198b5e989909d9'  # eval's frozen release figures
 PROFILE_SHA = '2e2627104be4f27dc3204787dd3ff4f8591d95d1d96294c65833d2773041d317'  # line_fold_v1
 MANIFESTS = {'bynli_lines_v2': '53dd7f1a10929ad4a60020ad7f42be62f27ee905cb7e6cfb0e319c5b2f5db7ca',
@@ -113,7 +114,7 @@ class R8bReleaseFilesTests(unittest.TestCase):
                        '70,171 entries', '24 bracket or arrow tokens', *WORD_DAWG.values()):
             with self.subTest(needle=needle[:40]):
                 self.assertTrue(needle in card, f'card lacks {needle!r}')
-        self.assertIn(f'https://doi.org/{R7_DOI}', card)  # R7 is named, not replaced
+        self.assertIn(f'https://doi.org/{R7_CONCEPT}', card)  # R7 is named, not replaced
 
     def test_card_reports_no_dev_or_selection_figure(self):
         # held-out figures only (maintainer, 2026-11-19): R8b's OLB dev, selection-book and report-set
@@ -273,7 +274,7 @@ class R8bReleaseFilesTests(unittest.TestCase):
         self.assertNotIn('ocr_models', '\n'.join(settings))
         self.assertNotIn('software_hints:', settings)
         self.assertIn('license: Apache-2.0', settings)
-        self.assertIn(f'  - identifier: https://doi.org/{R7_DOI}', settings)  # derived from R7
+        self.assertIn(f'  - identifier: https://doi.org/{R7_CONCEPT}', settings)  # derived from R7
         first = (ROOT / 'release' / 'r3h' / 'zenodo.yaml').read_text(encoding='utf-8')
         authors = re.search(r'^authors:\n(?:  .*\n)+', first, re.M)[0]
         self.assertIn(authors, read('zenodo.yaml'))
