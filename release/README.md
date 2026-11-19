@@ -189,7 +189,7 @@ python release/zenodo_deposit.py --state … status                             
 
 # Second release: R6 (Tesseract), a deposit of its own
 
-**Status: DOIs reserved on 2026-11-19** (modern-v1 [10.5281/zenodo.24371757](https://doi.org/10.5281/zenodo.24371757), oldprint-v1 [10.5281/zenodo.24371759](https://doi.org/10.5281/zenodo.24371759)), on the maintainer's own go. The maintainer said "Yes, release R6" on 2026-11-10, and decision 0014 needs no per-step go-ahead. Terms: Apache-2.0, licensed by "HeOCR maintainers", as decisions 0010 and 0014; inputs under decision 0015 (NLI "public domain, free use" scans, credited in the NOTICE).
+**Status: drafts, nothing reserved or published.** The maintainer said "Yes, release R6" on 2026-11-10, and decision 0014 needs no per-step go-ahead. Terms: Apache-2.0, licensed by "HeOCR maintainers", as decisions 0010 and 0014; inputs under decision 0015 (NLI "public domain, free use" scans, credited in the NOTICE).
 
 | Model | Release file | Trained as | sha256 | Folder |
 |---|---|---|---|---|
@@ -271,7 +271,7 @@ python release/hf_upload.py --models r6 --zenodo-state $S --weights r6=…/heb.t
 
 # Third release: R7 (Tesseract), a deposit of its own
 
-**Status: DOIs reserved on 2026-11-19** (modern-v1 [10.5281/zenodo.24371757](https://doi.org/10.5281/zenodo.24371757), oldprint-v1 [10.5281/zenodo.24371759](https://doi.org/10.5281/zenodo.24371759)), on the maintainer's own go. Decision 0014 needs no per-step go-ahead. Terms: Apache-2.0, licensed by "HeOCR maintainers", as R6; inputs under decision 0015 (NLI "public domain, free use" scans and Internet Archive library scans, both credited in the NOTICE).
+**Status: drafts, nothing reserved or published.** Decision 0014 needs no per-step go-ahead. Terms: Apache-2.0, licensed by "HeOCR maintainers", as R6; inputs under decision 0015 (NLI "public domain, free use" scans and Internet Archive library scans, both credited in the NOTICE).
 
 | Model | Release file | Trained as | sha256 | Folder |
 |---|---|---|---|---|
@@ -427,7 +427,7 @@ python release/hf_upload.py --models r8b --zenodo-state $S --weights r8b=…/heb
 
 # Fifth release: modern-v1 and oldprint-v1 (Tesseract), two deposits
 
-**Status: DOIs reserved on 2026-11-19** (modern-v1 [10.5281/zenodo.24371757](https://doi.org/10.5281/zenodo.24371757), oldprint-v1 [10.5281/zenodo.24371759](https://doi.org/10.5281/zenodo.24371759)), on the maintainer's own go. HeOCR evaluation's default-model study (2026-11-19) chose office-print v0 arm A as heocr 0.2.0's default for modern print, and P-hist round v1's `heb_final` for old print. **Publishing waits on the maintainer's own go**, because a Zenodo DOI is permanent. Terms: Apache-2.0, licensed by "HeOCR maintainers", as decisions 0010 and 0014; inputs under decision 0015 (Internet Archive and Google-class scans retrieved via the Internet Archive) and decision 0016 (the Open Law Book's Wikisource text, credited).
+**Status: DOIs reserved on 2026-11-19** (modern-v1 [10.5281/zenodo.24371757](https://doi.org/10.5281/zenodo.24371757), oldprint-v1 [10.5281/zenodo.24371759](https://doi.org/10.5281/zenodo.24371759)), on the maintainer's own go. HeOCR evaluation's default-model study (2026-11-19) chose office-print v0 arm A as heocr 0.2.0's default for modern print, and P-hist round v1's `heb_final` for old print. The maintainer gave that go in the synth-gen session on 2026-11-19, since a Zenodo DOI is permanent. Terms: Apache-2.0, licensed by "HeOCR maintainers", as decisions 0010 and 0014; inputs under decision 0015 (Internet Archive and Google-class scans retrieved via the Internet Archive) and decision 0016 (the Open Law Book's Wikisource text, credited).
 
 | Model | Release file | Trained as | sha256 | Bytes | Folder | Hugging Face |
 |---|---|---|---|---|---|---|
