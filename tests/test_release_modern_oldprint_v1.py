@@ -41,6 +41,7 @@ class ReleasePackages(unittest.TestCase):
                           (folder / "card_body.md").read_text(encoding="utf-8"))
             body = (folder / "card_body.md").read_text(encoding="utf-8")
             self.assertIn("not measured on a held-out set yet", body.lower())
+            self.assertIn("No held-out score yet; HeOCR will score it once in a registered held-out run.", body)
             # held-out figures only (maintainer, 2026-11-19): no dev, tuning or selection figure as performance
             evaluation = body[body.index("## Evaluation"):body.index("## Bias, risks and limitations")]
             self.assertNotIn("%", evaluation)
