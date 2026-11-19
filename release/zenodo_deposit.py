@@ -53,7 +53,10 @@ OWNED_COMMUNITIES = {SANDBOX: {"heocr": "c261ed63-f520-48a3-90c2-c64ed1cc0395"},
 # The first release, in deposit order (the pipeline order of the cards' tables). These cards are HTRMoPo v1.
 MODELS = ("r4d", "a1", "r3h")
 # Later models, each a release of its own with its own state file. Their zenodo.yaml is not HTRMoPo front matter.
-SEPARATE_RELEASES = ("r6", "r7", "r8b")
+SEPARATE_RELEASES = ("r6", "r7", "r8b", "modern_v1", "oldprint_v1")
+# Files a model deposits beside LICENSE, NOTICE and its training record. oldprint-v1 continues from R7, so R7's
+# NOTICE travels with it.
+EXTRA_FILES = {"oldprint_v1": ("NOTICE.r7",)}
 CHOICES = MODELS + SEPARATE_RELEASES
 # htrmopo 0.5 files models as legacy `upload_type: publication`, `publication_type: other`.
 RESOURCE_TYPE = {"id": "publication-other"}
@@ -282,7 +285,7 @@ def plan(model: str, front: dict, body: str, state: dict, today: str, weights: P
                  for name, path in deposit_files(model, weights, release).items()]
     else:
         files = [{"key": output["release_file_name"], "sha256": output["model_sha256"], "weights": "not given"},
-                 *({"key": name} for name in ("LICENSE", "NOTICE", record_path.name))]
+                 *({"key": name} for name in ("LICENSE", "NOTICE", *EXTRA_FILES.get(model, ()), record_path.name))]
     return {"model": model, "release": release_of(model), "draft": record.get("id"),
             "card": {"format": "HTRMoPo v1" if model in MODELS else "plain (not HTRMoPo)", **card_check},
             "files": [{"key": "README.md"}, *files],
@@ -299,7 +302,7 @@ def validate_htrmopo(front: dict) -> None:
 
 
 def deposit_files(model: str, weights: Path, release: Path = RELEASE) -> dict[str, Path]:
-    """The four files beside the card, under their deposit names; the weights must match the record's sha256."""
+    """The files beside the card (four, or more with EXTRA_FILES), under their deposit names; the weights must match the record's sha256."""
     record_path = release / model / f"{model}_training_run.json"
     output = json.loads(record_path.read_text(encoding="utf-8"))["output"]
     digest = hashlib.sha256()
@@ -309,7 +312,8 @@ def deposit_files(model: str, weights: Path, release: Path = RELEASE) -> dict[st
     if digest.hexdigest() != output["model_sha256"]:
         raise DepositError(f"{model}: {weights.name} does not match the record's model_sha256")
     return {output["release_file_name"]: weights, "LICENSE": release / model / "LICENSE",
-            "NOTICE": release / model / "NOTICE", record_path.name: record_path}
+            "NOTICE": release / model / "NOTICE", **{name: release / model / name for name in EXTRA_FILES.get(model, ())},
+            record_path.name: record_path}
 
 
 def upload(api: Api, state: dict, model: str, card: str, files: dict[str, Path]) -> None:
@@ -407,7 +411,8 @@ def main(argv=None, environ=os.environ, opener=None) -> int:
     parser.add_argument("--production", action="store_true", help="zenodo.org instead of the sandbox (default)")
     parser.add_argument("--state", type=Path, required=True, help="state file outside the repository")
     parser.add_argument("--models", nargs="+", choices=CHOICES, default=list(MODELS),
-                        help="default: the first release, r4d a1 r3h. r6, r7 and r8b are each a release of their "
+                        help="default: the first release, r4d a1 r3h. r6, r7, r8b, modern_v1 and oldprint_v1 are each a "
+                             "release of their "
                              "own: give one alone, with its own state file")
     parser.add_argument("--release-dir", type=Path, default=RELEASE,
                         help="folder with the model folders (default: this repository's release/). Sandbox only: a "
