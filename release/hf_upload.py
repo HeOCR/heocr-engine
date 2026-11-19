@@ -38,7 +38,8 @@ CHOICES = zenodo.CHOICES
 # One public repository per model under the HeOCR organisation (item 7; decision 0011's note; R6, R7, R8b: decision 0014).
 HF_REPOS = {"r4d": "HeOCR/heocr-r4d-segmentation", "a1": "HeOCR/heocr-a1-reading-order",
             "r3h": "HeOCR/heocr-r3h-recognition", "r6": "HeOCR/heocr-r6-tesseract-heb",
-            "r7": "HeOCR/heocr-r7-tesseract-heb", "r8b": "HeOCR/heocr-r8b-tesseract-heb"}
+            "r7": "HeOCR/heocr-r7-tesseract-heb", "r8b": "HeOCR/heocr-r8b-tesseract-heb",
+            "modern_v1": "HeOCR/heocr-modern-v1-tesseract-heb", "oldprint_v1": "HeOCR/heocr-oldprint-v1-tesseract-heb"}
 
 
 def read_token(environ=os.environ) -> str:
@@ -113,7 +114,8 @@ def main(argv=None, environ=os.environ, api_factory=None, add=None) -> int:
                         help="the Zenodo state file with the reserved DOIs (production for a real upload)")
     parser.add_argument("--weights", nargs="+", required=True, metavar="MODEL=PATH")
     parser.add_argument("--models", nargs="+", choices=CHOICES, default=list(MODELS),
-                        help="default: the first release, r4d a1 r3h. r6, r7 and r8b are each a release of their "
+                        help="default: the first release, r4d a1 r3h. r6, r7, r8b, modern_v1 and oldprint_v1 are each a "
+                             "release of their "
                              "own: give one alone")
     parser.add_argument("--release-dir", type=Path, default=RELEASE, help="dry run only: a copy of release/")
     parser.add_argument("--dry-run", action="store_true", help="print the plan; no network")

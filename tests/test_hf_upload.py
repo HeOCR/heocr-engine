@@ -386,3 +386,11 @@ class R8bHfTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+
+class ModernOldprintV1HfTests(unittest.TestCase):
+    def test_repositories(self):
+        self.assertEqual(hf.HF_REPOS['modern_v1'], 'HeOCR/heocr-modern-v1-tesseract-heb')
+        self.assertEqual(hf.HF_REPOS['oldprint_v1'], 'HeOCR/heocr-oldprint-v1-tesseract-heb')
+        self.assertEqual(set(hf.HF_REPOS), set(hf.CHOICES))

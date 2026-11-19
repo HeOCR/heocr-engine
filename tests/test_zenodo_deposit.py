@@ -811,7 +811,7 @@ class R8bTests(unittest.TestCase):
 
     def test_r8b_is_selectable_but_not_a_default(self):
         self.assertEqual(zd.MODELS, ('r4d', 'a1', 'r3h'))
-        self.assertEqual(zd.SEPARATE_RELEASES, ('r6', 'r7', 'r8b'))
+        self.assertEqual(zd.SEPARATE_RELEASES, ('r6', 'r7', 'r8b', 'modern_v1', 'oldprint_v1'))
         self.assertEqual(zd.release_of('r8b'), 'r8b')
         self.assertIs(zd.validate_front('r8b'), zd.validate_plain)
 
@@ -940,3 +940,65 @@ class R8bTests(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+V1_DOI = '10.5072/zenodo.900'
+
+
+@contextlib.contextmanager
+def v1_release_copy(model):
+    """A release/ copy whose card for MODEL cites V1_DOI, with fake weights matching its copied record."""
+    import shutil
+    with tempfile.TemporaryDirectory() as directory:
+        directory = Path(directory)
+        release = directory / 'release'
+        shutil.copytree(ROOT / 'release' / model, release / model)
+        body = release / model / 'card_body.md'
+        body.write_text(body.read_text(encoding='utf-8').replace('DOI-TO-BE-RESERVED', V1_DOI), encoding='utf-8')
+        weights = directory / 'heb.traineddata'
+        weights.write_bytes(model.encode() + b' weights')
+        record_path = release / model / f'{model}_training_run.json'
+        record = json.loads(record_path.read_text(encoding='utf-8'))
+        record['output']['model_sha256'] = hashlib.sha256(model.encode() + b' weights').hexdigest()
+        record_path.write_text(json.dumps(record), encoding='utf-8')
+        yield directory, release, weights
+
+
+class ModernOldprintV1Tests(unittest.TestCase):
+    """modern-v1 and oldprint-v1 (Tesseract) are each a release of their own, like R8b."""
+
+    def test_selectable_plain_and_separate(self):
+        for model in ('modern_v1', 'oldprint_v1'):
+            self.assertEqual(zd.release_of(model), model)
+            self.assertIs(zd.validate_front(model), zd.validate_plain)
+        with self.assertRaisesRegex(zd.DepositError, 'release of its own'):
+            zd.check_one_release(['modern_v1', 'oldprint_v1'])
+        with self.assertRaisesRegex(zd.DepositError, 'release of its own'):
+            zd.check_one_release(['oldprint_v1'], {'r7': {'id': 'rec7'}})
+
+    def test_front_matter_validates_with_heocr_only(self):
+        _need_yaml(self)
+        for model in ('modern_v1', 'oldprint_v1'):
+            front = zd.read_front(model)
+            self.assertEqual(front['communities'], ['heocr'])
+            self.assertEqual(front['authors'], zd.read_front('r8b')['authors'])
+            zd.validate_plain(dict(front, id=V1_DOI))
+            links = [r['identifier'] for r in zd.record_metadata(front, '<p></p>', '2026-11-19')['related_identifiers']]
+            self.assertIn('https://github.com/tesseract-ocr/tessdata_best/blob/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/'
+                          'heb.traineddata', links)
+        self.assertIn('https://doi.org/10.5281/zenodo.24126449', [
+            r['identifier'] for r in zd.record_metadata(zd.read_front('oldprint_v1'), '<p></p>', '2026-11-19')[
+                'related_identifiers']])  # continued from R7
+
+    def test_deposit_files(self):
+        expected = {'modern_v1': ['heocr_modern_v1.traineddata', 'LICENSE', 'NOTICE', 'modern_v1_training_run.json'],
+                    'oldprint_v1': ['heocr_oldprint_v1.traineddata', 'LICENSE', 'NOTICE', 'NOTICE.r7',
+                                    'oldprint_v1_training_run.json']}
+        for model, names in expected.items():
+            with v1_release_copy(model) as (_, release, weights):
+                files = zd.deposit_files(model, weights, release)
+                self.assertEqual(list(files), names)
+                self.assertTrue(all(path.is_file() for path in files.values()))
+                weights.write_bytes(b'other')
+                with self.assertRaisesRegex(zd.DepositError, 'does not match'):
+                    zd.deposit_files(model, weights, release)

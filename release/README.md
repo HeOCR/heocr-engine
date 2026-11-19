@@ -424,3 +424,44 @@ python release/hf_upload.py --models r8b --zenodo-state $S --weights r8b=…/heb
 7. **Mirror to Hugging Face:** `HeOCR/heocr-r8b-tesseract-heb`.
 
 `plan` was run offline on this branch with no state file, once without weights and once with the packed `r8b-main-fold` `heb.traineddata`. The plain card check passed, and the weights matched the record's sha256 (3,633,477 bytes). It listed 5 files, 49 related links and the `heocr` community. No state file was written.
+
+# Fifth release: modern-v1 and oldprint-v1 (Tesseract), two deposits
+
+**Status: drafts, nothing reserved or published.** HeOCR evaluation's default-model study (2026-11-19) chose office-print v0 arm A as heocr 0.2.0's default for modern print, and P-hist round v1's `heb_final` for old print. **Publishing waits on the maintainer's own go**, because a Zenodo DOI is permanent. Terms: Apache-2.0, licensed by "HeOCR maintainers", as decisions 0010 and 0014; inputs under decision 0015 (Internet Archive and Google-class scans retrieved via the Internet Archive) and decision 0016 (the Open Law Book's Wikisource text, credited).
+
+| Model | Release file | Trained as | sha256 | Bytes | Folder | Hugging Face |
+|---|---|---|---|---|---|---|
+| modern-v1 | `heocr_modern_v1.traineddata` | office-print v0 arm A `snap_0160m_222700` | `6275943bf68f3d44ecc32f8d4c4195c890c96602111542ebe1f0ae0d8a6a5201` | 3,704,077 | `modern_v1/` | `HeOCR/heocr-modern-v1-tesseract-heb` |
+| oldprint-v1 | `heocr_oldprint_v1.traineddata` | P-hist v1 arm r7 `heb_final` | `f8090760b5b02d09cf4ddb435e7a5e34089f6f17cde9cfb6c67fd06c6f17ec02` | 3,628,595 | `oldprint_v1/` | `HeOCR/heocr-oldprint-v1-tesseract-heb` |
+
+- **Names:** `heocr_modern_v1` and `heocr_oldprint_v1` are Tesseract language names (underscores, like `heocr_r8b`). The repositories and cards say modern-v1 and oldprint-v1. Renaming leaves the bytes and sha256 unchanged.
+- **Figures:** dev and tuning only, with stock tessdata_best `heb` beside every one, and no test claim. The sources are the default-model study report, hocrsyngen `experiments/office_print_v0/RESULTS.md` and `experiments/phist_v1/RESULTS.md`. Synthetic office-case figures are aggregates only; no office-case text or image appears.
+- **oldprint-v1 continues from R7,** so its deposit also carries R7's NOTICE as `NOTICE.r7`.
+
+**Before step 1 (reserve):**
+1. The maintainer's go, for both deposits.
+2. `modern_v1_training_run.json` and `oldprint_v1_training_run.json` (`heocr_tesseract_training_run.v1`, sanitised, with no local paths, as R8b's). Each needs its line-set manifests, the Reshumot booklet list, the Open Law Book permalinks (modern-v1) and the rights-justification ids (oldprint-v1).
+3. `--models modern_v1 oldprint_v1` in `zenodo_deposit.py` and `hf_upload.py`.
+
+**Then the R8b plan:** reserve both DOIs, put each into its card's Citation section (in place of `DOI-TO-BE-RESERVED`) and `id`, upload, check the previews, publish, accept into `heocr`, and mirror to Hugging Face.
+
+**heocr's `MODELS` entries,** for pipeline to add to `heocr/models.py` once the DOIs exist (`domain` per heocr's route table):
+
+```python
+ReleasedModel(
+    name="heocr_modern_v1",
+    sha256="6275943bf68f3d44ecc32f8d4c4195c890c96602111542ebe1f0ae0d8a6a5201",
+    size=3_704_077,
+    url="https://huggingface.co/HeOCR/heocr-modern-v1-tesseract-heb/resolve/main/heocr_modern_v1.traineddata",
+    doi="<reserved version DOI>",
+    licence="Apache-2.0",
+),
+ReleasedModel(
+    name="heocr_oldprint_v1",
+    sha256="f8090760b5b02d09cf4ddb435e7a5e34089f6f17cde9cfb6c67fd06c6f17ec02",
+    size=3_628_595,
+    url="https://huggingface.co/HeOCR/heocr-oldprint-v1-tesseract-heb/resolve/main/heocr_oldprint_v1.traineddata",
+    doi="<reserved version DOI>",
+    licence="Apache-2.0",
+),
+```
