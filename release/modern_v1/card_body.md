@@ -7,11 +7,11 @@ modern-v1 is a [Tesseract](https://github.com/tesseract-ocr/tesseract) language 
 
 No label is OCR output. It is the model that HeOCR's evaluation chose as the default for modern print in [heocr](https://github.com/HeOCR/heocr), the HeOCR document pipeline. (In the experiment records it is office-print v0, arm A, snapshot `snap_0160m_222700`.)
 
-**What it gains, and what it costs.** Every figure on this card is from development or tuning sets: **there is no test score.**
-- **Inside heocr, on HeOCR's open synthetic document sets,** it lowers page CER against heocr with stock `heb` inside on every OCR cell: scanned PDFs under a wrong text layer (T4) from 2.87% to 1.04%, image-only PDFs (T5) from 4.22% to 2.75%, and scanned tables from 1.58% to 0.42%. Missed numbers fall from 20.0% to 4.6% (T4) and from 13.2% to 4.0% (T5). Text-layer documents are unchanged.
-- **On 12 real-print line sets,** it is better than stock `heb` on every one, by 3.5 to 7.4 CER points.
-- **The cost: some numbers it used to read are now lost.** On 42 open synthetic office scans it gains 268 numbers and loses 83 against stock. 49 of the 83 losses are outline labels such as `2.1.3`. heocr's own number handling is meant to catch these; it is not part of this model.
-- **On old print, HeOCR [oldprint-v1](#related-models) reads better.** On all 7 old-print line sets measured, oldprint-v1 has the lower CER, by 0.1 to 3.0 points.
+**Performance: not measured on a held-out set yet.** HeOCR reports accuracy only on held-out sets, and this model has not yet been scored on one. HeOCR's registered held-out run of the default model comes later; its result will be added to this card in a new version.
+
+- **Why it was chosen:** HeOCR's evaluation chose it as heocr's default for modern print in a pre-registered default-model study (2026-11-19). The study compared it with stock `heb` on HeOCR's open synthetic document sets, inside heocr, and on real-print development line sets. These sets were used to make the choice, so they are not reported here as its performance.
+- **Known cost: some numbers stock read are now lost,** mostly outline labels such as `2.1.3`. heocr's own number handling is meant to catch these; it is not part of this model. Check numbers that matter.
+- **For old print, use HeOCR [oldprint-v1](#related-models).**
 
 | | |
 |---|---|
@@ -28,7 +28,7 @@ No label is OCR output. It is the model that HeOCR's evaluation chose as the def
 ## Uses
 
 - **OCR of modern printed Hebrew documents:** office letters, forms, tenders, reports, tables and numbered sections, scanned, photocopied or photographed. Use it in place of Tesseract's `heb`.
-- **The OCR step of a document pipeline.** heocr uses it for pages it reads by OCR. Its figures above come from that use.
+- **The OCR step of a document pipeline.** heocr uses it for pages it reads by OCR.
 - **Line recognition** of single printed Hebrew line images.
 
 ### Out of scope
@@ -47,7 +47,7 @@ Install Tesseract 4 or 5 (trained with 5.5.3). Put `heocr_modern_v1.traineddata`
 tesseract page.png out -l heocr_modern_v1 --tessdata-dir DIR --psm 3
 ```
 
-For single line images, use `--psm 7`; the line-set figures below were read that way. In heocr, once the model is registered there:
+For single line images, use `--psm 7`. In heocr, once the model is registered there:
 
 ```sh
 heocr --download-model heocr_modern_v1
@@ -85,8 +85,8 @@ Notes:
 - **Start:** stock tessdata_best `heb` (`--continue_from` its LSTM, `--old_traineddata` itself). The network is unchanged.
 - **Trainer:** `lstmtraining`, Tesseract 5.5.3 built from its upstream tag (commit `db0ec62f…`), on a 32-vCPU CPU pod, `--learning_rate 0.0001`, one epoch (255,143 iterations), with a snapshot every 20 minutes. The run exited cleanly; the pod checked every input's sha256 before training.
 - **Truth order:** labels in Tesseract's LSTM training order, converted with `tesseract … --psm 13 lstm.train`.
-- **Selection:** the lowest line CER on `office_val` under the `line_fold_v1` profile (below), over 9 snapshots, the training-best checkpoint and the final model. `office_val` is 4,851 synthetic crops in the held-out face Tinos, from held-out booklets, decontaminated like the training list. The winner is `snap_0160m_222700` (iteration 222,700) at 1.375% CER; stock `heb` is 14.754% there. **`office_val` is drawn from the training distribution, so it picks a snapshot and says nothing more.**
-- **Arms:** an equal-compute arm on the real lines only (anchor and OLB) was worse wherever a difference was resolved. It is not released.
+- **Selection:** the lowest line CER on `office_val` under the `line_fold_v1` profile (below), over 9 snapshots, the training-best checkpoint and the final model. `office_val` is 4,851 synthetic crops in the held-out face Tinos, from held-out booklets, decontaminated like the training list. The winner is `snap_0160m_222700` (iteration 222,700). **`office_val` is drawn from the training distribution, so it picks a snapshot and says nothing about performance.**
+- **Arms:** an equal-compute arm on the real lines only (anchor and OLB) was compared on development sets and not chosen. It is not released.
 - **One training run.** It is not deterministic, and the bytes are not reproducible.
 
 ### Word list
@@ -95,73 +95,22 @@ The word list is tessdata_best's own, unchanged: the model's `lstm-word-dawg` ha
 
 ## Evaluation
 
-- **No test score.** Every figure is from a development or tuning set. HeOCR's registered held-out run of the default model comes later.
-- **Source:** HeOCR evaluation's default-model study (2026-11-19, pre-registered before any output was read) and the office-print v0 results. All figures are aggregates.
-- **Metric:** CER (%), and number misses (%) where shown.
-- **Scoring profile `line_fold_v1`** (sha256 `2e2627104be4f27dc3204787dd3ff4f8591d95d1d96294c65833d2773041d317`): NFC, whitespace collapsed, and the folds `־`→`-`, `׳`→`'`, `״`→`"`, `“ ” „`→`"`, `—`→`–`. A reference `–` or `―` costs every stock-charset model one substitution.
-- **Stock Tesseract** (tessdata_best `heb` at `e12c65a`, the base) is shown beside every figure, read the same way.
+**Not measured on a held-out set yet.** HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning. modern-v1 has no such score yet:
 
-### HeOCR's open synthetic document sets, inside heocr (tuning)
-
-Page CER %, with missed numbers % in brackets, heocr at `1b53753`. These are HeOCR's open synthetic tuning sets, which heocr itself is developed against: not held out.
-
-| Cell | heocr with stock `heb` | **heocr with modern-v1** | upper bound of the difference |
-|---|---|---|---|
-| Scanned PDF under a wrong text layer (T4) | 2.87 (20.0) | **1.04 (4.6)** | CER −1.53, misses −13.2 |
-| Image-only PDF (T5) | 4.22 (13.2) | **2.75 (4.0)** | CER −1.25, misses −7.5 |
-| Scanned tables | 1.58 (2.59) | **0.42 (0.55)** | CER −0.95 |
-| Correct OCR layer kept (T6) | 0.12 (0.22) | **0.05 (0.06)** | |
-
-- **Text-layer documents** (DOCX, DOC, PDF text layers) are identical with either model.
-- **Upper bound:** of the 95% paired bootstrap interval over documents, for modern-v1 minus stock. Below 0 means better.
-- **Grainy JPEG tables (stress set):** CER 12.24% with stock inside, 9.82% with modern-v1.
-
-### Numbers gained and lost
-
-On 42 open synthetic office scans, document by document against stock:
-
-| | gained | lost | lost: outline labels | lost: other |
-|---|---|---|---|---|
-| modern-v1 | **268** | **83** | 49 | 34 |
-
-Every one of the 42 documents changes. Most losses are outline labels (`2.1.3`-style section numbers).
-
-### Real print, line sets (dev)
-
-Every line of each list read at psm 7 and scored under `line_fold_v1`. Δ is modern-v1 − stock, with its 95% paired bootstrap interval over lines (10,000 resamples, seed 0).
-
-| List | Lines | stock `heb` | **modern-v1** | Δ [95%] |
-|---|---|---|---|---|
-| Scanned Reshumot, OLB dev | 3,254 | 5.428 | **1.902** | −3.527 [−3.637, −3.421] |
-| Scanned Reshumot, OLB dev v1.1 | 3,325 | 5.410 | **1.905** | −3.505 [−3.612, −3.397] |
-| Reshumot rendered dev | 2,716 | 6.613 | **0.866** | −5.747 [−6.252, −5.304] |
-| *Kevar* (1922), held out | 4,600 | 5.677 | **1.054** | −4.623 [−4.733, −4.520] |
-| *Yedi'ot ha-Teva* (1883), held out | 4,600 | 9.218 | **3.849** | −5.369 [−5.495, −5.248] |
-| Brainin, IA scan | 6,257 | 5.071 | **1.514** | −3.557 [−3.624, −3.489] |
-| Brainin, NLI scan | 4,046 | 10.450 | **4.224** | −6.226 [−6.384, −6.070] |
-| Silman, *Sansinim* | 3,046 | 5.824 | **1.728** | −4.096 [−4.214, −3.983] |
-| Mekhilta (rabbinic) | 3,141 | 7.512 | **2.895** | −4.617 [−4.715, −4.520] |
-| Wikisource dev | 257 | 14.672 | **8.812** | −5.860 [−6.300, −5.439] |
-| Bodek | 21 | 15.684 | **8.311** | −7.373 [−10.077, −4.750] |
-| R8b selection lines | 3,000 | 7.549 | **2.520** | −5.029 [−5.181, −4.885] |
-
-- **Better than stock on every list**, with every interval below 0.
-- **On these lines it is not HeOCR's strongest model.** oldprint-v1 is better on 3 of the 5 modern lists, and on all 7 old-print lists by 0.1 to 3.0 points. modern-v1's lead is on whole documents inside heocr (page segmentation, office faces, tables), where it was chosen.
-
-### Development documents (reference-free)
-
-On HeOCR's 30 development PDFs, the dictionary-hit rate is 80.20% with stock inside and 80.23% with modern-v1 (+0.03 [+0.00, +0.08]). No reference-free veto fires (reversed amounts, replacement characters). These PDFs are almost all text-layer pages, so the model touches few of them.
+- **What was used to choose it is not reported as performance.** The development, tuning and selection sets behind the choice (`office_val`, HeOCR's open synthetic document sets, and the real-print development line sets) are named in the experiment records: hocrsyngen `experiments/office_print_v0/RESULTS.md` and evaluation's default-model study report.
+- **Next:** HeOCR's registered held-out run of the default model, against stock tessdata_best `heb` (the base), shown beside it and read the same way. Its result will be added in a new version of this card.
+- **Scoring profile** for that run: `line_fold_v1` (sha256 `2e2627104be4f27dc3204787dd3ff4f8591d95d1d96294c65833d2773041d317`): NFC, whitespace collapsed, and the folds `־`→`-`, `׳`→`'`, `״`→`"`, `“ ” „`→`"`, `—`→`–`. A reference `–` or `―` costs every stock-charset model one substitution.
 
 ## Bias, risks and limitations
 
-- **No test score.** The tuning sets are synthetic and open, and heocr is developed against them. The line sets are dev.
-- **Lost numbers.** It loses 83 numbers that stock reads on 42 synthetic office scans, mostly outline labels. Check numbers that matter.
-- **Synthetic share.** 46% of its lines are synthetic office pages in 12 open faces. Real office documents set in proprietary faces (Arial, David, Times New Roman and others) were never trained on; how it reads them is measured only through open look-alike faces (Arimo, Cousine, Tinos).
+- **Not measured on a held-out set yet.** See [Evaluation](#evaluation).
+- **Lost numbers.** On synthetic development scans it loses some numbers that stock reads, mostly outline labels. Check numbers that matter.
+- **Synthetic share.** 46% of its lines are synthetic office pages in 12 open faces. Real office documents set in proprietary faces (Arial, David, Times New Roman and others) were never trained on; it was developed only against open look-alike faces (Arimo, Cousine, Tinos).
 - **One source of real text.** All its real and rendered lines are Reshumot laws and regulations. Other registers may gain less.
 - **Gate bias.** The training gates keep what stays legible, so the heaviest photocopy damage drawn is under-represented (about 20% photocopy against 25% planned).
 - **Character set.** It cannot write `־ ׳ ״ – — ―`, or Latin letters.
 - **Layout is Tesseract's,** or heocr's when used inside heocr. The model changes only the line recognizer.
-- **One training run.** The intervals cover sampling, not training seeds.
+- **One training run.** Training-seed variation is not measured.
 
 ## Related models
 

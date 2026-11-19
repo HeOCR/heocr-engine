@@ -435,7 +435,7 @@ python release/hf_upload.py --models r8b --zenodo-state $S --weights r8b=…/heb
 | oldprint-v1 | `heocr_oldprint_v1.traineddata` | P-hist v1 arm r7 `heb_final` | `f8090760b5b02d09cf4ddb435e7a5e34089f6f17cde9cfb6c67fd06c6f17ec02` | 3,628,595 | `oldprint_v1/` | `HeOCR/heocr-oldprint-v1-tesseract-heb` |
 
 - **Names:** `heocr_modern_v1` and `heocr_oldprint_v1` are Tesseract language names (underscores, like `heocr_r8b`). The repositories and cards say modern-v1 and oldprint-v1. Renaming leaves the bytes and sha256 unchanged.
-- **Figures:** dev and tuning only, with stock tessdata_best `heb` beside every one, and no test claim. The sources are the default-model study report, hocrsyngen `experiments/office_print_v0/RESULTS.md` and `experiments/phist_v1/RESULTS.md`. Synthetic office-case figures are aggregates only; no office-case text or image appears.
+- **Figures: held-out only** (maintainer's rule, 2026-11-19). Neither card reports a performance figure: no held-out score exists yet, and dev, tuning and selection sets (audit2, `office_val`, the synthetic document sets, the dev line lists) are named only as the basis of the choice. The first published version (2026-11-19) still carried dev figures; the corrected cards replace it. A held-out result, read beside stock tessdata_best `heb`, goes in by a new version. `tests/test_release_modern_oldprint_v1.py` guards this.
 - **oldprint-v1 continues from R7,** so its deposit also carries R7's NOTICE as `NOTICE.r7`.
 
 **Before step 1 (reserve):**
