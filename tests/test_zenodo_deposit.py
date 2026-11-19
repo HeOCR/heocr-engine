@@ -943,6 +943,7 @@ if __name__ == '__main__':
 
 
 V1_DOI = '10.5072/zenodo.900'
+V1_RESERVED = {'modern_v1': '10.5281/zenodo.24371757', 'oldprint_v1': '10.5281/zenodo.24371759'}
 
 
 @contextlib.contextmanager
@@ -954,7 +955,7 @@ def v1_release_copy(model):
         release = directory / 'release'
         shutil.copytree(ROOT / 'release' / model, release / model)
         body = release / model / 'card_body.md'
-        body.write_text(body.read_text(encoding='utf-8').replace('DOI-TO-BE-RESERVED', V1_DOI), encoding='utf-8')
+        body.write_text(body.read_text(encoding='utf-8').replace(V1_RESERVED[model], V1_DOI), encoding='utf-8')
         weights = directory / 'heb.traineddata'
         weights.write_bytes(model.encode() + b' weights')
         record_path = release / model / f'{model}_training_run.json'

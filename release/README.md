@@ -427,7 +427,7 @@ python release/hf_upload.py --models r8b --zenodo-state $S --weights r8b=…/heb
 
 # Fifth release: modern-v1 and oldprint-v1 (Tesseract), two deposits
 
-**Status: drafts, nothing reserved or published.** HeOCR evaluation's default-model study (2026-11-19) chose office-print v0 arm A as heocr 0.2.0's default for modern print, and P-hist round v1's `heb_final` for old print. **Publishing waits on the maintainer's own go**, because a Zenodo DOI is permanent. Terms: Apache-2.0, licensed by "HeOCR maintainers", as decisions 0010 and 0014; inputs under decision 0015 (Internet Archive and Google-class scans retrieved via the Internet Archive) and decision 0016 (the Open Law Book's Wikisource text, credited).
+**Status: published on 2026-11-19** on the maintainer's own go: modern-v1 [10.5281/zenodo.24371757](https://doi.org/10.5281/zenodo.24371757) (community request cf96f4d3 accepted into `heocr`), mirrored as [HeOCR/heocr-modern-v1-tesseract-heb](https://huggingface.co/HeOCR/heocr-modern-v1-tesseract-heb); oldprint-v1 [10.5281/zenodo.24371759](https://doi.org/10.5281/zenodo.24371759) (request baa9f11a accepted), mirrored as [HeOCR/heocr-oldprint-v1-tesseract-heb](https://huggingface.co/HeOCR/heocr-oldprint-v1-tesseract-heb). The files downloaded from Zenodo and Hugging Face match the sha256 values below, and Tesseract 5.5.3 loads both from the Zenodo copies. HeOCR evaluation's default-model study (2026-11-19) chose office-print v0 arm A as heocr 0.2.0's default for modern print, and P-hist round v1's `heb_final` for old print. Terms: Apache-2.0, licensed by "HeOCR maintainers", as decisions 0010 and 0014; inputs under decision 0015 (Internet Archive and Google-class scans retrieved via the Internet Archive) and decision 0016 (the Open Law Book's Wikisource text, credited).
 
 | Model | Release file | Trained as | sha256 | Bytes | Folder | Hugging Face |
 |---|---|---|---|---|---|---|
@@ -453,7 +453,7 @@ ReleasedModel(
     sha256="6275943bf68f3d44ecc32f8d4c4195c890c96602111542ebe1f0ae0d8a6a5201",
     size=3_704_077,
     url="https://huggingface.co/HeOCR/heocr-modern-v1-tesseract-heb/resolve/main/heocr_modern_v1.traineddata",
-    doi="<reserved version DOI>",
+    doi="10.5281/zenodo.24371757",
     licence="Apache-2.0",
 ),
 ReleasedModel(
@@ -461,7 +461,7 @@ ReleasedModel(
     sha256="f8090760b5b02d09cf4ddb435e7a5e34089f6f17cde9cfb6c67fd06c6f17ec02",
     size=3_628_595,
     url="https://huggingface.co/HeOCR/heocr-oldprint-v1-tesseract-heb/resolve/main/heocr_oldprint_v1.traineddata",
-    doi="<reserved version DOI>",
+    doi="10.5281/zenodo.24371759",
     licence="Apache-2.0",
 ),
 ```
