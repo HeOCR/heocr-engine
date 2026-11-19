@@ -4,12 +4,11 @@ R7 is a [Tesseract](https://github.com/tesseract-ocr/tesseract) language model (
 
 It has the same recipe and the same base as [HeOCR R6](https://doi.org/10.5281/zenodo.24109989), on about seven times as many lines from six times as many books. It does not continue from R6.
 
-**What it gains, and what it does not.** R7 is better than stock Tesseract on printed Hebrew pages, but no better than R6:
-- On 38 real printed pages with human-adjudicated references, it lowers the character error rate (CER) from 0.226 (stock) to 0.209, and the word error rate (WER) from 0.473 to 0.393.
-- Against R6 it is a tie on CER (0.2089 against 0.2094; R7 − R6 = −0.0005 [−0.0072, +0.0061]). Its WER is slightly lower, but the interval includes zero.
-- On the 10 hardest of those pages it is no better than stock Tesseract or R6, and its CER point estimate is slightly worse (see [Evaluation](#evaluation)).
+**Performance: not measured on a held-out set yet.** No held-out score yet; HeOCR will score it once in a registered held-out run. HeOCR reports accuracy only on held-out sets. The result will be added to this card in a new version.
 
-**R7 supersedes nothing. R6 remains valid.** Use R7 if you want the newer model trained on more varied books; it has no measured page-level gain over R6.
+- **How it was chosen:** HeOCR kept the checkpoint with the lowest line error rate on the selection lines, 7,113 lines of three books kept out of training, among all 89 saved checkpoints of two training arms. Before release it was also compared with stock Tesseract and R6 on E2d4c, 38 real development pages. These sets were used to choose and compare it, so they are not reported here as its performance.
+
+**R7 supersedes nothing. R6 remains valid.** Use R7 if you want the newer model trained on more varied books. It is not shown to be better than R6.
 
 It is released on its own, with no link to HeOCR's kraken pipeline (R4d, A1, R3h).
 
@@ -35,14 +34,14 @@ It is released on its own, with no link to HeOCR's kraken pipeline (R4d, A1, R3h
 - **Handwriting.** R7 was trained on print only.
 - **Niqqud (vowel points) and cantillation.** The training labels have none, and fully pointed books were left out (see [Training data](#training-data)). How R7 behaves on pointed text was not measured.
 - **Rashi script and other non-square Hebrew scripts,** and medieval or other historical hands.
-- **Unsupervised transcription.** Its CER on real pages is still about 0.21 (one character in five). Check the output.
+- **Unsupervised transcription.** Its accuracy has not been measured on a held-out set. Check the output.
 - **Documents that are not mainly Hebrew.** No Latin text was in the training lines.
 
 ## How to get started with the model
 
 Install Tesseract 4 or 5 (tested with 5.5.3). Put `heocr_r7.traineddata` in a directory, say `DIR`, and pass that directory and the language name `heocr_r7`.
 
-**Whole pages: page segmentation mode 3** (automatic layout, Tesseract's default). The page figures below use it.
+**Whole pages: page segmentation mode 3** (automatic layout, Tesseract's default). R7 was compared on development pages with it.
 
 ```sh
 tesseract page.png out -l heocr_r7 --tessdata-dir DIR --psm 3
@@ -108,7 +107,7 @@ Notes:
 - **Edition spelling:** Ben-Yehuda's text sometimes differs from the print. Such variants are in the labels.
 - **All authors, translators and named contributors died more than 70 years ago,** so the books are in the public domain in Israel. Every book except *Shirim* (1938, one line) was printed before 1931 and is also past the US term; *Shirim* has no established US status.
 
-**Selection lines (not trained on):** 7,113 lines of three NLI "public domain, free use" books, held out whole: Reuven Brainin (1862–1939), *Avraham Mapu: Hayav u-Sfarav*, Tushiya, 1928 ([990018546440205171](https://iiif.nli.org.il/IIIFv21/990018546440205171/manifest), 4,046 lines); Kadish Yehuda Silman (1880–1937), *Sansinim*, Tarbut, 1929 ([990020250940205171](https://iiif.nli.org.il/IIIFv21/990020250940205171/manifest), 3,046 lines); and Menahem Mendel Bodek (1825–1874), *Pe'er mi-Kedoshim*, Lemberg, about 1870 ([990010684570205171](https://iiif.nli.org.il/IIIFv21/990010684570205171/manifest), 21 lines). The first two are R6's selection books, so 99.7% of the selection lines are R6's.
+**Selection lines (not trained on):** 7,113 lines of three NLI "public domain, free use" books, kept out of training whole. They are a selection set, not a held-out evaluation set: Reuven Brainin (1862–1939), *Avraham Mapu: Hayav u-Sfarav*, Tushiya, 1928 ([990018546440205171](https://iiif.nli.org.il/IIIFv21/990018546440205171/manifest), 4,046 lines); Kadish Yehuda Silman (1880–1937), *Sansinim*, Tarbut, 1929 ([990020250940205171](https://iiif.nli.org.il/IIIFv21/990020250940205171/manifest), 3,046 lines); and Menahem Mendel Bodek (1825–1874), *Pe'er mi-Kedoshim*, Lemberg, about 1870 ([990010684570205171](https://iiif.nli.org.il/IIIFv21/990010684570205171/manifest), 21 lines). The first two are R6's selection books, so 99.7% of the selection lines are R6's.
 
 ### Training procedure and hyperparameters
 
@@ -120,72 +119,35 @@ The recipe is R6's. Only the line set and the number of iterations changed.
 - **Trainer:** `lstmtraining --continue_from` the base, Tesseract 5.5.3, on CPU. Two arms of 200,000 iterations each (`--target_error_rate 0.01`), about two passes over the lines:
   - `lrdef`: the learning rate stored in the base, not set on the command line;
   - `lr1e4`: `--learning_rate 0.0001 --reset_learning_rate`.
-- **Selection:** the checkpoint with the lowest BCER (`lstmeval`) on the selection lines, over all 89 saved checkpoints of both arms. That is `lr1e4` at iteration 117,100 (`heb_0.634_52608_117100`): BCER 1.567%, BWER 4.463%. The best `lrdef` checkpoint scored 2.095% / 5.733%.
+- **Selection:** the checkpoint with the lowest BCER (`lstmeval`) on the selection lines, over all 89 saved checkpoints of both arms. That is `lr1e4` at iteration 117,100 (`heb_0.634_52608_117100`). The selection lines made the choice, so their scores are not reported here as performance.
 - **Conversion:** `lstmtraining --stop_training` to `heb.traineddata`, renamed `heocr_r7.traineddata` for release (same bytes).
 - **One training run.** It is not deterministic, and the bytes are not reproducible.
 
 ## Evaluation
 
-### Real pages
+**Performance: not measured on a held-out set yet.** No held-out score yet; HeOCR will score it once in a registered held-out run. HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning. R7 has no such score yet:
 
-- **Testing data:** E2d4c, 38 real printed Hebrew pages from 14 Hebrew Wikisource Indexes, with human-adjudicated references (hocrgen manifest `e2d4c_wikisource_printed_v7`), the same set and references as R6's card. They are a scored set under heocr-engine decision 0012: no training, tuning or checkpoint choice used them, R7 was scored on them once after selection, and their works are held out of training.
-- **Metric:** CER and WER under hocrgen's `primary.v1` normalisation (hocrgen `d4a3414` `evaluate-references`), pooled over pages. Every engine reads whole pages with Tesseract 5.5.3, psm 3.
-- **Intervals:** 95% paired bootstrap, resampling pages, then Wikisource Indexes (clusters); 2,000 resamples, seed 20261106.
-
-| Engine | CER, 38 pages | WER, 38 pages | CER, 10 pages | WER, 10 pages |
-|---|---|---|---|---|
-| Stock Tesseract `heb` (Homebrew) | 0.226 | 0.473 | 0.384 | 0.588 |
-| tessdata_best `heb` (R6's and R7's base) | 0.225 | 0.481 | 0.376 | 0.609 |
-| R6 | 0.209 | 0.407 | 0.383 | 0.585 |
-| **R7** | **0.209** | **0.393** | 0.393 | 0.568 |
-
-| R7 minus | ΔCER, 38 pages (page; cluster) | ΔWER, 38 pages (page; cluster) |
-|---|---|---|
-| stock Tesseract | **−0.0168 [−0.0285, −0.0058]**; cl [−0.0336, +0.0063] | **−0.0798 [−0.1066, −0.0531]**; cl [−0.1203, −0.0238] |
-| tessdata_best | −0.0157 [−0.0305, −0.0013]; cl [−0.0351, +0.0125] | −0.0877 [−0.1150, −0.0600]; cl [−0.1305, −0.0287] |
-| R6 | −0.0005 [−0.0072, +0.0061]; cl [−0.0094, +0.0121] | −0.0135 [−0.0273, +0.0004]; cl [−0.0311, +0.0088] |
-
-| R7 minus | ΔCER, 10 pages (page; cluster) | ΔWER, 10 pages (page; cluster) |
-|---|---|---|
-| stock Tesseract | +0.0091 [−0.0041, +0.0246]; cl [−0.0094, +0.0202] | −0.0201 [−0.0469, −0.0047]; cl [−0.0861, −0.0070] |
-| tessdata_best | +0.0173 [−0.0037, +0.0362]; cl [−0.0096, +0.0392] | −0.0402 [−0.0872, −0.0141]; cl [−0.1588, −0.0191] |
-| R6 | +0.0108 [−0.0011, +0.0186]; cl [−0.0097, +0.0210] | −0.0162 [−0.0463, +0.0000]; cl [−0.0648, −0.0066] |
-
-- **Against stock Tesseract, on the 38 pages,** R7 lowers CER by 0.017 and WER by 0.080. It improves the CER of 24 pages, leaves 3 unchanged and worsens 11. The page interval on CER excludes zero; the cluster interval, over only 14 Indexes, does not.
-- **Against R6: a tie.** The CER difference is 0.0005, far inside its interval. WER is 0.0135 lower; the page interval only just reaches zero (+0.0004), and the cluster interval includes it. R7 improves 22 pages against R6 and worsens 15. About seven times as many training lines did not move page-level CER.
-- **No gain on the hardest pages.** The 10-page subset is the pages whose Wikisource Indexes fed none of HeOCR's glyph banks, and stock Tesseract's error is highest there. R7's CER there is 0.393, against stock's 0.384 and R6's 0.383. These differences are within their intervals, but the point estimate is worse than both. R7 improves 4 of the 10 pages against stock and worsens 6. Its WER on these pages is lower than stock's (the interval excludes zero) and R6's (the page interval reaches zero).
-- **Why, not yet measured:** the line recognizer did improve (see [Selection lines](#selection-lines)). The likely reason the gain does not reach pages is that page-level error on this set is dominated by what the line model does not control: Tesseract's layout and reading order, and typefaces outside the training books.
-- **Reference caveat:** E2d4c is the human audit of the earlier E2d3d references. Some audit proposals came from places where Tesseract and another engine agreed with each other but not with the reference, so the corrections may lean slightly toward what Tesseract reads. That is why every comparison above is paired on the same references.
-- **No text overlap with training.** The 95,151 training labels share no word 6-gram with the 38 reference texts (letters only, niqqud stripped), whether each label is checked alone or the labels of each work are joined in reading order; the 7,113 selection labels share none either. The full Ben-Yehuda texts of the 30 training books share 10 6-grams with two reference pages, none of them in a training label:
+- **What was used to choose and compare it is not reported as performance.** Two development sets were used:
+  - the selection lines (Brainin, Silman and Bodek; see [Training data](#training-data)), on which the checkpoint was chosen;
+  - E2d4c, 38 real printed Hebrew pages from 14 Hebrew Wikisource Indexes with human-adjudicated references (hocrgen manifest `e2d4c_wikisource_printed_v7`), on which R7 was compared with stock Tesseract, tessdata_best and R6 before release. They were scored with hocrgen's `primary.v1` normalisation, whole pages, Tesseract 5.5.3, psm 3.
+- **No text overlap with training.** The 95,151 training labels share no word 6-gram with the 38 E2d4c reference texts (letters only, niqqud stripped), whether each label is checked alone or the labels of each work are joined in reading order; the 7,113 selection labels share none either. The full Ben-Yehuda texts of the 30 training books share 10 6-grams with two reference pages, none of them in a training label:
   - 3 from two Bible verses (Isaiah 26:2, Psalms 118:20), quoted by one Frank story, as in R6's check;
   - 5 from one Bible verse (Psalms 102:14), quoted in Frankl's *Mi-Mitsrayim*;
   - 2 from a stock rabbinic title formula (אב"ד ור"מ בק"ק), in Greenwald's *Pe'ere Hakhme Medinatenu*.
 
   No evaluation manifest names an NLI record or an Internet Archive identifier of the training or selection books.
-
-### Selection lines
-
-On the 7,113 selection lines (Brainin, Silman and Bodek), scored with `lstmeval` (R6 and R7 against the shared starter, tessdata_best with its own character set):
-
-| Model | BCER | BWER |
-|---|---|---|
-| tessdata_best `heb` (the base) | 11.516% | 23.304% |
-| R6 (its selected checkpoint) | 2.056% | 5.406% |
-| **R7** | **1.567%** | **4.463%** |
-
-R7 lowers line BCER by about a quarter. The comparison favours R6: R6's checkpoint was chosen on Brainin and Silman, which are 99.7% of these lines, while R7's was chosen on all of them. The line set kept only lines whose text agreed with stock Tesseract's reading at 0.7 or more, so the figures are optimistic, and they compare models rather than give an absolute level. They are Tesseract-internal error rates on the training-order truth, not hocrgen `primary.v1`.
+- **Next:** HeOCR's registered held-out run, against stock tessdata_best `heb` (the base) and R6, shown beside them and read the same way. Its result will be added in a new version of this card.
 
 ## Bias, risks and limitations
 
-- **No gain over R6 on pages.** R7 ties R6 on CER, on the same base and recipe, with about seven times the lines. Its line-level gain did not carry through to whole pages.
-- **A small gain over stock Tesseract,** by 0.017 CER, and no gain on the hardest pages, where its CER is slightly worse than stock's. It worsens 11 of 38 pages against stock.
-- **Training data from 30 books,** printed in Warsaw, Vilna, Vienna, Berlin, Moscow, Jerusalem, London, New York and elsewhere between 1856 and 1938, all but three of them between 1881 and 1927. Smolenskin's collected works are 18.6% of the lines. Other typefaces, layouts and periods may gain less, or lose.
+- **Not measured on a held-out set yet.** See [Evaluation](#evaluation). It is not shown to be better than R6 or stock Tesseract.
+- **Training data from 30 books,** printed in Warsaw, Vilna, Vienna, Berlin, Moscow, Jerusalem, London, New York and elsewhere between 1856 and 1938, all but three of them between 1881 and 1927. Smolenskin's collected works are almost a fifth of the lines. Other typefaces, layouts and periods may gain less, or lose.
 - **Printed Hebrew only.** Not for handwriting, Rashi script or non-Hebrew text.
 - **No niqqud training.** The labels have no vowel points; pointed text was not evaluated.
 - **Missing characters.** Geresh ׳, gershayim ״ and the em dash — are not in the character set, so R7 cannot output them; lines with them were left out of training.
 - **Edition spelling.** Ben-Yehuda sometimes modernises or varies the spelling of the print, and the labels carry those variants.
 - **Layout is Tesseract's.** R7 changes only the line recognizer. Page segmentation and reading order are Tesseract's own, and on complex layouts they dominate the error.
-- **One training run, small evaluation.** The intervals cover page and Index sampling, not training seeds. 38 pages from 14 Indexes is a small scored set.
+- **One training run.** Another run with the same recipe may differ.
 
 ## Licence and attribution
 
@@ -210,7 +172,7 @@ R7 lowers line BCER by about a quarter. The comparison favours R6: R6's checkpoi
 | Text | Project Ben-Yehuda `public_domain_dump`, release 2026-03 |
 | Training | Tesseract 5.5.3 `lstmtraining` (Homebrew), 2026-11-11; selected checkpoint `lr1e4/heb_0.634_52608_117100` |
 | Training record | `r7_training_run.json` (`heocr_tesseract_training_run.v1`), in this deposit |
-| Scoring | hocrgen `d4a3414` `evaluate-references`, `primary.v1`, Tesseract 5.5.3 psm 3; references `e2d4c_wikisource_printed_v7` (manifest sha256 `0de65f63…`) |
+| Development scoring | hocrgen `d4a3414` `evaluate-references`, `primary.v1`, Tesseract 5.5.3 psm 3; references `e2d4c_wikisource_printed_v7` (manifest sha256 `0de65f63…`) |
 
 The line set is not yet published. Its per-line manifest names each line's source record (NLI record id or Internet Archive identifier), canvas, box, Ben-Yehuda work and, for Internet Archive lines, the rights justification id, so the training set can be rebuilt from the public scans and texts, or rebuilt without any one book.
 

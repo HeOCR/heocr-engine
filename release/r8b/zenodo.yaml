@@ -31,11 +31,7 @@ tags:
   - HeOCR
 model_type:
   - recognition
-metrics:  # CER percent, eval line_fold_v1, every line charged (eval-domains/outputs/r8b_release_figures_v1.json); dev sets, not test scores
-  cer_olb_reshumot_dev_all: 2.129
-  cer_olb_reshumot_dev_exact: 0.735
-  cer_kevar_heldout: 0.757
-  cer_yediot_heldout: 1.019
+# No metrics: HeOCR reports figures only on held-out sets, and this model has none yet (see the card).
 # isDerivedFrom links (InvenioRDM related identifiers): the base model, HeOCR R7 (R8b continues
 # from R7's weights, so it is derived from R7; it is a record of its own, not a Zenodo version of
 # R7's, and R7 is not superseded), the training scans (8 NLI IIIF manifests, 37 Internet Archive

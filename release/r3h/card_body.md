@@ -11,6 +11,10 @@ The three are released together, as separate records that link to each other (se
 
 It is a research baseline, not a production transcriber. All of its evaluation is on synthetic pages; no reviewed evaluation on real scans exists yet.
 
+**Performance: not measured on a held-out set yet.** HeOCR reports accuracy only on held-out sets, and this model has not yet been scored on one. No held-out score yet; HeOCR will score it once in a registered held-out run. Its result will be added to this card in a new version.
+
+- **How it was chosen:** training kept the epoch with the best character accuracy on its own validation pages (see [Training procedure](#training-procedure-and-hyperparameters)). The pipeline was then compared with kraken's default segmenter on synthetic development batches. These sets were used to choose and compare it, so they are not reported here as its performance.
+
 | | |
 |---|---|
 | File | `heocr-r3h-recognition.safetensors` (trained as `best_0.9959.safetensors`), 16,167,536 bytes |
@@ -65,7 +69,7 @@ There is no niqqud (vowel points) and no cantillation.
 
 ### Out of scope
 
-- **Unsupervised transcription of real documents.** No reviewed real-page evaluation exists, and the scores below are on synthetic pages only.
+- **Unsupervised transcription of real documents.** No reviewed real-page evaluation exists, and all evaluation is synthetic.
 - **Medieval, liturgical or other historical Hebrew scripts.**
 - **Niqqud,** which is not in the codec.
 - **Real handwriting.** "Handwriting-style" means one handwriting font, not human hands.
@@ -80,7 +84,7 @@ There is no niqqud (vowel points) and no cantillation.
 
 ## How to get started with the model
 
-**The full pipeline (R4d + A1 + R3h).** This is the configuration the headline figures below come from. A1's order is applied by heocr-engine's in-process kraken stage. In a checkout of [heocr-engine](https://github.com/HeOCR/heocr-engine), run `pip install '.[kraken]'`, then:
+**The full pipeline (R4d + A1 + R3h).** This is the configuration HeOCR compared. A1's order is applied by heocr-engine's in-process kraken stage. In a checkout of [heocr-engine](https://github.com/HeOCR/heocr-engine), run `pip install '.[kraken]'`, then:
 
 ```sh
 heocr-engine kraken --api python \
@@ -91,7 +95,7 @@ heocr-engine kraken --api python \
 ```
 
 - `page.json` is a prediction record. Its `text` holds the page in logical order, one line per row.
-- Tested end to end with kraken 7.0.2 on CPU (about 8 s for one seed-101 page). The text matched the scored prediction for that page exactly.
+- Tested end to end with kraken 7.0.2 on CPU (about 8 s for one development page, from seed-101). The text matched the recorded prediction for that page exactly.
 
 **kraken alone.** Kraken 7.0.2 cannot use A1:
 - A1's classes are region types, and kraken's own pipeline gives it the segmenter's line types instead, so kraken rejects the pair.
@@ -138,72 +142,28 @@ All synthetic. Nothing was scraped, and no real document or third-party text was
   - AdamW, learning rate 0.001, constant schedule;
   - batch size 16, padding 16, augmentation on.
 - **Stopping:** early stopping with lag 3 (minimum 5 epochs). It stopped after 8 epochs; the best was epoch 4.
-- **Validation:** character accuracy 0.9959, on its own validation split with the same geometry mix.
+- **Selection:** the epoch with the highest character accuracy on its 150 validation pages, with the same geometry mix, epoch 4. These pages chose the checkpoint, so their scores are not reported as performance.
 - **Run:** seed 42, on Apple `mps`. Not deterministic, and the bytes are not reproducible.
 
 ## Evaluation
 
-### Testing data, factors and metrics
+**Not measured on a held-out set yet.** HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning. No held-out score yet; HeOCR will score it once in a registered held-out run.
 
-#### Testing data
-
-- **Batches:** hocrsyngen batches rendered from evaluation corpora that are kept apart from the training text, with the same two fonts. None was trained or tuned on.
-  - seed-101 (the long-running benchmark);
-  - held-out;
-  - eval-mixed-heldout (mixed Hebrew/Latin/digits);
-  - eval-typo-heldout (typographic punctuation);
-  - eval-layout-heldout (archive cards and ledgers, plus the four benchmark templates).
-- **hocrgen fixture:** hocrgen's fixture batch, a development set. A1's reading order was tuned on it.
-- **Gold:** all gold is synthetic.
-
-#### Metrics
-
-The metric is CER under hocrgen's `primary.v1` normalisation profile, pooled over the pages of each batch.
-
-**The pipeline: R4d + A1 + R3h** (the released models; headline figures):
-
-| Batch | CER |
-|---|---|
-| seed-101 | 0.020 |
-| held-out | 0.010 |
-| eval-mixed-heldout | 0.017 |
-| eval-typo-heldout | 0.009 (269 of 308 typographic marks kept) |
-| eval-layout-heldout | 0.124 (mostly the ledger gold convention; see below) |
-| hocrgen fixture (development set) | 0.130 |
-
-**kraken's default segmenter: `blla` + R3h** (`segment -bl -d horizontal-rl`, then `ocr --reorder --base-dir R`, kraken 7.0.2):
-
-| Batch | CER |
-|---|---|
-| seed-101 | 0.168 |
-| held-out | 0.238 |
-| eval-mixed-heldout | 0.230 |
-| eval-typo-heldout | 0.291 |
-| eval-layout-heldout | 0.498 |
-| hocrgen fixture (development set) | 0.404 |
-
-**The `blla` rows are much worse because of `blla`'s segmentation, not the recognizer.** On these layouts it splits and merges lines, and it reads them out of order. Use R4d and A1 for HeOCR's figures.
-
-**Given lines** (a diagnostic, not a pipeline: the recognizer alone, on lines it is handed):
-
-| Batch | true line polygons | Tesseract line boxes |
-|---|---|---|
-| seed-101 | 0.014 | 0.116 |
-| held-out | 0.004 | 0.088 |
-
-- This is one training run. The paired intervals in heocr-engine's `docs/baselines.md` (R3h section) resample pages, not training runs.
-- A second training seed of an earlier model moved eval-mixed-heldout by about 0.005.
+- **Development sets, not reported as performance.** HeOCR compared the pipeline on six synthetic hocrsyngen batches: seed-101, a long-running benchmark read across rounds; the batches named held-out, eval-mixed-heldout, eval-typo-heldout and eval-layout-heldout, which were kept out of the training text but are not registered and were read during the rounds; and hocrgen's fixture batch, on which A1's design was tuned. Despite some of their names, none is a registered held-out set, so their figures are not given here. They are named in heocr-engine's `docs/baselines.md`.
+- **All evaluation is synthetic.** No reviewed real-page evaluation exists.
+- **What the development comparison showed, in words:** the R4d + A1 + R3h pipeline made far fewer errors than `blla` + R3h. The gap comes from `blla`'s segmentation, not the recognizer: on these layouts `blla` splits and merges lines and reads them out of order. Given true line polygons, R3h made fewer errors than given Tesseract-style line boxes. Most of eval-layout-heldout's error is on ledger pages, and most of that is a gold convention (see [Bias, risks and limitations](#bias-risks-and-limitations)).
+- **Next:** a registered held-out run of the R4d + A1 + R3h pipeline, with kraken's default segmenter `blla` beside it and read the same way. Its result will be added in a new version of this card.
 
 ## Bias, risks and limitations
 
-- **The synthetic gap.** The evaluation pages use the same two fonts and the same kinds of degradation as training. These scores overstate accuracy on real scans, possibly by a wide margin.
+- **The synthetic gap.** The development pages use the same two fonts and the same kinds of degradation as training. Real scans will likely do worse, possibly by a wide margin.
 - **Ledgers on eval-layout-heldout:**
-  - Most of that batch's error, 2,432 of 2,611 edits, is on ledger pages.
-  - Most of that is a gold convention, not misreading. hocrgen's ledger gold joins a row's cells with ` | `, while the pipeline reads one cell per line ([HeOCR/hocrgen#98](https://github.com/HeOCR/hocrgen/issues/98)). hocrgen#99 later added a per-cell reference view; the figures here use the default view at `c8fb74e`.
-  - With the previous recognizer (R3d), 2,418 of the same pipeline's 2,562 edits on that batch were this convention.
-- **Worn handwriting-style notes:** on eval-layout-heldout, errors rose from 37 to 60 edits against the previous model (R3d). Latin letters account for most of the rise.
-- **Gershayim:** `״` is sometimes written as ASCII `"`. There were 8 substitutions on eval-typo-heldout, plus 11 `"` inserted where the gold has none.
-- **Rare typographic marks:** the right single quote was kept 0 of 5 times, and the en dash 20 of 26.
+  - Most of that batch's error is on ledger pages.
+  - Most of that is a gold convention, not misreading. hocrgen's ledger gold joins a row's cells with ` | `, while the pipeline reads one cell per line ([HeOCR/hocrgen#98](https://github.com/HeOCR/hocrgen/issues/98)). hocrgen#99 later added a per-cell reference view; the development comparison used the default view at `c8fb74e`.
+- **Worn handwriting-style notes:** on eval-layout-heldout, errors rose against the previous model (R3d). Latin letters account for most of the rise.
+- **Gershayim:** `״` is sometimes written as ASCII `"`, and `"` is sometimes inserted where the gold has none.
+- **Rare typographic marks:** the right single quote is often lost, and the en dash sometimes.
+- **One training run.** It was trained once, with one seed; how much another run would differ is not known.
 - **Script and language coverage:** modern Hebrew with some Latin only. No niqqud, and no historical hands.
 
 ## Licence and attribution
@@ -224,7 +184,7 @@ The metric is CER under hocrgen's `primary.v1` normalisation profile, pooled ove
 | Split | per page by hash, 5% validation; assignment `ade60b77ed8ecd23f67cf9876bd85c01db8ac589f8d709a6533eb9960c36cc20` |
 | Training code | heocr-engine `55b0f7d`, ketos and kraken 7.0.2 |
 | Training record | `r3h_training_run.json` (`heocr_engine_training_run.v1`), in this deposit |
-| Scoring | hocrgen `2d3efb0` (seed-101, held-out) and `c8fb74e` (other batches); heocr-engine `55b0f7d` (R4d + A1) and `6f6df8b` (`blla`) |
+| Development scoring | hocrgen `2d3efb0` (seed-101, held-out) and `c8fb74e` (other batches); heocr-engine `55b0f7d` (R4d + A1) and `6f6df8b` (`blla`) |
 
 ## Contact
 

@@ -76,14 +76,26 @@ class R7ReleaseFilesTests(unittest.TestCase):
         card = read('card_body.md')
         self.assertIn('tesseract page.png out -l heocr_r7 --tessdata-dir DIR --psm 3', card)
         self.assertIn('tesseract line.png out -l heocr_r7 --tessdata-dir DIR --psm 13', card)
-        for needle in ('R7 supersedes nothing. R6 remains valid.', 'no measured page-level gain over R6',
-                       'Against R6: a tie.', 'No gain on the hardest pages.',
-                       '−0.0005 [−0.0072, +0.0061]', '−0.0168 [−0.0285, −0.0058]', '−0.0135 [−0.0273, +0.0004]',
-                       '+0.0108 [−0.0011, +0.0186]', '+0.0091 [−0.0041, +0.0246]', '0.2089', '0.2094',
-                       '1.567%', '2.056%', 'No text overlap with training.'):
+        for needle in ('R7 supersedes nothing. R6 remains valid.', 'It is not shown to be better than R6.',
+                       'No text overlap with training.'):
             with self.subTest(needle=needle):
                 self.assertIn(needle, card)
         self.assertIn(f'https://doi.org/{R6_DOI}', card)  # R6 is named, not replaced
+
+    def test_card_reports_no_dev_or_selection_figures(self):
+        # held-out figures only (maintainer, 2026-11-19): the E2d4c pages and the selection lines chose and
+        # compared R7, so no figure from them is shown as performance; R7 has no held-out score yet.
+        body = read('card_body.md')
+        self.assertIn('not measured on a held-out set yet', body.lower())
+        self.assertIn('No held-out score yet; HeOCR will score it once in a registered held-out run.', body)
+        evaluation = body[body.index('## Evaluation'):body.index('## Bias, risks and limitations')]
+        self.assertNotIn('%', evaluation)
+        self.assertIsNone(re.search(r'\b\d+\.\d{2,3}\b(?![0-9a-f])', evaluation.replace('5.5.3', '')))
+        outside_data = body[:body.index('### Training data')] + body[body.index('### Training procedure'):]
+        self.assertIsNone(re.search(r'\d+\.\d+\s*%', outside_data))  # data shares stay in Training data
+        for figure in ('0.226', '0.209', '0.473', '0.393', '0.2089', '0.2094', '0.016', '0.017', '1.567', '2.056'):
+            with self.subTest(figure=figure):
+                self.assertNotIn(figure, body)
 
     def test_card_cites_its_reserved_doi_and_links_no_pipeline_record(self):
         card = read('card_body.md')

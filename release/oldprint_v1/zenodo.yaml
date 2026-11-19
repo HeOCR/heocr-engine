@@ -30,10 +30,7 @@ tags:
   - HeOCR
 model_type:
   - recognition
-metrics:  # dev only, never a test score; audit2 chose the model (see the card body)
-  cer_audit2_pages_psm3: 16.753
-  cer_olb_reshumot_dev: 2.209
-  cer_mekhilta_dev: 1.122
+# No metrics: HeOCR reports figures only on held-out sets, and this model has none yet (see the card).
 # isDerivedFrom links: the base model, HeOCR R7 (continued from; R7 is not superseded), the
 # training scans (7 Internet Archive items) and the text sources.
 related:

@@ -11,6 +11,10 @@ The three are released together, as separate records that link to each other (se
 
 It is a research baseline. All of its evaluation is on synthetic pages; no reviewed evaluation on real scans exists yet.
 
+**Performance: not measured on a held-out set yet.** HeOCR reports accuracy only on held-out sets, and this model has not yet been scored on one. No held-out score yet; HeOCR will score it once in a registered held-out run. Its result will be added to this card in a new version.
+
+- **How it was chosen:** its design (region-type classes, stamp-first tagging) was chosen on hocrgen's fixture batch, and training kept the checkpoint with the best order on its own validation pages (see [Training procedure](#training-procedure-and-hyperparameters)). It was then compared with kraken's heuristic order on synthetic development batches. These sets were used to choose and compare it, so they are not reported here as its performance.
+
 | | |
 |---|---|
 | File | `heocr-a1-reading-order.safetensors` (trained as `best_0.0000.safetensors`), 8,492 bytes |
@@ -52,7 +56,7 @@ It is a research baseline. All of its evaluation is on synthetic pages; no revie
 2. otherwise the first region kraken lists for the line;
 3. otherwise `default`.
 
-On matched lines, the predicted type equalled the gold region for every line in all four batches checked.
+On the development batches checked, the predicted type matched the gold region on matched lines.
 
 ## Uses
 
@@ -77,7 +81,7 @@ heocr-engine kraken --api python \
   page.jpg page.json
 ```
 
-- **Tested** end to end with kraken 7.0.2 on CPU, on one seed-101 page in about 8 s. The text matched the scored prediction exactly, and 8 of the page's 10 lines were moved by the learned order.
+- **Tested** end to end with kraken 7.0.2 on CPU, on one development page (seed-101) in about 8 s. The text matched the recorded prediction for that page exactly.
 - **`--geometry-output geometry.json`** also writes the ordered line geometry and the predicted regions.
 
 **kraken 7.0.2 alone cannot use A1:**
@@ -106,7 +110,7 @@ All synthetic. Nothing was scraped, and no real document or third-party text was
 - **Initialisation:** from scratch.
 - **Trainer:** ketos 7.0.2 `rotrain -f page --level baselines`. The classes were passed by `--config`, because of [mittagessen/kraken#821](https://github.com/mittagessen/kraken/issues/821).
 - **Stopping:** early stopping with lag 10 and a minimum of 30 epochs. It ran 30 epochs.
-- **Validation:** `val_spearman` (kraken's normalised Spearman footrule distance; 0 is a perfect order) reached 0.0 from epoch 26 on the 210 validation pages.
+- **Selection:** the checkpoint with the best `val_spearman` (kraken's normalised Spearman footrule distance; 0 is a perfect order) on the 210 validation pages. These pages chose the checkpoint, so their scores are not reported as performance.
 - **Run:** seed 42, on Apple `mps`. Not deterministic.
 - **Training record:** heocr-engine has no reading-order training command, so the record was written afterwards from the run's command, config, ketos log and data summaries. It lists what that evidence cannot supply:
   - the ketos defaults that were not logged;
@@ -116,43 +120,19 @@ All synthetic. Nothing was scraped, and no real document or third-party text was
 
 ## Evaluation
 
-### Testing data, factors and metrics
+**Not measured on a held-out set yet.** HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning. No held-out score yet; HeOCR will score it once in a registered held-out run.
 
-The batches are those of the R3h card. None was trained or tuned on, except the hocrgen fixture: A1's design (region-type classes, stamp-first tagging) was chosen on it, so it is a development set. All gold is synthetic.
-
-#### Order alone
-
-Pages fully in order over matched lines, with R4d's lines. Kendall τ is shown where pages are out of order.
-
-| Batch | kraken's heuristic | A1 |
-|---|---|---|
-| seed-101 | 9 / 80 (τ 0.819) | 80 / 80 |
-| held-out | 12 / 80 (τ 0.865) | 80 / 80 |
-| eval-mixed-heldout | 11 / 80 (τ 0.853) | 80 / 80 |
-| fixture `archive_card` (development set) | 3 / 25 (τ 0.917) | 15 / 25 (τ 0.992) |
-| fixture `ledger` (development set) | 0 / 25 (τ 0.774) | 25 / 25 |
-
-On eval-layout-heldout, a fresh batch of cards and ledgers made after A1 was fixed, A1's text equals the gold-order text on every card and ledger page.
-
-#### End to end (R4d + A1 + R3h)
-
-CER under hocrgen's `primary.v1` profile:
-
-| Batch | R4d + A1 + R3h | `blla` + R3h |
-|---|---|---|
-| seed-101 | 0.020 | 0.168 |
-| held-out | 0.010 | 0.238 |
-| eval-mixed-heldout | 0.017 | 0.230 |
-| eval-typo-heldout | 0.009 | 0.291 |
-| eval-layout-heldout | 0.124 | 0.498 |
-| hocrgen fixture (development set) | 0.130 | 0.404 |
+- **Development sets, not reported as performance.** HeOCR compared the pipeline on six synthetic hocrsyngen batches: seed-101, a long-running benchmark read across rounds; the batches named held-out, eval-mixed-heldout, eval-typo-heldout and eval-layout-heldout, which were kept out of the training text but are not registered and were read during the rounds; and hocrgen's fixture batch, on which A1's design was tuned. Despite some of their names, none is a registered held-out set, so their figures are not given here. They are named in heocr-engine's `docs/baselines.md`.
+- **All evaluation is synthetic.** No reviewed real-page evaluation exists.
+- **What the development comparison showed, in words:** with R4d's lines, A1 put pages in order far more often than kraken's heuristic, which reads separated stamp lines too early. On the fixture's archive cards, some long cards were still out of order (see [Bias, risks and limitations](#bias-risks-and-limitations)).
+- **Next:** a registered held-out run of the R4d + A1 + R3h pipeline, with kraken's default segmenter `blla` beside it and read the same way. Its result will be added in a new version of this card.
 
 ## Bias, risks and limitations
 
 - **Long archive cards:**
-  - On the fixture, 10 of 25 cards are still out of order. Each has one discordant pair: the sixth and lowest body line is read after the first label.
+  - On the fixture, some long cards are still out of order. In each, the sixth and lowest body line is read after the first label.
   - Six-body-line cards are rare in training: 18 of 1,199 cards.
-- **It depends on R4d's region types.** A wrong region tag gives a wrong class. Tagging was exact on the batches checked, but those are synthetic.
+- **It depends on R4d's region types.** A wrong region tag gives a wrong class. Tagging matched the gold on the development batches checked, but those are synthetic.
 - **The synthetic gap.** Only hocrsyngen's templates were seen in training, so real documents can have orders it never learned.
 - **It needs heocr-engine** with kraken 7.0.2 (see above).
 
@@ -174,7 +154,7 @@ CER under hocrgen's `primary.v1` profile:
 | Data preparation | heocr-engine `5294ca5` `prepare-kraken-data --task segmentation`, each region name as its own line type |
 | Training | ketos 7.0.2 `rotrain`, 2026-11-04 |
 | Training record | `a1_training_run.json` (`heocr_engine_training_run.v1`), in this deposit |
-| Scoring | hocrgen `2d3efb0` and `c8fb74e`; heocr-engine `4e09858` and `660e5a4` (order), `55b0f7d` (end to end with R3h) |
+| Development scoring | hocrgen `2d3efb0` and `c8fb74e`; heocr-engine `4e09858` and `660e5a4` (order), `55b0f7d` (end to end with R3h) |
 
 ## Contact
 

@@ -29,11 +29,7 @@ tags:
   - HeOCR
 model_type:
   - recognition
-metrics:  # dev and tuning only, never a test score (see the card body)
-  cer_dbench_t4_in_heocr: 1.04
-  cer_dbench_t5_in_heocr: 2.75
-  cer_dbench_scanned_tables_in_heocr: 0.42
-  cer_olb_reshumot_dev: 1.902
+# No metrics: HeOCR reports figures only on held-out sets, and this model has none yet (see the card).
 # isDerivedFrom links: the base model, the synthetic generator and the Open Law Book. The Reshumot
 # booklets are not linked here (opaque publisher API links); they are in the training record.
 related:

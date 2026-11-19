@@ -16,6 +16,10 @@ The three are released together, as separate records that link to each other (se
 
 It is a research baseline. All of its evaluation is on synthetic pages; no reviewed evaluation on real scans exists yet.
 
+**Performance: not measured on a held-out set yet.** HeOCR reports accuracy only on held-out sets, and this model has not yet been scored on one. No held-out score yet; HeOCR will score it once in a registered held-out run. Its result will be added to this card in a new version.
+
+- **How it was chosen:** training kept the epoch with the best mean IoU on its own validation pages (see [Training procedure](#training-procedure-and-hyperparameters)). The pipeline was then compared with kraken's default segmenter on synthetic development batches. These sets were used to choose and compare it, so they are not reported here as its performance.
+
 | | |
 |---|---|
 | File | `heocr-r4d-segmentation.safetensors` (trained as `best_0.8618.safetensors`), 5,056,800 bytes |
@@ -73,7 +77,7 @@ These are hocrsyngen's region names.
 
 ## How to get started with the model
 
-**The full pipeline (R4d + A1 + R3h).** This is the configuration the figures below come from. In a checkout of [heocr-engine](https://github.com/HeOCR/heocr-engine), run `pip install '.[kraken]'`, then:
+**The full pipeline (R4d + A1 + R3h).** This is the configuration HeOCR compared. In a checkout of [heocr-engine](https://github.com/HeOCR/heocr-engine), run `pip install '.[kraken]'`, then:
 
 ```sh
 heocr-engine kraken --api python \
@@ -83,7 +87,7 @@ heocr-engine kraken --api python \
   page.jpg page.json
 ```
 
-Tested end to end with kraken 7.0.2 on CPU, one seed-101 page in about 8 s. The text matched the scored prediction exactly.
+Tested end to end with kraken 7.0.2 on CPU, one development page (seed-101) in about 8 s. The text matched the recorded prediction for that page exactly.
 
 **kraken alone** (no A1; kraken's heuristic line order):
 
@@ -118,54 +122,27 @@ All synthetic. Nothing was scraped, and no real document or third-party text was
 - **Optimiser:**
   - AdamW, learning rate 0.0002, constant schedule, weight decay 1e-5;
   - baseline width 8, baseline tolerance 10, dice weight 0.5, no augmentation.
-- **Stopping:** early stopping with lag 8 (minimum 10 epochs). It stopped after 29 epochs; the best was epoch 20.
-- **Validation:** mean IoU 0.8618. Baseline precision, recall and F1 at the best epoch were 0.9994, 0.9800 and 0.9890.
+- **Stopping:** early stopping with lag 8 (minimum 10 epochs). It stopped after 29 epochs.
+- **Selection:** the epoch with the highest mean IoU on the 90 validation pages, epoch 20. These pages chose the checkpoint, so their scores are not reported as performance.
 - **Run:** seed 42, on Apple `mps`. Not deterministic.
 
 ## Evaluation
 
-### Testing data, factors and metrics
+**Not measured on a held-out set yet.** HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning. No held-out score yet; HeOCR will score it once in a registered held-out run.
 
-The batches are those of the R3h card. None was trained or tuned on, apart from the hocrgen fixture, a development set. All gold is synthetic.
-
-#### Line geometry
-
-Polygon IoU ≥ 0.5 against gold lines (heocr-engine `diagnose-segmentation`). `blla` is kraken's default segmenter, with `-d horizontal-rl`.
-
-| Segmenter | Batch | P / R / F1 | F1, baseline match | Gold lines missed | Gold lines split | Kendall τ of line order |
-|---|---|---|---|---|---|---|
-| `blla` | seed-101 | 0.733 / 0.800 / 0.765 | 0.842 | 27 | 78 | 0.838 |
-| R4d, kraken's heuristic order | seed-101 | 0.913 / 0.914 / 0.913 | 0.995 | 1 | 19 | 0.819 |
-| R4d + A1 order | seed-101 | 0.913 / 0.914 / 0.913 | 0.995 | 1 | 19 | 1.000 |
-| `blla` | held-out | 0.624 / 0.726 / 0.671 | 0.773 | 28 | 96 | 0.811 |
-| R4d, kraken's heuristic order | held-out | 0.915 / 0.916 / 0.915 | 0.998 | 0 | 4 | 0.865 |
-| R4d + A1 order | held-out | 0.915 / 0.916 / 0.915 | 0.998 | 0 | 4 | 1.000 |
-
-**Stamps:** R4d matches 25 of 40 stamp lines on seed-101 and 35 of 40 on held-out.
-
-#### End to end (R4d + A1 + R3h)
-
-CER under hocrgen's `primary.v1` profile:
-
-| Batch | R4d + A1 + R3h | `blla` + R3h |
-|---|---|---|
-| seed-101 | 0.020 | 0.168 |
-| held-out | 0.010 | 0.238 |
-| eval-mixed-heldout | 0.017 | 0.230 |
-| eval-typo-heldout | 0.009 | 0.291 |
-| eval-layout-heldout | 0.124 | 0.498 |
-| hocrgen fixture (development set) | 0.130 | 0.404 |
+- **Development sets, not reported as performance.** HeOCR compared the pipeline on six synthetic hocrsyngen batches: seed-101, a long-running benchmark read across rounds; the batches named held-out, eval-mixed-heldout, eval-typo-heldout and eval-layout-heldout, which were kept out of the training text but are not registered and were read during the rounds; and hocrgen's fixture batch, on which A1's design was tuned. Despite some of their names, none is a registered held-out set, so their figures are not given here. They are named in heocr-engine's `docs/baselines.md`.
+- **All evaluation is synthetic.** No reviewed real-page evaluation exists.
+- **What the development comparison showed, in words:** R4d found the lines far more reliably than `blla`, and the R4d + A1 + R3h pipeline made far fewer errors than `blla` + R3h. Without A1, kraken's heuristic order was often wrong. Some lines are still split or merged, and some stamp lines are missed (see [Bias, risks and limitations](#bias-risks-and-limitations)).
+- **Next:** a registered held-out run of the R4d + A1 + R3h pipeline, with kraken's default segmenter `blla` beside it and read the same way. Its result will be added in a new version of this card.
 
 ## Bias, risks and limitations
 
-- **The synthetic gap.** The evaluation pages share training's fonts, templates and degradations, so these scores overstate accuracy on real scans.
-- **Split and merged lines:**
-  - On seed-101, 19 gold lines are split, and 14 predicted lines each merge two gold lines.
-  - Some stamp lines are merged into the body lines they overlap: 8 on seed-101.
-- **Line order without A1 is poor.** kraken's heuristic reads separated stamp lines before the body lines around them (Kendall τ 0.819 on seed-101; 9 of 80 pages fully in order).
+- **The synthetic gap.** The development pages share training's fonts, templates and degradations, so real scans will likely do worse.
+- **Split and merged lines.** R4d sometimes splits a line in two, or merges two lines into one. Some stamp lines are missed, or merged into the body lines they overlap.
+- **Line order without A1 is poor.** kraken's heuristic reads separated stamp lines before the body lines around them, so most pages come out of order.
 - **Ledgers:**
   - R4d's training pages predate hocrsyngen's S11b ledger layout, so newer ledger pages (the fixture, eval-layout-heldout) look unlike its training.
-  - eval-layout-heldout's ledger CER is mostly hocrgen's ` | ` gold convention ([HeOCR/hocrgen#98](https://github.com/HeOCR/hocrgen/issues/98)).
+  - eval-layout-heldout's ledger error is mostly hocrgen's ` | ` gold convention ([HeOCR/hocrgen#98](https://github.com/HeOCR/hocrgen/issues/98)).
 - **kraken's polygonizer** sometimes reports "failed on line 0" on a page. The page still completes.
 - **Layouts:** only hocrsyngen's seven templates were seen in training.
 
@@ -187,7 +164,7 @@ CER under hocrgen's `primary.v1` profile:
 | Split | per page by hash, 5% validation; assignment `a794ebf3dbe5dd322cc85197a133207409fea0e487d02a23a52b0c76886d4006` |
 | Training code | heocr-engine `aa67fa7`, ketos 7.0.2 |
 | Training record | `r4d_training_run.json` (`heocr_engine_training_run.v1`), in this deposit |
-| Scoring | hocrgen `2d3efb0` and `c8fb74e`; heocr-engine `55b0f7d` (end to end), `129c58e` and `eed1839` (line geometry) |
+| Development scoring | hocrgen `2d3efb0` and `c8fb74e`; heocr-engine `55b0f7d` (end to end), `129c58e` and `eed1839` (line geometry) |
 
 ## Contact
 

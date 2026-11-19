@@ -15,6 +15,7 @@ LOCAL_PATH = r'/Users/|/home/|/private/|[A-Z]:\\'
 # The kraken pipeline's version DOIs: R6 is a release of its own and links to none of them.
 PIPELINE_DOIS = ('10.5281/zenodo.24023070', '10.5281/zenodo.24023072', '10.5281/zenodo.24023074')
 # heocr_tesseract_training_run.v1 (release/README.md, "R6"): the sections every record has.
+HELD_OUT_SENTENCE = 'No held-out score yet; HeOCR will score it once in a registered held-out run.'
 RECORD_SECTIONS = ('schema_version', 'schema_note', 'model', 'task', 'engine', 'trainer', 'init', 'data',
                    'truth_order', 'commands', 'hyperparameters', 'run', 'outcome', 'evaluation', 'output',
                    'model_licence')
@@ -50,13 +51,25 @@ class R6ReleaseFilesTests(unittest.TestCase):
         card = read('card_body.md')
         self.assertIn('tesseract page.png out -l heocr_r6 --tessdata-dir DIR --psm 3', card)
         self.assertIn('tesseract line.png out -l heocr_r6 --tessdata-dir DIR --psm 13', card)
-        for needle in ('0.209', '0.226', '0.225', '−0.016 [−0.023, −0.010]', '0.383', '0.384', 'No gain on the hardest'):
-            with self.subTest(needle=needle):
-                self.assertIn(needle, card)
+        self.assertIn('no gain on the hardest development pages', card)
         self.assertNotIn('<!-- DRAFT', card)
         self.assertIn('[10.5281/zenodo.24109989](https://doi.org/10.5281/zenodo.24109989)', card)
         for doi in PIPELINE_DOIS:
             self.assertNotIn(doi, card)
+
+    def test_no_dev_or_selection_figures_as_performance(self):
+        # held-out figures only (maintainer, 2026-11-19): no dev, tuning or selection figure as performance
+        card = read('card_body.md')
+        self.assertIn('not measured on a held-out set yet', card.lower())
+        self.assertIn(HELD_OUT_SENTENCE, card)
+        evaluation = card[card.index('## Evaluation'):card.index('## Bias, risks and limitations')]
+        self.assertNotIn('%', evaluation)
+        self.assertIsNone(re.search(r'\b\d+\.\d{2,3}\b(?![0-9a-f])', evaluation.replace('5.5.3', '')))
+        outside_data = card[:card.index('### Training data')] + card[card.index('### Training procedure'):]
+        self.assertIsNone(re.search(r'\d+\.\d+\s*%', outside_data))  # data shares stay in Training data
+        for figure in ('0.209', '0.226', '0.225', '0.407', '0.473', '0.383', '0.384', '2.03%', '1.25%'):
+            with self.subTest(figure=figure):
+                self.assertNotIn(figure, card)
 
     def test_release_name_is_a_tesseract_language_name(self):
         record = json.loads(read('r6_training_run.json'))
