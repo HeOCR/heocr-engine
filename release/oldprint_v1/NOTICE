@@ -1,0 +1,162 @@
+HeOCR oldprint-v1 Hebrew old-print recognition model for Tesseract
+Copyright (c) 2026 HeOCR maintainers
+
+This model (heocr_oldprint_v1.traineddata, trained as heb.traineddata,
+selected checkpoint heb_final, sha256
+f8090760b5b02d09cf4ddb435e7a5e34089f6f17cde9cfb6c67fd06c6f17ec02, 3,628,595
+bytes) is licensed under the Apache License, Version 2.0. See LICENSE.
+
+Base model
+----------
+
+This model is a modified version of the tessdata_best Hebrew model
+(heb.traineddata) of the Tesseract OCR project,
+https://github.com/tesseract-ocr/tessdata_best, commit
+e12c65a915945e4c28e237a9b52bc4a8f39a0cec, sha256
+dbaa827aea6bc21215638447f17783a1004987c2d0bf5573d111fee397abdae5, licensed
+under the Apache License, Version 2.0.
+
+HeOCR modified it in two stages. HeOCR R7 (2026-11-11,
+https://doi.org/10.5281/zenodo.24126449) fine-tuned its LSTM network on
+real scanned Hebrew lines and added the maqaf U+05BE and the en dash U+2013
+to its character set. oldprint-v1 (2026-11-18) continued training from R7's
+weights on more real scanned lines and rendered born-digital lines. Its
+character set and its dictionary components are R7's, unchanged. R7's
+dictionary components were rebuilt from the base model's own word list with
+build files from https://github.com/tesseract-ocr/langdata_lstm, commit
+07930fd9f246622c26eb5de794d9212ceac432d3, licensed under the Apache License,
+Version 2.0. No word list was built from any training text.
+
+R7's training data, credited in R7's NOTICE, is part of this model's
+lineage. That NOTICE is distributed with this model as NOTICE.r7 and must be
+kept with it.
+
+Software
+--------
+
+The model was trained with, and runs in, Tesseract 5.5.3
+(https://github.com/tesseract-ocr/tesseract), licensed under the Apache
+License, Version 2.0. The model file contains no Tesseract code.
+
+Training data: Internet Archive scans
+-------------------------------------
+
+Training lines were cut from these Internet Archive items
+(https://archive.org/details/<identifier>), scans of public-domain books.
+They were fetched from the Internet Archive (its metadata and IIIF
+services), the route HeOCR's legal strategy calls internet_archive. The
+Internet Archive publishes them without an explicit licence. The original
+conditions of each item on the Internet Archive still apply. None comes
+from NLI.
+
+Each item passed HeOCR's Internet Archive rights gate
+(hocrgen.fetchers.ia_iiif.decide_ia_rights; hocrgen decision
+planning/decisions/2026-11-09-internet-archive-library-scans.md), and each
+text aligned to it has its own rights justification
+(hocrgen.rights_justification.v1; hocrgen decision
+planning/decisions/2026-11-10-legal-strategy.md). In short: a public-domain
+book, a faithful scan, fetched from the Internet Archive; no new right
+arises in the scan and no contract binds its reuse. The justification ids
+are listed in oldprint_v1_training_run.json.
+
+Scans made by university libraries (source class
+ia_library_scan_no_licence_field; none was digitized by Google):
+
+  zikhronotlebetda01reck: Abraham Shalom Friedberg (d. 1902), Zikhronot
+    le-Vet David. Warsaw, 1893. Robarts - University of Toronto. 6,099
+    lines.
+  midrashleaovhame0305tobi: Tobiah ben Eliezer, Midrash Lekach Tov, edited
+    by Salomon Buber (d. 1906), vols 3-5. Vilna, 1884. Robarts - University
+    of Toronto. 6,063 lines.
+  kolkitveylkatsen018800: Judah Leib Katzenelson (d. 1917), Kol Kitve
+    Y. L. Katsenelson. St Petersburg, 1905. University of Illinois
+    Urbana-Champaign. 5,712 lines.
+  seferhademaotmeo0000bern: Simon Bernfeld (d. 1940), Sefer ha-Dema'ot.
+    Berlin, 1923. University of Toronto, Downsview. 5,350 lines.
+  betnekhothahalak01horouoft: Bet Nekhot ha-Halakhot o Toratan shel
+    Rishonim, part I, edited by Chaim Meir Horowitz. Frankfurt am Main,
+    1881. Robarts - University of Toronto. 1,896 lines.
+
+Google-class scans (source class ia_google_digitized_scan), retrieved via
+the Internet Archive, not from Google or NLI. They are admitted under
+hocrgen's legal strategy, rule 3 (Routes B and C: Google-digitized scans
+fetched from the Internet Archive or Wikimedia Commons;
+planning/decisions/2026-11-10-legal-strategy.md), and heocr-engine decision
+0015 (planning/decisions/0015-legal-strategy.md). Google's front-page usage
+guidelines are requests, not a contract, and HeOCR accepted no terms from
+Google for these files. Hygiene (legal strategy, rule 5): any Google
+front matter was excluded, and no "Digitized by Google" watermark was found on
+any training page. Neither Google, the Open Siddur Project nor the
+contributing library endorses HeOCR.
+
+  afahleneemaniml00fngoog: Samuel Joseph Fuenn (d. 1891), Safah
+    le-Ne'emanim. Vilna, 1881. Digitized by Google; retrieved via the
+    Internet Archive; contributing library: University of California.
+    5,749 lines.
+  mahzor-vitri-abraham-berliner-1893: Simhah ben Samuel of Vitry, Machzor
+    Vitry, edited by Simeon Hurwitz. Berlin: Mekize Nirdamim, 1889-1897.
+    A copy the Open Siddur Project derived from a Google Books scan;
+    retrieved via the Internet Archive. 6,077 lines.
+
+Every author, editor and other named contributor of the books above died
+more than 70 years ago, per their rights justifications, so the books are
+in the public domain in Israel. Every book was printed before 1931 and is
+also past the United States copyright term.
+
+Training data: text
+-------------------
+
+The lines are labelled with these transcriptions, never with OCR:
+  - Project Ben-Yehuda (https://benyehuda.org), public domain dump release
+    2026-03 (https://github.com/projectbenyehuda/public_domain_dump), for
+    the books by Friedberg, Katzenelson, Bernfeld and Fuenn. Its licence
+    states that the data files are in the public domain. Credit: Project
+    Ben-Yehuda volunteers.
+  - Sefaria (https://www.sefaria.org), public-domain digital versions
+    "Midrash Lekach Tov on Torah, Vilna 1884" and "Machzor Vitry, Berlin,
+    1893-97", each citing the printing it transcribes.
+  - Project Gutenberg ebook #43740 (https://www.gutenberg.org/ebooks/43740),
+    public domain in the USA, produced by David T. Jones, Enrico Segre and
+    Distributed Proofreaders Canada, for Bet Nekhot ha-Halakhot.
+
+Training data: Reshumot (laws and regulations)
+----------------------------------------------
+
+40,000 training lines were rendered by HeOCR from born-digital PDF
+booklets of ספר החוקים (Sefer ha-Hukim) and קובץ התקנות (Kovetz
+ha-Takanot), published by Reshumot (רשומות), the official gazette of the
+State of Israel, and labelled with the publisher's own PDF text layer for
+each line. Laws and regulations carry no copyright in Israel (Copyright Act
+2007, section 6; PD-IL). Their status outside Israel, including the United
+States, is not asserted here. No line comes from an evaluation booklet. The
+booklet identifiers are in oldprint_v1_training_run.json.
+
+The model contains no scan images, no rendered pages and no text files.
+The line crops are not distributed with it.
+
+Evaluation data (not used for training)
+---------------------------------------
+
+The model was chosen on old-print page images with reference
+transcriptions (HeOCR's audit2 dev pages) and scored on held-out line sets whose
+references come from Hebrew Wikisource (CC BY-SA 4.0, Hebrew Wikisource
+contributors), Project Ben-Yehuda (public domain), Sefaria (public domain)
+and Reshumot (PD-IL), and on HeOCR's open synthetic document sets. They
+were never trained on. The model contains no evaluation text.
+
+No endorsement
+--------------
+
+Neither the National Library of Israel, the Internet Archive, Google, the
+Open Siddur Project, the libraries named above, Reshumot or the State of
+Israel, Project Ben-Yehuda, Sefaria, Project Gutenberg nor the Tesseract
+OCR project endorses HeOCR or this model.
+
+Rights concerns
+---------------
+
+If you believe a source item is subject to a valid copyright or another
+binding restriction, email heocrproject@gmail.com or open an issue at
+https://github.com/HeOCR/heocr-engine/issues, and name its Internet Archive
+identifier, Reshumot booklet or text source. The takedown procedure is at
+https://heocr.github.io/rights.html.
