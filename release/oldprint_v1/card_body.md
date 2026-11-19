@@ -7,9 +7,9 @@ oldprint-v1 is a [Tesseract](https://github.com/tesseract-ocr/tesseract) languag
 
 No label is OCR output. It is the model that HeOCR's evaluation recommends for old print in [heocr](https://github.com/HeOCR/heocr), the HeOCR document pipeline, beside [modern-v1](#related-models) for modern print. (In the experiment records it is P-hist round v1, arm r7, `heb_final`.)
 
-**Performance: not measured on a held-out set yet.** HeOCR reports accuracy only on held-out sets. The P-hist test set (22 held-out books) waits for its human references; HeOCR will score this model on it once, in a registered run, against R7 and stock `heb`, and add the result to this card in a new version.
+**Performance: not measured on a held-out set yet.** No held-out score yet; HeOCR will score it once in a registered held-out run. That run is the P-hist test (22 held-out books), once its human references exist, against R7 and stock `heb`; the result will be added to this card in a new version.
 
-- **Why it was chosen:** it had the lowest page CER on audit2, a development set of 38 old-print pages from 13 books, among 20 candidates. audit2 made the choice, so its figure is not reported here as performance.
+- **How it was chosen:** the lowest page CER on audit2, a development set of 38 old-print pages from 13 books read whole at psm 3, among 20 candidates (8 snapshots, the training-best checkpoint and the final model of this arm and of a second arm started from stock `heb`). audit2 made the choice, so no figure from it is reported here.
 - **Not for modern office documents.** On HeOCR's synthetic office development sets, inside heocr, it reads worse than stock `heb` on scanned and image-only PDFs and scanned tables. Use modern-v1 there.
 
 | | |

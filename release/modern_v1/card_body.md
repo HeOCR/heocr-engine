@@ -7,9 +7,9 @@ modern-v1 is a [Tesseract](https://github.com/tesseract-ocr/tesseract) language 
 
 No label is OCR output. It is the model that HeOCR's evaluation chose as the default for modern print in [heocr](https://github.com/HeOCR/heocr), the HeOCR document pipeline. (In the experiment records it is office-print v0, arm A, snapshot `snap_0160m_222700`.)
 
-**Performance: not measured on a held-out set yet.** HeOCR reports accuracy only on held-out sets, and this model has not yet been scored on one. HeOCR's registered held-out run of the default model comes later; its result will be added to this card in a new version.
+**Performance: not measured on a held-out set yet.** No held-out score yet; HeOCR will score it once in a registered held-out run. HeOCR reports accuracy only on held-out sets; the result will be added to this card in a new version.
 
-- **Why it was chosen:** HeOCR's evaluation chose it as heocr's default for modern print in a pre-registered default-model study (2026-11-19). The study compared it with stock `heb` on HeOCR's open synthetic document sets, inside heocr, and on real-print development line sets. These sets were used to make the choice, so they are not reported here as its performance.
+- **How it was chosen:** first, its checkpoint: the lowest line CER on `office_val` (synthetic crops in a held-out face, from held-out booklets) among 11 candidates, the 9 snapshots, the training-best checkpoint and the final model. Then HeOCR's evaluation chose it as heocr's default for modern print in a pre-registered default-model study (2026-11-19). The study compared it with stock `heb` and the other arm, inside heocr, on HeOCR's open synthetic document sets, and on real-print development line sets. These sets made the choice, so no figure from them is reported here.
 - **Known cost: some numbers stock read are now lost,** mostly outline labels such as `2.1.3`. heocr's own number handling is meant to catch these; it is not part of this model. Check numbers that matter.
 - **For old print, use HeOCR [oldprint-v1](#related-models).**
 
