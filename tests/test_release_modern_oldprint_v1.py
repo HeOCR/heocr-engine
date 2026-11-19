@@ -1,5 +1,6 @@
 """The modern-v1 and oldprint-v1 release packages: files, pins and hygiene (drafts; no DOI yet)."""
 import json
+import re
 from pathlib import Path
 import unittest
 
@@ -38,7 +39,14 @@ class ReleasePackages(unittest.TestCase):
             self.assertNotIn("DOI-TO-BE-RESERVED", (folder / "card_body.md").read_text(encoding="utf-8"))
             self.assertIn(f"Cite this model by its version DOI: [{DOIS[model]}](https://doi.org/{DOIS[model]}).",
                           (folder / "card_body.md").read_text(encoding="utf-8"))
-            self.assertIn("no test score", (folder / "card_body.md").read_text(encoding="utf-8").lower())
+            body = (folder / "card_body.md").read_text(encoding="utf-8")
+            self.assertIn("not measured on a held-out set yet", body.lower())
+            # held-out figures only (maintainer, 2026-11-19): no dev, tuning or selection figure as performance
+            evaluation = body[body.index("## Evaluation"):body.index("## Bias, risks and limitations")]
+            self.assertNotIn("%", evaluation)
+            self.assertIsNone(re.search(r"\b\d+\.\d{2,3}\b(?![0-9a-f])", evaluation.replace("5.5.3", "")))
+            outside_data = body[:body.index("### Training data")] + body[body.index("### Training procedure"):]
+            self.assertIsNone(re.search(r"\d+\.\d+\s*%", outside_data))  # data shares are whole percents
 
     def test_no_local_paths(self):
         for model in PINS:
