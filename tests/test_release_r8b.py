@@ -153,7 +153,7 @@ class R8bReleaseFilesTests(unittest.TestCase):
 
     def test_card_cites_its_reserved_doi_and_links_no_pipeline_record(self):
         card = read('card_body.md')
-        self.assertIn('[10.5281/zenodo.24156688](https://doi.org/10.5281/zenodo.24156688)', card)
+        self.assertIn('[10.5281/zenodo.24372346](https://doi.org/10.5281/zenodo.24372346)', card)
         self.assertNotIn('DRAFT', card)
         self.assertNotIn('sharp', card.lower())  # eval: the two sharpness measures disagree on Brainin IA
         self.assertNotIn('whose labels are exact', card)  # every OLB dev line is layer-exact; 'exact' is the tier

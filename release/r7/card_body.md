@@ -182,4 +182,4 @@ Report problems and questions as issues on [HeOCR/heocr-engine](https://github.c
 
 ## Citation
 
-Cite this model by its version DOI: [10.5281/zenodo.24126449](https://doi.org/10.5281/zenodo.24126449).
+Cite this model by its version DOI: [10.5281/zenodo.24372343](https://doi.org/10.5281/zenodo.24372343).

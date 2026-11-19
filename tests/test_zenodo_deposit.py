@@ -943,7 +943,7 @@ if __name__ == '__main__':
 
 
 V1_DOI = '10.5072/zenodo.900'
-V1_RESERVED = {'modern_v1': '10.5281/zenodo.24371757', 'oldprint_v1': '10.5281/zenodo.24371759'}
+V1_RESERVED = {'modern_v1': '10.5281/zenodo.24372349', 'oldprint_v1': '10.5281/zenodo.24372352'}  # the cards' v2 DOIs
 
 
 @contextlib.contextmanager

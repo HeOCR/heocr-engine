@@ -461,3 +461,20 @@ ReleasedModel(
     licence="Apache-2.0",
 ),
 ```
+
+# Held-out-only v2 of every released model (2026-11-19)
+
+The maintainer's rule is "we only produce metrics on held-out sets", and his go (2026-11-19) covers all 8 models. No HeOCR model has a registered held-out score yet, so every card now says "not measured on a held-out set yet". Each model gets a **v2 under its existing Zenodo concept**: the same weights, training record and LICENSE, with the held-out-only `README.md` card and, where changed, its `NOTICE`. The v1 versions are deleted inside Zenodo's 30-day owner window, leaving tombstones. Links between models use concept DOIs.
+
+| Model | v1 (deleted) | v2 DOI | Concept DOI |
+|---|---|---|---|
+| R4d | 10.5281/zenodo.24023070 | 10.5281/zenodo.24372337 | 10.5281/zenodo.24023069 |
+| A1 | 10.5281/zenodo.24023072 | 10.5281/zenodo.24372338 | 10.5281/zenodo.24023071 |
+| R3h | 10.5281/zenodo.24023074 | 10.5281/zenodo.24372341 | 10.5281/zenodo.24023073 |
+| R6 | 10.5281/zenodo.24109989 | 10.5281/zenodo.24372342 | 10.5281/zenodo.24109988 |
+| R7 | 10.5281/zenodo.24126449 | 10.5281/zenodo.24372343 | 10.5281/zenodo.24126448 |
+| R8b | 10.5281/zenodo.24156688 | 10.5281/zenodo.24372346 | 10.5281/zenodo.24156687 |
+| modern-v1 | 10.5281/zenodo.24371757 | 10.5281/zenodo.24372349 | 10.5281/zenodo.24371756 |
+| oldprint-v1 | 10.5281/zenodo.24371759 | 10.5281/zenodo.24372352 | 10.5281/zenodo.24371758 |
+
+Training records keep the exact version DOIs they used. The scripts (`zenodo_v2.py`, `hf_card_only.py`) are kept with the task records, outside this repository.

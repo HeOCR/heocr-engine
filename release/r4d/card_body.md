@@ -34,7 +34,7 @@ It is a research baseline. All of its evaluation is on synthetic pages; no revie
 
 | Step | Model | Record |
 |---|---|---|
-| Segmentation: baselines, line polygons, typed regions | R4d, this model | [10.5281/zenodo.24023070](https://doi.org/10.5281/zenodo.24023070) |
+| Segmentation: baselines, line polygons, typed regions | R4d, this model | [10.5281/zenodo.24372337](https://doi.org/10.5281/zenodo.24372337) |
 | Reading order: line order from each line's region type | A1, `heocr-a1-reading-order.safetensors` (`69aa1946…`) | [10.5281/zenodo.24023071](https://doi.org/10.5281/zenodo.24023071) |
 | Recognition | R3h, `heocr-r3h-recognition.safetensors` (`f76affa8…`) | [10.5281/zenodo.24023073](https://doi.org/10.5281/zenodo.24023073) |
 
@@ -172,4 +172,4 @@ Report problems and questions as issues on [HeOCR/heocr-engine](https://github.c
 
 ## Citation
 
-Cite this model by its version DOI, [10.5281/zenodo.24023070](https://doi.org/10.5281/zenodo.24023070). Never cite the concept DOI.
+Cite this model by its version DOI, [10.5281/zenodo.24372337](https://doi.org/10.5281/zenodo.24372337). Never cite the concept DOI.

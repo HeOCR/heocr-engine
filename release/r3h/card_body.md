@@ -31,7 +31,7 @@ It is a research baseline, not a production transcriber. All of its evaluation i
 |---|---|---|
 | Segmentation: baselines, line polygons, typed regions | R4d, `heocr-r4d-segmentation.safetensors` (`d32cd1a8…`) | [10.5281/zenodo.24023069](https://doi.org/10.5281/zenodo.24023069) |
 | Reading order: line order from each line's region type | A1, `heocr-a1-reading-order.safetensors` (`69aa1946…`) | [10.5281/zenodo.24023071](https://doi.org/10.5281/zenodo.24023071) |
-| Recognition | R3h, this model | [10.5281/zenodo.24023074](https://doi.org/10.5281/zenodo.24023074) |
+| Recognition | R3h, this model | [10.5281/zenodo.24372341](https://doi.org/10.5281/zenodo.24372341) |
 
 > **A1 needs heocr-engine.** kraken 7.0.2 cannot run A1 by itself, for two reasons:
 > - its neural reading order passes the segmenter's line types to A1, while A1 was trained on region types. kraken rejects the class-mapping mismatch;
@@ -192,4 +192,4 @@ Report problems and questions as issues on [HeOCR/heocr-engine](https://github.c
 
 ## Citation
 
-Cite this model by its version DOI, [10.5281/zenodo.24023074](https://doi.org/10.5281/zenodo.24023074). Never cite the concept DOI.
+Cite this model by its version DOI, [10.5281/zenodo.24372341](https://doi.org/10.5281/zenodo.24372341). Never cite the concept DOI.

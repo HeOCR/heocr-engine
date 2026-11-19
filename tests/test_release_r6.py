@@ -54,7 +54,7 @@ class R6ReleaseFilesTests(unittest.TestCase):
         self.assertIn('tesseract line.png out -l heocr_r6 --tessdata-dir DIR --psm 13', card)
         self.assertIn('no gain on the hardest development pages', card)
         self.assertNotIn('<!-- DRAFT', card)
-        self.assertIn('[10.5281/zenodo.24109989](https://doi.org/10.5281/zenodo.24109989)', card)
+        self.assertIn('[10.5281/zenodo.24372342](https://doi.org/10.5281/zenodo.24372342)', card)
         for doi in PIPELINE_DOIS:
             self.assertNotIn(doi, card)
 

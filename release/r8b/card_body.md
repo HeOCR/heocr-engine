@@ -213,4 +213,4 @@ Report problems and questions as issues on [HeOCR/heocr-engine](https://github.c
 
 ## Citation
 
-Cite this model by its version DOI: [10.5281/zenodo.24156688](https://doi.org/10.5281/zenodo.24156688).
+Cite this model by its version DOI: [10.5281/zenodo.24372346](https://doi.org/10.5281/zenodo.24372346).
