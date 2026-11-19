@@ -297,9 +297,9 @@ line crops are not distributed with it.
 Evaluation data (not used for training)
 ---------------------------------------
 
-The model was scored on held-out lines whose reference text comes from
-these sources. They were used only to choose and score the model, never for
-training:
+The model was chosen and compared on development lines whose reference text
+comes from these sources. They were never trained on, and its accuracy is
+not measured on a held-out set yet:
   - lines of scanned Reshumot booklets labelled with the text of ספר החוקים
     הפתוח on Hebrew Wikisource (CC BY-SA 4.0, Hebrew Wikisource
     contributors), and Hebrew Wikisource proofread pages (CC BY-SA 4.0);

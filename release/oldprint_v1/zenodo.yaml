@@ -30,16 +30,13 @@ tags:
   - HeOCR
 model_type:
   - recognition
-metrics:  # dev only, never a test score; audit2 chose the model (see the card body)
-  cer_audit2_pages_psm3: 16.753
-  cer_olb_reshumot_dev: 2.209
-  cer_mekhilta_dev: 1.122
+# No metrics: HeOCR reports figures only on held-out sets, and this model has none yet (see the card).
 # isDerivedFrom links: the base model, HeOCR R7 (continued from; R7 is not superseded), the
 # training scans (7 Internet Archive items) and the text sources.
 related:
   - identifier: https://github.com/tesseract-ocr/tessdata_best/blob/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/heb.traineddata
     resource_type: software
-  - identifier: https://doi.org/10.5281/zenodo.24126449
+  - identifier: https://doi.org/10.5281/zenodo.24126448
     resource_type: software
   - identifier: https://archive.org/details/zikhronotlebetda01reck
     resource_type: image

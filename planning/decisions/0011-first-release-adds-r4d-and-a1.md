@@ -59,9 +59,9 @@ On 2026-11-06 the maintainer approved the three model cards as they stand on mai
 
 | Card | sha256, with the production DOIs (plan step 2) |
 |---|---|
-| `release/r3h/card_body.md` | `da8b4e84920b8617bde6d1f6d74d89fde2334aca11d7f4156c6dba0769ddaa31` |
-| `release/r4d/card_body.md` | `0b4c4313e86e261f7a4ab6209fe394d3d4bac7ec33f2477f4b7c880874080e9a` |
-| `release/a1/card_body.md` | `6a03f50b204aec9d20ac84ee3e268225021ea2ae5322a0a0b7372ee41948dbfb` |
+| `release/r3h/card_body.md` | `575ef80d447af31884d6f38996ff8625f2849be23863e7bf8ba60c5941dcfd05` |
+| `release/r4d/card_body.md` | `08d7d20c9b99650a5592e9e47f68d8f5b66755029ac61191fe9347e34780215e` |
+| `release/a1/card_body.md` | `373612910f839d112143c8618b620f24af682ee56fe0e502d9cb4933e16cff1c` |
 
 In a separate approval the same day, the maintainer approved the three NOTICE files. That decides item 4's NOTICE text. The approval came with one change, a grammar fix in R4d's NOTICE: it names one corpus, so "The corpus is dedicated" replaces "The corpora are dedicated". The approved files, after that fix, are:
 
@@ -72,6 +72,7 @@ In a separate approval the same day, the maintainer approved the three NOTICE fi
 | `release/a1/NOTICE` | `c8b3ca662a59dfbc39a1df08a2f2589b174104ba9122fe0bb0f6822522349fae` (unchanged from `952e5b5`) |
 
 - **The one planned change:** the reserved version DOIs go into each card's pipeline table and Citation section (`release/README.md`, plan step 2). Any other change to a card or a NOTICE needs the maintainer's review again.
+- **Amendment, 2026-11-19 (held-out figures only):** the maintainer's rule is "we only produce metrics on held-out sets", and his decision is to replace every card with dev-set results. HeOCR evaluation found that none of the six synthetic sets these cards scored on is a registered held-out set. So the three cards drop every figure, and say "not measured on a held-out set yet". The pins above are the held-out-only cards, which cite their v2 DOIs (R4d `10.5281/zenodo.24372337`, A1 `10.5281/zenodo.24372338`, R3h `10.5281/zenodo.24372341`), whose links to the sibling models use their concept DOIs (which survive a deleted version); the earlier pins were r3h `da8b4e84…`, r4d `0b4c4313…` and a1 `6a03f50b…`. **This change needs the maintainer's review**, which is requested in the PR that made it.
 - **2026-11-06, plan step 2, pending the maintainer's approval of the diff:** only the DOI lines changed, four per card:
   - three pipeline-table rows, each with that model's production version DOI and its `https://doi.org/` link;
   - the Citation line.

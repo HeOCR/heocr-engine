@@ -11,6 +11,7 @@ BASE_SHA = 'dbaa827aea6bc21215638447f17783a1004987c2d0bf5573d111fee397abdae5'
 STARTER_SHA = '202272593630b4eddba57d5b09f5d3a142ed551b9550094e2885eb1b359fe037'  # the R8 starter, 73 codes
 R7_SHA = '95faab81fba6fe57f854f973c1ccad2b0d1059fb951f34b17277385ceea8b303'
 R7_DOI = '10.5281/zenodo.24126449'
+R7_CONCEPT = '10.5281/zenodo.24126448'  # cards and links use the concept; the record keeps the exact version
 FIGURES_SHA = '22c0305ddafe6f436599df115c1c71345fed3685feae2c3cd9198b5e989909d9'  # eval's frozen release figures
 PROFILE_SHA = '2e2627104be4f27dc3204787dd3ff4f8591d95d1d96294c65833d2773041d317'  # line_fold_v1
 MANIFESTS = {'bynli_lines_v2': '53dd7f1a10929ad4a60020ad7f42be62f27ee905cb7e6cfb0e319c5b2f5db7ca',
@@ -105,54 +106,54 @@ class R8bReleaseFilesTests(unittest.TestCase):
         card = read('card_body.md')
         self.assertIn('tesseract page.png out -l heocr_r8b --tessdata-dir DIR --psm 3', card)
         self.assertIn('tesseract line.png out -l heocr_r8b --tessdata-dir DIR --psm 13', card)
-        for needle in ('R8b supersedes nothing. R7 remains valid.', 'not a test score',
-                       'There is no human-reviewed test score yet.', 'No human-reviewed test score yet.',
-                       '0.743 against 0.635', 'small, dark and grainy', 'two independent readings confirm the label',
-                       'unreleased A/B arm',
+        for needle in ('R8b supersedes nothing. R7 remains valid.', 'small, dark and grainy', 'unreleased arm',
+                       'not reported as performance', 'read every round', 'over 28 saved checkpoints',
                        'line_fold_v1', PROFILE_SHA, FIGURES_SHA, STARTER_SHA, '3,633,477 bytes', '73 codes',
-                       # OLB dev, all lines and the exact stratum, with intervals
-                       '+0.805 [+0.665, +0.980]', '+0.585 [+0.401, +0.821]', '+0.342 [+0.154, +0.470]',
-                       '+0.166 [+0.056, +0.294]', '**2.129**', '**0.735**',
-                       # held-out selection books, with the optimism caveat
-                       '0.757 / 3.542', '1.019 / 4.322', 'Selection optimism',
-                       # report sets, and the regressions against the unreleased arm
-                       '0.743 / 3.233', '0.635 / 2.616', 'Mekhilta (+0.03)', 'Bodek (+0.27)', 'Brainin IA (+0.08)',
-                       'Bodek has 21 lines', 'Overlap barely moves these figures', '1.164 (1.179)', '116 training lines share a 6-gram',
-                       'Why the overlap reached training', 'the gate holds',
-                       # stock Tesseract (tessdata_best e12c65a) on every set; the exact tier is marked
-                       '| 2.471 | 5.428 |', '3.965†', 'not a fair comparison', '5.664 / 21.115', '15.684 / 51.049',
-                       'a reference reader, not a decision arm',
+                       '116 training lines share a 6-gram', 'Why the overlap reached training',
                        # the word-list check
                        '70,171 entries', '24 bracket or arrow tokens', *WORD_DAWG.values()):
             with self.subTest(needle=needle[:40]):
                 self.assertTrue(needle in card, f'card lacks {needle!r}')
-        self.assertIn(f'https://doi.org/{R7_DOI}', card)  # R7 is named, not replaced
+        self.assertIn(f'https://doi.org/{R7_CONCEPT}', card)  # R7 is named, not replaced
 
-    def test_card_figures_match_the_frozen_release_figures(self):
+    def test_card_reports_no_dev_or_selection_figure(self):
+        # held-out figures only (maintainer, 2026-11-19): R8b's OLB dev, selection-book and report-set
+        # figures are dev or selection figures, and no held-out score exists yet
+        body = read('card_body.md')
+        self.assertIn('not measured on a held-out set yet', body.lower())
+        self.assertIn('No held-out score yet; HeOCR will score it once in a registered held-out run.', body)
+        self.assertNotIn('held out from training', body)  # the selection books are not held out
+        evaluation = body[body.index('## Evaluation'):body.index('## Bias, risks and limitations')]
+        self.assertNotIn('%', evaluation)
+        self.assertIsNone(re.search(r'\b\d+\.\d{2,3}\b(?![0-9a-f])', evaluation.replace('5.5.3', '')))
+        outside_data = body[:body.index('### Training data')] + body[body.index('### Training procedure'):]
+        for share in ('9.0% of the lines', 'booklet 1.8%'):  # training-data shares, not metrics
+            outside_data = outside_data.replace(share, '')
+        self.assertIsNone(re.search(r'\d+\.\d+\s*%', outside_data))
+
+    def test_frozen_dev_figures_stay_in_the_record_not_on_the_card(self):
         evaluation = record()['evaluation']
         self.assertEqual(evaluation['figures_sha256'], FIGURES_SHA)
         card = read('card_body.md')
-        for name, view in evaluation['olb_reshumot_dev']['views'].items():
-            if name == 'exact_excluded':
-                continue  # in the record, not on the card
-            for model, cer in view['cer'].items():
-                with self.subTest(view=name, model=model):
-                    self.assertTrue(f'{cer:.3f}' in card, (name, model, cer))
+        for name, models in evaluation['report_sets'].items():
+            for model in ('r7', 's17a-addon', 'r8b-main-fold'):
+                value = models[model]
+                with self.subTest(set=name, model=model):
+                    self.assertNotIn(f"{value['cer']:.3f} / {value['wer']:.3f}", card)
         for book, models in evaluation['selection_books_held_out'].items():
             if book == 'caveat':
                 continue
             for model, value in models.items():
                 with self.subTest(book=book, model=model):
-                    self.assertTrue(f"{value['cer']:.3f} / {value['wer']:.3f}" in card, (book, model))
-        for name, models in evaluation['report_sets'].items():
-            for model in ('r7', 's17a-addon', 'r8b-main-fold'):
-                value = models[model]
-                with self.subTest(set=name, model=model):
-                    self.assertTrue(f"{value['cer']:.3f} / {value['wer']:.3f}" in card, (name, model))
+                    self.assertNotIn(f"{value['cer']:.3f}", card)
+        for name, view in evaluation['olb_reshumot_dev']['views'].items():
+            for model, cer in view['cer'].items():
+                with self.subTest(view=name, model=model):
+                    self.assertNotIn(f'{cer:.3f}', card)
 
     def test_card_cites_its_reserved_doi_and_links_no_pipeline_record(self):
         card = read('card_body.md')
-        self.assertIn('[10.5281/zenodo.24156688](https://doi.org/10.5281/zenodo.24156688)', card)
+        self.assertIn('[10.5281/zenodo.24372346](https://doi.org/10.5281/zenodo.24372346)', card)
         self.assertNotIn('DRAFT', card)
         self.assertNotIn('sharp', card.lower())  # eval: the two sharpness measures disagree on Brainin IA
         self.assertNotIn('whose labels are exact', card)  # every OLB dev line is layer-exact; 'exact' is the tier
@@ -273,7 +274,7 @@ class R8bReleaseFilesTests(unittest.TestCase):
         self.assertNotIn('ocr_models', '\n'.join(settings))
         self.assertNotIn('software_hints:', settings)
         self.assertIn('license: Apache-2.0', settings)
-        self.assertIn(f'  - identifier: https://doi.org/{R7_DOI}', settings)  # derived from R7
+        self.assertIn(f'  - identifier: https://doi.org/{R7_CONCEPT}', settings)  # derived from R7
         first = (ROOT / 'release' / 'r3h' / 'zenodo.yaml').read_text(encoding='utf-8')
         authors = re.search(r'^authors:\n(?:  .*\n)+', first, re.M)[0]
         self.assertIn(authors, read('zenodo.yaml'))

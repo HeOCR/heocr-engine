@@ -33,10 +33,7 @@ tags:
   - HeOCR
 model_type:
   - recognition
-metrics:  # percent, hocrgen primary.v1, Tesseract 5.5.3 psm 3, E2d4c (see the card body)
-  cer_e2d4c_38: 20.9
-  wer_e2d4c_38: 40.7
-  cer_e2d4c_10: 38.3
+# No metrics: HeOCR reports figures only on held-out sets, and this model has none yet (see the card).
 # isDerivedFrom links (InvenioRDM related identifiers): the base model, the training scans
 # (NLI IIIF manifests) and the transcription source.
 related:

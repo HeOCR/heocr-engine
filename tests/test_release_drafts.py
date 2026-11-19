@@ -82,8 +82,9 @@ class ReleaseDraftTests(unittest.TestCase):
             with self.subTest(model=model, check='hugging face repository'):
                 self.assertEqual(hf[0].split()[:4], ['#', 'Hugging', 'Face', 'repository:'])
                 self.assertTrue(hf[0].split()[4].startswith('HeOCR/heocr-'))
-            with self.subTest(model=model, check='metrics'):
-                self.assertTrue(any(re.fullmatch(r'  cer_seed101: [0-9.]+', line) for line in zenodo))
+            with self.subTest(model=model, check='no metrics'):
+                # held-out figures only (maintainer, 2026-11-19); no registered held-out set exists for these models
+                self.assertFalse(any(line.startswith('metrics:') for line in zenodo))
             with self.subTest(model=model, check='hugging face licence'):
                 self.assertIn('license: apache-2.0', hf)
             with self.subTest(model=model, check='LICENSE'):

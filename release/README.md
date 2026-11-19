@@ -279,7 +279,7 @@ python release/hf_upload.py --models r6 --zenodo-state $S --weights r6=…/heb.t
 
 R7 is R6's recipe on a larger line set: tessdata_best `heb` (the same base and the same starter as R6, not R6 itself) fine-tuned on 95,151 real lines of `bynli_lines_v2`, from 7 NLI books and 23 Internet Archive books, labelled with Project Ben-Yehuda text. Users run it as `tesseract … -l heocr_r7 --tessdata-dir DIR --psm 3`.
 
-**What the card says.** R7 beats stock Tesseract and tessdata_best on the 38 E2d4c pages, by about 0.016 CER and 0.08–0.09 WER. It ties R6 on CER (R7 − R6 = −0.0005 [−0.0072, +0.0061]), its WER is slightly lower within the interval, and on the 10 hardest pages it is no better than stock or R6. **R7 supersedes nothing; R6 remains valid.** R6's card, record and deposit are unchanged.
+**What the card says.** No held-out score yet (the maintainer's held-out-only rule, 2026-11-19). The 38 E2d4c pages and the selection lines are named only as the basis of the choice, without figures. **R7 supersedes nothing; R6 remains valid.** R6's card, record and deposit are unchanged.
 
 **How it differs from R6:**
 - **Two scan routes.** The NOTICE credits NLI with every record id, and the Internet Archive with every identifier and its contributing library. For the Internet Archive items it states that the original conditions of each item on the Internet Archive still apply: they are published there without an explicit licence (hocrgen decision 2026-11-10, open release, item 2).
@@ -349,11 +349,7 @@ R8b continues from R7's weights (the checkpoint R7 was packed from) for one epoc
 
 Its character set is the R8 starter's (73 codes), and it is 3,633,477 bytes. Users run it as `tesseract … -l heocr_r8b --tessdata-dir DIR --psm 3`.
 
-**What the card says.** All figures come from eval's frozen `r8b_release_figures_v1.json` (sha256 `22c0305d…`), under the `line_fold_v1` profile.
-- **OLB Reshumot dev set (silver; not a test score):** R8b beats R7 on all lines (2.129 against 2.934 CER) and on the exact stratum (0.735 against 1.320), and no interval reaches zero.
-- **Held-out selection books:** R8b beats R7 on both, with a selection-optimism caveat.
-- **Brainin's Internet Archive scan:** R8b is worse than R7 (0.743 against 0.635).
-- **No human-reviewed test score yet.**
+**What the card says.** No held-out score yet (the maintainer's held-out-only rule, 2026-11-19). The OLB Reshumot silver dev set, the selection books *Kevar* and *Yedi'ot ha-Teva* (kept out of training, but not held out: other lines of them chose the checkpoint) and the report sets are named only as the basis of the choice, without figures. Eval's frozen `r8b_release_figures_v1.json` (sha256 `22c0305d…`) stays in the training record as selection evidence. One caution stays in words: on development lines R8b read Brainin's small, dark, grainy Internet Archive scan worse than R7.
 - **R8b supersedes nothing; R7 remains valid.** R7's card, record and deposit are unchanged.
 
 **How it differs from R7:**
@@ -465,3 +461,20 @@ ReleasedModel(
     licence="Apache-2.0",
 ),
 ```
+
+# Held-out-only v2 of every released model (2026-11-19)
+
+The maintainer's rule is "we only produce metrics on held-out sets", and his go (2026-11-19) covers all 8 models. No HeOCR model has a registered held-out score yet, so every card now says "not measured on a held-out set yet". Each model gets a **v2 under its existing Zenodo concept**: the same weights, training record and LICENSE, with the held-out-only `README.md` card and, where changed, its `NOTICE`. The v1 versions are deleted inside Zenodo's 30-day owner window, leaving tombstones. Links between models use concept DOIs.
+
+| Model | v1 (deleted) | v2 DOI | Concept DOI |
+|---|---|---|---|
+| R4d | 10.5281/zenodo.24023070 | 10.5281/zenodo.24372337 | 10.5281/zenodo.24023069 |
+| A1 | 10.5281/zenodo.24023072 | 10.5281/zenodo.24372338 | 10.5281/zenodo.24023071 |
+| R3h | 10.5281/zenodo.24023074 | 10.5281/zenodo.24372341 | 10.5281/zenodo.24023073 |
+| R6 | 10.5281/zenodo.24109989 | 10.5281/zenodo.24372342 | 10.5281/zenodo.24109988 |
+| R7 | 10.5281/zenodo.24126449 | 10.5281/zenodo.24372343 | 10.5281/zenodo.24126448 |
+| R8b | 10.5281/zenodo.24156688 | 10.5281/zenodo.24372346 | 10.5281/zenodo.24156687 |
+| modern-v1 | 10.5281/zenodo.24371757 | 10.5281/zenodo.24372349 | 10.5281/zenodo.24371756 |
+| oldprint-v1 | 10.5281/zenodo.24371759 | 10.5281/zenodo.24372352 | 10.5281/zenodo.24371758 |
+
+Training records keep the exact version DOIs they used. The scripts (`zenodo_v2.py`, `hf_card_only.py`) are kept with the task records, outside this repository.

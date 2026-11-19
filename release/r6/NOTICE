@@ -84,12 +84,12 @@ Ben-Yehuda volunteers.
 Evaluation data (not used for training)
 ---------------------------------------
 
-The model was scored on 38 page transcriptions from Hebrew Wikisource
-(https://he.wikisource.org), licensed under the Creative Commons
-Attribution-ShareAlike licence (CC BY-SA), as adjudicated by HeOCR's human
-reviewers. They were used only to score the model after it was chosen,
-never for training, tuning or checkpoint selection. The model contains no
-Wikisource text.
+The model was compared, after it was chosen, on 38 development page
+transcriptions from Hebrew Wikisource (https://he.wikisource.org), licensed
+under the Creative Commons Attribution-ShareAlike licence (CC BY-SA), as
+adjudicated by HeOCR's human reviewers. They were never used for training,
+tuning or checkpoint selection. The model contains no Wikisource text. Its
+accuracy is not measured on a held-out set yet.
 
 No endorsement
 --------------

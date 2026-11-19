@@ -13,7 +13,7 @@ FILES = {"modern_v1": ["LICENSE", "NOTICE", "card_body.md", "huggingface.yaml", 
                          "oldprint_v1_training_run.json", "zenodo.yaml"]}
 
 
-DOIS = {"modern_v1": "10.5281/zenodo.24371757", "oldprint_v1": "10.5281/zenodo.24371759"}
+DOIS = {"modern_v1": "10.5281/zenodo.24372349", "oldprint_v1": "10.5281/zenodo.24372352"}  # v2 (held-out-only card)
 
 class ReleasePackages(unittest.TestCase):
     def test_files(self):

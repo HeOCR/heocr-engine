@@ -31,13 +31,7 @@ tags:
   - HeOCR
 model_type:
   - reading_order
-metrics:  # percent CER, hocrgen primary.v1, pipeline R4d + A1 + R3h (see the card body)
-  cer_seed101: 2.0
-  cer_heldout: 1.0
-  cer_eval_mixed_heldout: 1.7
-  cer_eval_typo_heldout: 0.9
-  cer_eval_layout_heldout: 12.4
-  cer_hocrgen_fixture: 13.0
+# No metrics: HeOCR reports figures only on registered held-out sets, and this model has none yet (see the card).
 datasets:
   - https://github.com/HeOCR/hocrsyngen/tree/bb14cd0/src/hocrsyngen/data/synthetic/texts
 # Zenodo communities, not part of the HTRMoPo schema; the deposit script reads them.

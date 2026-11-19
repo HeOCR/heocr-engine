@@ -1,6 +1,6 @@
 # HeOCR oldprint-v1: Hebrew old and rabbinic print recognition for Tesseract
 
-oldprint-v1 is a [Tesseract](https://github.com/tesseract-ocr/tesseract) language model (`.traineddata`) for old printed Hebrew in the square script: 19th- and early-20th-century books and rabbinic editions. HeOCR made it by continuing to train [HeOCR R7](https://doi.org/10.5281/zenodo.24126449), itself a fine-tune of Tesseract's own `heb` model from [tessdata_best](https://github.com/tesseract-ocr/tessdata_best), for one pass over 76,946 lines:
+oldprint-v1 is a [Tesseract](https://github.com/tesseract-ocr/tesseract) language model (`.traineddata`) for old printed Hebrew in the square script: 19th- and early-20th-century books and rabbinic editions. HeOCR made it by continuing to train [HeOCR R7](https://doi.org/10.5281/zenodo.24126448), itself a fine-tune of Tesseract's own `heb` model from [tessdata_best](https://github.com/tesseract-ocr/tessdata_best), for one pass over 76,946 lines:
 - 22,910 real scanned lines from 4 public-domain books (Internet Archive scans), labelled with the Project Ben-Yehuda transcription of the same edition;
 - 14,036 real scanned lines from 3 rabbinic editions (Internet Archive scans), labelled with public-domain Sefaria texts and Project Gutenberg ebook #43740;
 - 40,000 lines rendered from born-digital booklets of Israel's laws and regulations (Reshumot), labelled with the publisher's own text layer, replayed so that modern print is not lost.
@@ -18,7 +18,7 @@ No label is OCR output. It is the model that HeOCR's evaluation recommends for o
 | sha256 | `f8090760b5b02d09cf4ddb435e7a5e34089f6f17cde9cfb6c67fd06c6f17ec02` |
 | Model type | recognition (line-level LSTM, CTC); Tesseract does the page layout |
 | Format | Tesseract 4/5 LSTM `traineddata`, LSTM only (`--oem 1`; no legacy engine). Trained with Tesseract 5.5.3, built from its upstream tag |
-| Continued from | HeOCR R7 ([10.5281/zenodo.24126449](https://doi.org/10.5281/zenodo.24126449)), `heocr_r7.traineddata`, sha256 `95faab81fba6fe57f854f973c1ccad2b0d1059fb951f34b17277385ceea8b303` |
+| Continued from | HeOCR R7 ([10.5281/zenodo.24126448](https://doi.org/10.5281/zenodo.24126448)), `heocr_r7.traineddata`, sha256 `95faab81fba6fe57f854f973c1ccad2b0d1059fb951f34b17277385ceea8b303` |
 | Base model | tessdata_best `heb.traineddata` at [`e12c65a`](https://github.com/tesseract-ocr/tessdata_best/tree/e12c65a915945e4c28e237a9b52bc4a8f39a0cec) (Apache-2.0), sha256 `dbaa827aea6bc21215638447f17783a1004987c2d0bf5573d111fee397abdae5`, fine-tuned (modified) by HeOCR as R7 and then oldprint-v1 |
 | Character set | R7's, unchanged: stock `heb`'s plus the maqaf `־` and the en dash `–` |
 | Licence | Apache-2.0, Copyright (c) 2026 HeOCR maintainers (see LICENSE, NOTICE and NOTICE.r7) |
@@ -166,4 +166,4 @@ Report problems and questions as issues on [HeOCR/heocr-engine](https://github.c
 
 ## Citation
 
-Cite this model by its version DOI: [10.5281/zenodo.24371759](https://doi.org/10.5281/zenodo.24371759).
+Cite this model by its version DOI: [10.5281/zenodo.24372352](https://doi.org/10.5281/zenodo.24372352).

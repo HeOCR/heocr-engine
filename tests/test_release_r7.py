@@ -10,6 +10,7 @@ BASE_SHA = 'dbaa827aea6bc21215638447f17783a1004987c2d0bf5573d111fee397abdae5'
 STARTER_SHA = '8b9d798a456bd1d4cd8bdf71b3d7b9d7579cea6cbd51302accd57f521669b846'  # R6's starter, byte for byte
 MANIFEST_SHA = '53dd7f1a10929ad4a60020ad7f42be62f27ee905cb7e6cfb0e319c5b2f5db7ca'  # bynli_lines_v2
 R6_DOI = '10.5281/zenodo.24109989'
+R6_CONCEPT = '10.5281/zenodo.24109988'  # cards link concepts, which survive a deleted version
 NLI_CREDIT = 'From the collections of the National Library of Israel / מאוסף הספרייה הלאומית'
 # The wording decided for Internet Archive scans published without an explicit licence (hocrgen decision
 # 2026-11-10-open-release-and-clean-inputs.md, item 2; the F8f R7 hand-off's release notice).
@@ -58,8 +59,9 @@ class R7ReleaseFilesTests(unittest.TestCase):
         self.assertIn(BASE_SHA, notice)
         self.assertIn('modified version', notice)
         self.assertIn('Apache License, Version 2.0', notice)
-        self.assertIn('only to score', notice)
-        self.assertIn('never for training', notice)
+        self.assertIn('compared, after it was chosen', notice)
+        self.assertIn('not measured on a held-out set yet', notice)
+        self.assertIn('never used for training', notice)
         self.assertIn('No endorsement', notice)
         self.assertIn('None was digitized by Google', notice)
 
@@ -76,19 +78,31 @@ class R7ReleaseFilesTests(unittest.TestCase):
         card = read('card_body.md')
         self.assertIn('tesseract page.png out -l heocr_r7 --tessdata-dir DIR --psm 3', card)
         self.assertIn('tesseract line.png out -l heocr_r7 --tessdata-dir DIR --psm 13', card)
-        for needle in ('R7 supersedes nothing. R6 remains valid.', 'no measured page-level gain over R6',
-                       'Against R6: a tie.', 'No gain on the hardest pages.',
-                       '−0.0005 [−0.0072, +0.0061]', '−0.0168 [−0.0285, −0.0058]', '−0.0135 [−0.0273, +0.0004]',
-                       '+0.0108 [−0.0011, +0.0186]', '+0.0091 [−0.0041, +0.0246]', '0.2089', '0.2094',
-                       '1.567%', '2.056%', 'No text overlap with training.'):
+        for needle in ('R7 supersedes nothing. R6 remains valid.', 'It is not shown to be better than R6.',
+                       'No text overlap with training.'):
             with self.subTest(needle=needle):
                 self.assertIn(needle, card)
-        self.assertIn(f'https://doi.org/{R6_DOI}', card)  # R6 is named, not replaced
+        self.assertIn(f'https://doi.org/{R6_CONCEPT}', card)  # R6 is named, not replaced
+
+    def test_card_reports_no_dev_or_selection_figures(self):
+        # held-out figures only (maintainer, 2026-11-19): the E2d4c pages and the selection lines chose and
+        # compared R7, so no figure from them is shown as performance; R7 has no held-out score yet.
+        body = read('card_body.md')
+        self.assertIn('not measured on a held-out set yet', body.lower())
+        self.assertIn('No held-out score yet; HeOCR will score it once in a registered held-out run.', body)
+        evaluation = body[body.index('## Evaluation'):body.index('## Bias, risks and limitations')]
+        self.assertNotIn('%', evaluation)
+        self.assertIsNone(re.search(r'\b\d+\.\d{2,3}\b(?![0-9a-f])', evaluation.replace('5.5.3', '')))
+        outside_data = body[:body.index('### Training data')] + body[body.index('### Training procedure'):]
+        self.assertIsNone(re.search(r'\d+\.\d+\s*%', outside_data))  # data shares stay in Training data
+        for figure in ('0.226', '0.209', '0.473', '0.393', '0.2089', '0.2094', '0.016', '0.017', '1.567', '2.056'):
+            with self.subTest(figure=figure):
+                self.assertNotIn(figure, body)
 
     def test_card_cites_its_reserved_doi_and_links_no_pipeline_record(self):
         card = read('card_body.md')
         self.assertNotIn('<!-- DRAFT', card)
-        self.assertIn('[10.5281/zenodo.24126449](https://doi.org/10.5281/zenodo.24126449)', card)
+        self.assertIn('[10.5281/zenodo.24372343](https://doi.org/10.5281/zenodo.24372343)', card)
         citation = card.split('## Citation', 1)[1]
         self.assertNotIn(R6_DOI, citation)  # R7 cites its own DOI, once reserved (plan step 2)
         for doi in PIPELINE_DOIS:
@@ -172,7 +186,8 @@ class R7ReleaseFilesTests(unittest.TestCase):
         self.assertEqual(settings[settings.index('communities:') + 1:], ['  - heocr'])
         self.assertNotIn('ocr_models', '\n'.join(settings))
         self.assertNotIn('software_hints:', settings)
-        self.assertNotIn(R6_DOI, '\n'.join(settings))  # no relation to R6: see the comment in zenodo.yaml
+        self.assertNotIn(R6_DOI, '\n'.join(settings))
+        self.assertNotIn(R6_CONCEPT, '\n'.join(settings))  # no relation to R6: see the comment in zenodo.yaml
         self.assertIn('license: Apache-2.0', settings)
         first = (ROOT / 'release' / 'r3h' / 'zenodo.yaml').read_text(encoding='utf-8')
         authors = re.search(r'^authors:\n(?:  .*\n)+', first, re.M)[0]
