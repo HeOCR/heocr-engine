@@ -1,5 +1,7 @@
 # R3e: Bounded printed-line transfer diagnostic
 
+> Development / selection evidence; not a performance claim. Held-out results: https://heocr.github.io/benchmarks.html
+
 This is a small offline research receipt, not a production trainer, a public
 model release, or a real-document benchmark. The existing R3b recognizer is
 loaded locally and fine-tuned on newly authored synthetic lines. Original and

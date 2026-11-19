@@ -1,5 +1,7 @@
 # R3 — First trained recognizer
 
+> Development / selection evidence; not a performance claim. Held-out results: https://heocr.github.io/benchmarks.html
+
 GitHub milestone: `R3 - First trained recognizer`. Label: `roadmap:R3`.
 
 ## Objective

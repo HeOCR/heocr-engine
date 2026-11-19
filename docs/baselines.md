@@ -1,5 +1,7 @@
 # Baselines
 
+> Development / selection evidence; not a performance claim. Held-out results: https://heocr.github.io/benchmarks.html
+
 Both baselines run locally with user-supplied engines and models. Nothing is downloaded, and each prediction records executable and model hashes. The hashes help with provenance but do not guarantee identical results across machines or library versions. Neither baseline comes with an accuracy claim. Scoring happens in hocrgen, against two kinds of scored set: synthetic gold, and real pages with human-adjudicated references such as E2d3d; Tesseract pseudo-labels and silver text are dev signals only (planning decision 0012, which supersedes 0004).
 
 ## Tesseract

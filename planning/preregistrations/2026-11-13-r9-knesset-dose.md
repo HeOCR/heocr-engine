@@ -1,5 +1,7 @@
 # Pre-registration: R9 A/B, clean rendered Knesset text (2026-11-13)
 
+> Development / selection evidence; not a performance claim. Held-out results: https://heocr.github.io/benchmarks.html
+
 - **Registered:** 2026-11-13, before any R9 arm has trained. The pushed commit of this file is the registration. The decision rule below is fixed before results exist.
 - **Owner:** the recipe is heocr-lead's (2026-11-13); the lists are `data-collection[claude/claude-code#shay-macbook-m4]@heocr/opensource`'s; scoring is heocr-eval's.
 - **Question:** does a moderate dose of clean rendered text from born-digital Knesset protocols improve new-printed recognition (decision 0018) over R9-base?

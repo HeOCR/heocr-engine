@@ -1,5 +1,7 @@
 # R4 — Trained segmentation
 
+> Development / selection evidence; not a performance claim. Held-out results: https://heocr.github.io/benchmarks.html
+
 GitHub milestone: `R4 - Trained segmentation`. Label: `roadmap:R4`.
 
 ## Objective
