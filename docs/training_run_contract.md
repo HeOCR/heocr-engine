@@ -1,5 +1,7 @@
 # Training-run contract: `heocr_engine_training_run.v1`
 
+> Development / selection evidence; not a performance claim. Held-out results: https://heocr.github.io/benchmarks.html
+
 One JSON object per training run (a recognizer, a baseline segmenter with `task: "segmentation"`, or a reading-order model with `task: "reading_order"`), UTF-8, written without NaN or infinity by `heocr-engine train-kraken` or `heocr-engine train-kraken-seg`. Reading-order records are written from the run's evidence (see [Reading-order runs](#reading-order-runs)). It records what a model was trained on and how, so that a score can be traced to a model hash and the model to its data. It makes no accuracy claim, and it contains no local paths.
 
 ## Input: `hocrsyngen_line_annotations.v1`
