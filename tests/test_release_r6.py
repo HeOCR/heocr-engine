@@ -46,7 +46,7 @@ class R6ReleaseFilesTests(unittest.TestCase):
         self.assertIn('Apache License, Version 2.0', notice)
         self.assertIn('compared, after it was chosen', notice)
         self.assertIn('not measured on a held-out set yet', notice)
-        self.assertIn('never for training', notice)
+        self.assertIn('never used for training', notice)
 
     def test_card_usage_evaluation_and_no_pipeline_links(self):
         card = read('card_body.md')
