@@ -30,7 +30,7 @@ It is a research baseline. All of its evaluation is on synthetic pages; no revie
 | Step | Model | Record |
 |---|---|---|
 | Segmentation: baselines, line polygons, typed regions | R4d, `heocr-r4d-segmentation.safetensors` (`d32cd1a8…`) | [10.5281/zenodo.24023069](https://doi.org/10.5281/zenodo.24023069) |
-| Reading order: line order from each line's region type | A1, this model | [10.5281/zenodo.24372338](https://doi.org/10.5281/zenodo.24372338) |
+| Reading order: line order from each line's region type | A1, this model | [10.5281/zenodo.24395014](https://doi.org/10.5281/zenodo.24395014) |
 | Recognition | R3h, `heocr-r3h-recognition.safetensors` (`f76affa8…`) | [10.5281/zenodo.24023073](https://doi.org/10.5281/zenodo.24023073) |
 
 > **A1 needs heocr-engine.** kraken 7.0.2 cannot run A1 by itself, for two reasons:
@@ -162,4 +162,4 @@ Report problems and questions as issues on [HeOCR/heocr-engine](https://github.c
 
 ## Citation
 
-Cite this model by its version DOI, [10.5281/zenodo.24372338](https://doi.org/10.5281/zenodo.24372338). Never cite the concept DOI.
+Cite this model by its version DOI, [10.5281/zenodo.24395014](https://doi.org/10.5281/zenodo.24395014). Never cite the concept DOI.

@@ -477,4 +477,6 @@ The maintainer's rule is "we only produce metrics on held-out sets", and his go 
 | modern-v1 | 10.5281/zenodo.24371757 | 10.5281/zenodo.24372349 | 10.5281/zenodo.24371756 |
 | oldprint-v1 | 10.5281/zenodo.24371759 | 10.5281/zenodo.24372352 | 10.5281/zenodo.24371758 |
 
+**v3 (2026-11-20).** Three models got a third version, because their v2 cards carried claims measured on synthetic data (maintainer's rule: nothing reported on synthetic data stays public). The weights are unchanged; only README.md and, for modern-v1, NOTICE differ. A1: 10.5281/zenodo.24395014. modern-v1: 10.5281/zenodo.24395010. oldprint-v1: 10.5281/zenodo.24395013. Concept DOIs are unchanged.
+
 Training records keep the exact version DOIs they used. The scripts (`zenodo_v2.py`, `hf_card_only.py`) are kept with the task records, outside this repository.
