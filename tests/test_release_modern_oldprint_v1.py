@@ -13,7 +13,7 @@ FILES = {"modern_v1": ["LICENSE", "NOTICE", "card_body.md", "huggingface.yaml", 
                          "oldprint_v1_training_run.json", "zenodo.yaml"]}
 
 
-DOIS = {"modern_v1": "10.5281/zenodo.24395010", "oldprint_v1": "10.5281/zenodo.24395013"}  # v3 (no synthetic-data claim, 2026-11-20)
+DOIS = {"modern_v1": "10.5281/zenodo.24395097", "oldprint_v1": "10.5281/zenodo.24395013"}  # v3 (no synthetic-data claim, 2026-11-20)
 
 # modern-v1's registered held-out figures (RC2 gate-rc2-synth-r2, PS-v1 print_scan_PS-v1_2026-11-18; benchmarks/results.json)
 HELD_OUT_SCORED = {"modern_v1": {"14.1", "14.0", "0.08", "0.74", "1.28"}}  # PS-v1 only: no synthetic figure (Shay, 2026-11-20)
