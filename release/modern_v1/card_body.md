@@ -7,7 +7,7 @@ modern-v1 is a [Tesseract](https://github.com/tesseract-ocr/tesseract) language 
 
 No label is OCR output. It is the model that HeOCR's evaluation chose as the default for modern print in [heocr](https://github.com/HeOCR/heocr), the HeOCR document pipeline. (In the experiment records it is office-print v0, arm A, snapshot `snap_0160m_222700`.)
 
-**Performance: not measured on a held-out set yet.** No held-out score yet; HeOCR will score it once in a registered held-out run. HeOCR reports accuracy only on held-out sets; the result will be added to this card in a new version.
+**Performance: not measured on a held-out set of modern and office print yet.** HeOCR will score it once in a registered held-out run. The one held-out result so far is a pointed-print test: it does not output niqqud (see [Bias, risks and limitations](#bias-risks-and-limitations)). HeOCR reports accuracy only on held-out sets; the result will be added to this card in a new version.
 
 - **How it was chosen:** first, its checkpoint: the lowest line CER on `office_val` (synthetic crops in a held-out face, from held-out booklets) among 11 candidates, the 9 snapshots, the training-best checkpoint and the final model. Then HeOCR's evaluation chose it as heocr's default for modern print in a pre-registered default-model study (2026-11-19). The study compared it with stock `heb` and the other arm, inside heocr, on HeOCR's open synthetic document sets, and on real-print development line sets. These sets made the choice, so no figure from them is reported here.
 - **Known cost: some numbers stock read are now lost,** mostly outline labels such as `2.1.3`. heocr's own number handling is meant to catch these; it is not part of this model. Check numbers that matter.
@@ -95,7 +95,7 @@ The word list is tessdata_best's own, unchanged: the model's `lstm-word-dawg` ha
 
 ## Evaluation
 
-**Not measured on a held-out set yet.** HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning. modern-v1 has no such score yet:
+**Not measured on a held-out set of its own domain yet.** HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning. The one held-out result so far is the pointed-print test NQ1, under [Bias, risks and limitations](#bias-risks-and-limitations). modern-v1 has no such score yet:
 
 - **What was used to choose it is not reported as performance.** The development, tuning and selection sets behind the choice (`office_val`, HeOCR's open synthetic document sets, and the real-print development line sets) are named in the experiment records: hocrsyngen `experiments/office_print_v0/RESULTS.md` and evaluation's default-model study report.
 - **Next:** HeOCR's registered held-out run of the default model, against stock tessdata_best `heb` (the base), shown beside it and read the same way. Its result will be added in a new version of this card.
@@ -103,12 +103,12 @@ The word list is tessdata_best's own, unchanged: the model's `lstm-word-dawg` ha
 
 ## Bias, risks and limitations
 
-- **Not measured on a held-out set yet.** See [Evaluation](#evaluation).
+- **Not measured on a held-out set of its own domain yet.** See [Evaluation](#evaluation).
 - **Lost numbers.** On synthetic development scans it loses some numbers that stock reads, mostly outline labels. Check numbers that matter.
 - **Synthetic share.** 46% of its lines are synthetic office pages in 12 open faces. Real office documents set in proprietary faces (Arial, David, Times New Roman and others) were never trained on; it was developed only against open look-alike faces (Arimo, Cousine, Tinos).
 - **One source of real text.** All its real and rendered lines are Reshumot laws and regulations. Other registers may gain less.
 - **Gate bias.** The training gates keep what stays legible, so the heaviest photocopy damage drawn is under-represented (about 20% photocopy against 25% planned).
-- **Pointed text comes out unpointed.** HeOCR's held-out pointed-print run found that it writes no niqqud. Read its output as unpointed text.
+- **Doesn't output niqqud (vowel points).** On HeOCR's held-out pointed-print test (NQ1: 25 pages of modern pointed print in open fonts, typeset by HeOCR, printed and photographed by phone; registered and scored once), it wrote no vowel marks (0 of about 54,000 letters), so pointed text comes out unpointed. Letters are read as well as by stock `heb`. Stock `heb` writes some marks; use it if you need points. The set is small and covers modern print only; the intervals are wide.
 - **Character set.** It cannot write `־ ׳ ״ – — ―`, or Latin letters.
 - **Layout is Tesseract's,** or heocr's when used inside heocr. The model changes only the line recognizer.
 - **One training run.** Training-seed variation is not measured.
