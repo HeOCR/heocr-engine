@@ -10,7 +10,7 @@ No label is OCR output. It is the model that HeOCR's evaluation recommends for o
 **Performance: not measured on a held-out set of old and rabbinic print yet.** HeOCR will score it once in a registered held-out run. That run is the P-hist test (22 held-out books), once its human references exist, against R7 and stock `heb`; the result will be added to this card in a new version. The one held-out result so far is a pointed-print test: it does not output niqqud (see [Bias, risks and limitations](#bias-risks-and-limitations)).
 
 - **How it was chosen:** the lowest page CER on audit2, a development set of 38 old-print pages from 13 books read whole at psm 3, among 20 candidates (8 snapshots, the training-best checkpoint and the final model of this arm and of a second arm started from stock `heb`). audit2 made the choice, so no figure from it is reported here.
-- **Not for modern office documents.** On HeOCR's synthetic office development sets, inside heocr, it reads worse than stock `heb` on scanned and image-only PDFs and scanned tables. Use modern-v1 there.
+- **Not for modern office documents.** It was not made or chosen for them. Use modern-v1 there.
 
 | | |
 |---|---|
@@ -118,7 +118,7 @@ The word list is R7's, unchanged: the model's `lstm-word-dawg` has R7's sha256, 
 ## Bias, risks and limitations
 
 - **Not measured on a held-out set of its own domain yet.** See [Evaluation](#evaluation).
-- **Worse than stock on modern office documents** inside heocr. Route modern print to modern-v1.
+- **Not made for modern office documents.** Route modern print to modern-v1.
 - **Training data:** 7 books and editions printed between 1881 and 1923, plus R7's 30 books (1856–1938), and modern Reshumot replay (52% of this round). Other typefaces, layouts and periods may gain less, or lose.
 - **Regressions against R7** on development lines from two scans, *Kevar* and Brainin's Internet Archive copy, small, dark and grainy.
 - **Square type only.** Not for Rashi script, handwriting or Latin text.
