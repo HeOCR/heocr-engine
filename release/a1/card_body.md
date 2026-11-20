@@ -132,7 +132,7 @@ All synthetic. Nothing was scraped, and no real document or third-party text was
 - **Long archive cards:**
   - On the fixture, some long cards are still out of order. In each, the sixth and lowest body line is read after the first label.
   - Six-body-line cards are rare in training: 18 of 1,199 cards.
-- **It depends on R4d's region types.** A wrong region tag gives a wrong class. Tagging matched the gold on the development batches checked, but those are synthetic.
+- **It depends on R4d's region types.** A wrong region tag gives a wrong class.
 - **The synthetic gap.** Only hocrsyngen's templates were seen in training, so real documents can have orders it never learned.
 - **It needs heocr-engine** with kraken 7.0.2 (see above).
 

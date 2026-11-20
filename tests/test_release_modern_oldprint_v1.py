@@ -16,10 +16,7 @@ FILES = {"modern_v1": ["LICENSE", "NOTICE", "card_body.md", "huggingface.yaml", 
 DOIS = {"modern_v1": "10.5281/zenodo.24372349", "oldprint_v1": "10.5281/zenodo.24372352"}  # v2 (held-out-only card)
 
 # modern-v1's registered held-out figures (RC2 gate-rc2-synth-r2, PS-v1 print_scan_PS-v1_2026-11-18; benchmarks/results.json)
-HELD_OUT_SCORED = {"modern_v1": {"1.3", "3.3", "2.01", "2.27", "1.75", "5.2", "22.7", "17.50", "19.58", "15.46",
-                                 "0.13", "0.19", "0.06", "0.10", "0.03", "0.09", "0.31", "0.23", "0.39",
-                                 "0.4", "1.4", "1.05", "1.23", "0.87", "0.5", "2.2", "1.70", "2.11", "1.30",
-                                 "14.1", "14.0", "0.08", "0.74", "1.28"}}
+HELD_OUT_SCORED = {"modern_v1": {"14.1", "14.0", "0.08", "0.74", "1.28"}}  # PS-v1 only: no synthetic figure (Shay, 2026-11-20)
 
 
 class ReleasePackages(unittest.TestCase):
@@ -53,10 +50,6 @@ class ReleasePackages(unittest.TestCase):
                 # them, and the generated-document gain never appears without the real-photo result beside it
                 figures = set(re.findall(r"\d+\.\d+", evaluation.replace("0.2.0rc1", "")))
                 self.assertLessEqual(figures, HELD_OUT_SCORED[model], figures - HELD_OUT_SCORED[model])
-                for part in (body[:body.index("## Uses")], evaluation):
-                    if "RC2" in part:
-                        self.assertIn("PS-v1", part)
-                        self.assertIn("no gain", part)
                 self.assertIn("+0.08 points", body)
             else:
                 self.assertRegex(body.lower(), r"not measured on a held-out set (of [a-z ]+ )?yet")

@@ -61,7 +61,7 @@ On 2026-11-06 the maintainer approved the three model cards as they stand on mai
 |---|---|
 | `release/r3h/card_body.md` | `575ef80d447af31884d6f38996ff8625f2849be23863e7bf8ba60c5941dcfd05` |
 | `release/r4d/card_body.md` | `08d7d20c9b99650a5592e9e47f68d8f5b66755029ac61191fe9347e34780215e` |
-| `release/a1/card_body.md` | `373612910f839d112143c8618b620f24af682ee56fe0e502d9cb4933e16cff1c` |
+| `release/a1/card_body.md` | `cf631b69427bad05f83e0fff60f12db054487a7cab22cdc014dbccb1b860d178` |
 
 In a separate approval the same day, the maintainer approved the three NOTICE files. That decides item 4's NOTICE text. The approval came with one change, a grammar fix in R4d's NOTICE: it names one corpus, so "The corpus is dedicated" replaces "The corpora are dedicated". The approved files, after that fix, are:
 
@@ -119,3 +119,5 @@ The maintainer decided the publishing accounts on 2026-11-06:
 - **Zenodo creators:** Shay Palachy Affek, as a person (with his ORCID iD, if he has one), and "HeOCR maintainers", as an organisation.
 
 How this is carried out, and the tokens he creates and keeps outside every repository, are in `release/README.md` ("Before step 1" and the plan for item 8). Item 8 stays open: each publishing action gets its own go-ahead.
+
+**Amendment (2026-11-20):** the A1 card lost one sentence reporting tagging on synthetic development batches, under Shay's rule that nothing reported on synthetic data stays public. New card pin `cf631b69427bad05f83e0fff60f12db054487a7cab22cdc014dbccb1b860d178`; sent to Shay for his review with the publish question.
