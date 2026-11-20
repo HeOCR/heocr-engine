@@ -35,7 +35,7 @@ No label is OCR output. It is the model that HeOCR's evaluation chose as the def
 
 - **Old and rabbinic print.** Use [oldprint-v1](#related-models).
 - **Handwriting,** Rashi script and other non-square scripts. None was trained.
-- **Niqqud (vowel points) and cantillation.** The labels have none, and pointed print comes out unpointed: it writes no points at all.
+- **Niqqud (vowel points) and cantillation.** The labels have none, and pointed print comes out unpointed (see [Bias, risks and limitations](#bias-risks-and-limitations)).
 - **Text it cannot write.** Its character set is stock `heb`'s: it writes no maqaf `־`, geresh `׳`, gershayim `״`, en dash `–`, em dash `—` or `―`. Training labels with `–`, `—` or `―` were written `-`.
 - **Unsupervised transcription.** Check the output, above all numbers.
 
@@ -108,7 +108,7 @@ The word list is tessdata_best's own, unchanged: the model's `lstm-word-dawg` ha
 - **Synthetic share.** 46% of its lines are synthetic office pages in 12 open faces. Real office documents set in proprietary faces (Arial, David, Times New Roman and others) were never trained on; it was developed only against open look-alike faces (Arimo, Cousine, Tinos).
 - **One source of real text.** All its real and rendered lines are Reshumot laws and regulations. Other registers may gain less.
 - **Gate bias.** The training gates keep what stays legible, so the heaviest photocopy damage drawn is under-represented (about 20% photocopy against 25% planned).
-- **Doesn't output niqqud (vowel points).** On HeOCR's held-out pointed-print test (NQ1: 25 pages of modern pointed print in open fonts, typeset by HeOCR, printed and photographed by phone; registered and scored once), it wrote no vowel marks (0 of about 54,000 letters), so pointed text comes out unpointed. Letters are read as well as by stock `heb`. Stock `heb` writes some marks; use it if you need points. The set is small and covers modern print only; the intervals are wide.
+- **Does not output niqqud (vowel points).** On NQ1, HeOCR's held-out pointed-print test (25 pages of modern pointed Hebrew: poetry, Tanakh and nakdan-pointed prose in open fonts, printed and photographed by phone, 101 photos; registered before printing and scored once, 2026-11-20), read through heocr, it wrote no marks: 0 in 53,730 Hebrew letters, so pointed text comes out unpointed. Stock Tesseract `heb` writes some marks (it found about a quarter of them); no reader HeOCR tested reads niqqud reliably. Pointed-text support is planned. On the letters alone it matches stock `heb` inside heocr. The set is modern pointed print in open fonts and phone photos, not old pointed books.
 - **Character set.** It cannot write `־ ׳ ״ – — ―`, or Latin letters.
 - **Layout is Tesseract's,** or heocr's when used inside heocr. The model changes only the line recognizer.
 - **One training run.** Training-seed variation is not measured.
