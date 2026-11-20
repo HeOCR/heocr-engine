@@ -82,7 +82,7 @@ class R7ReleaseFilesTests(unittest.TestCase):
                        'No text overlap with training.'):
             with self.subTest(needle=needle):
                 self.assertIn(needle, card)
-        self.assertIn(f'https://doi.org/{R6_CONCEPT}', card)  # R6 is named, not replaced
+        self.assertIn(f'former DOI `{R6_CONCEPT}`', card)  # R6 is named, not replaced
 
     def test_card_reports_no_dev_or_selection_figures(self):
         # held-out figures only (maintainer, 2026-11-19): the E2d4c pages and the selection lines chose and
@@ -99,12 +99,12 @@ class R7ReleaseFilesTests(unittest.TestCase):
             with self.subTest(figure=figure):
                 self.assertNotIn(figure, body)
 
-    def test_card_cites_its_reserved_doi_and_links_no_pipeline_record(self):
+    def test_card_preserves_its_former_version_doi(self):
         card = read('card_body.md')
         self.assertNotIn('<!-- DRAFT', card)
-        self.assertIn('[10.5281/zenodo.24372343](https://doi.org/10.5281/zenodo.24372343)', card)
-        citation = card.split('## Citation', 1)[1]
-        self.assertNotIn(R6_DOI, citation)  # R7 cites its own DOI, once reserved (plan step 2)
+        self.assertIn('Former Zenodo version DOI: `10.5281/zenodo.24372343`.', card)
+        citation = card.split('## Archive reference', 1)[1]
+        self.assertNotIn(R6_DOI, citation)  # R7 preserves its own former DOI
         for doi in PIPELINE_DOIS:
             self.assertNotIn(doi, card)
 

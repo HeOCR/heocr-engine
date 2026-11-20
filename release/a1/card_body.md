@@ -1,5 +1,7 @@
 # HeOCR A1: Hebrew document line reading order (kraken)
 
+**Publication status.** This model is unpublished. HeOCR will release models or an OCR pipeline after a registered real held-out comparison shows that it beats the state of the art on at least one document type.
+
 A1 is a [kraken](https://kraken.re) reading-order model. It orders the text lines of a modern Hebrew document page from each line's position and its region type: title, body, stamp, signature, footer, margin, identifier or table cell. HeOCR trained it from scratch on synthetic pages only.
 
 A1 is the reading-order step of HeOCR's three-model pipeline:
@@ -7,11 +9,11 @@ A1 is the reading-order step of HeOCR's three-model pipeline:
 - **A1** puts them in reading order;
 - **R3h** reads them.
 
-The three are released together, as separate records that link to each other (see [The pipeline](#the-pipeline)).
+The three models are designed to work together (see [The pipeline](#the-pipeline)).
 
 It is a research baseline. All of its evaluation is on synthetic pages; no reviewed evaluation on real scans exists yet.
 
-**Performance: not measured on a held-out set yet.** HeOCR reports accuracy only on held-out sets, and this model has not yet been scored on one. No held-out score yet; HeOCR will score it once in a registered held-out run. Its result will be added to this card in a new version.
+**Performance: not measured on a held-out set yet.** HeOCR reports accuracy only on held-out sets, and this model has not yet been scored on one. No held-out score yet; HeOCR will score it once in a registered held-out run. That comparison will inform the publication decision.
 
 - **How it was chosen:** its design (region-type classes, stamp-first tagging) was chosen on hocrgen's fixture batch, and training kept the checkpoint with the best order on its own validation pages (see [Training procedure](#training-procedure-and-hyperparameters)). It was then compared with kraken's heuristic order on synthetic development batches. These sets were used to choose and compare it, so they are not reported here as its performance.
 
@@ -29,9 +31,9 @@ It is a research baseline. All of its evaluation is on synthetic pages; no revie
 
 | Step | Model | Record |
 |---|---|---|
-| Segmentation: baselines, line polygons, typed regions | R4d, `heocr-r4d-segmentation.safetensors` (`d32cd1a8…`) | [10.5281/zenodo.24023069](https://doi.org/10.5281/zenodo.24023069) |
-| Reading order: line order from each line's region type | A1, this model | [10.5281/zenodo.24395014](https://doi.org/10.5281/zenodo.24395014) |
-| Recognition | R3h, `heocr-r3h-recognition.safetensors` (`f76affa8…`) | [10.5281/zenodo.24023073](https://doi.org/10.5281/zenodo.24023073) |
+| Segmentation: baselines, line polygons, typed regions | R4d, `heocr-r4d-segmentation.safetensors` (`d32cd1a8…`) | `10.5281/zenodo.24023069` |
+| Reading order: line order from each line's region type | A1, this model | `10.5281/zenodo.24395014` |
+| Recognition | R3h, `heocr-r3h-recognition.safetensors` (`f76affa8…`) | `10.5281/zenodo.24023073` |
 
 > **A1 needs heocr-engine.** kraken 7.0.2 cannot run A1 by itself, for two reasons:
 > - its neural reading order passes the segmenter's line types to A1, while A1 was trained on region types. kraken rejects the class-mapping mismatch;
@@ -69,7 +71,7 @@ On the development batches checked, the predicted type matched the gold region o
 - **kraken's own pipeline** in version 7.0.2 (see below).
 - **Real scans,** and layouts unlike hocrsyngen's templates.
 
-## How to get started with the model
+## Local use with an authorized copy
 
 Use A1 through heocr-engine's in-process kraken stage. In a checkout of [heocr-engine](https://github.com/HeOCR/heocr-engine), run `pip install '.[kraken]'`, then:
 
@@ -124,8 +126,7 @@ All synthetic. Nothing was scraped, and no real document or third-party text was
 
 - **Development sets, not reported as performance.** HeOCR compared the pipeline on six synthetic hocrsyngen batches: seed-101, a long-running benchmark read across rounds; the batches named held-out, eval-mixed-heldout, eval-typo-heldout and eval-layout-heldout, which were kept out of the training text but are not registered and were read during the rounds; and hocrgen's fixture batch, on which A1's design was tuned. Despite some of their names, none is a registered held-out set, so their figures are not given here. They are named in heocr-engine's `docs/baselines.md`.
 - **All evaluation is synthetic.** No reviewed real-page evaluation exists.
-- **What the development comparison showed, in words:** with R4d's lines, A1 put pages in order far more often than kraken's heuristic, which reads separated stamp lines too early. On the fixture's archive cards, some long cards were still out of order (see [Bias, risks and limitations](#bias-risks-and-limitations)).
-- **Next:** a registered held-out run of the R4d + A1 + R3h pipeline, with kraken's default segmenter `blla` beside it and read the same way. Its result will be added in a new version of this card.
+- **Next:** a registered held-out run of the R4d + A1 + R3h pipeline, with kraken's default segmenter `blla` beside it and read the same way. That comparison will inform the publication decision.
 
 ## Bias, risks and limitations
 
@@ -153,13 +154,13 @@ All synthetic. Nothing was scraped, and no real document or third-party text was
 | Training text | `a3f2f0db1bf48d8cdd618579af42ca36710cadf81cdc4d5e89d2dc6c192e6611` (S10b) and `e4384322e167f81252f28703206f180d1757e789c3ef7bd97484eef6978b1cf4` (S10b + S13a) |
 | Data preparation | heocr-engine `5294ca5` `prepare-kraken-data --task segmentation`, each region name as its own line type |
 | Training | ketos 7.0.2 `rotrain`, 2026-11-04 |
-| Training record | `a1_training_run.json` (`heocr_engine_training_run.v1`), in this deposit |
+| Training record | `a1_training_run.json` (`heocr_engine_training_run.v1`), in this directory |
 | Development scoring | hocrgen `2d3efb0` and `c8fb74e`; heocr-engine `4e09858` and `660e5a4` (order), `55b0f7d` (end to end with R3h) |
 
 ## Contact
 
 Report problems and questions as issues on [HeOCR/heocr-engine](https://github.com/HeOCR/heocr-engine/issues).
 
-## Citation
+## Archive reference
 
-Cite this model by its version DOI, [10.5281/zenodo.24395014](https://doi.org/10.5281/zenodo.24395014). Never cite the concept DOI.
+Former Zenodo version DOI: `10.5281/zenodo.24395014`.

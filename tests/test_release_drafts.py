@@ -103,11 +103,15 @@ class ReleaseDraftTests(unittest.TestCase):
                 self.assertTrue((ROOT / basis).is_file())
                 self.assertNotRegex(text, LOCAL_PATH)
 
-    def test_approved_files_match_their_pins(self):
-        # decision 0011's note pins the maintainer-approved cards and NOTICEs; an edit needs his review again
-        note = (ROOT / 'planning' / 'decisions' / '0011-first-release-adds-r4d-and-a1.md').read_text(encoding='utf-8')
-        pins = dict(re.findall(r'^\| `(release/[a-z0-9]+/(?:card_body\.md|NOTICE))` \| `([0-9a-f]{64})`', note, re.M))
-        self.assertEqual(len(pins), 6)
+    def test_release_hold_card_pins_and_prior_notice_pins(self):
+        decisions = ROOT / 'planning' / 'decisions'
+        previous = (decisions / '0011-first-release-adds-r4d-and-a1.md').read_text(encoding='utf-8')
+        hold = (decisions / '0027-model-release-hold.md').read_text(encoding='utf-8')
+        notice_pins = dict(re.findall(r'^\| `(release/[a-z0-9]+/NOTICE)` \| `([0-9a-f]{64})`', previous, re.M))
+        card_pins = dict(re.findall(r'^\| `(release/[a-z0-9]+/card_body\.md)` \| `([0-9a-f]{64})`', hold, re.M))
+        self.assertEqual(set(notice_pins), {f'release/{model}/NOTICE' for model in MODELS})
+        self.assertEqual(set(card_pins), {f'release/{model}/card_body.md' for model in MODELS})
+        pins = notice_pins | card_pins
         for path, sha in pins.items():
             with self.subTest(path=path):
                 self.assertEqual(hashlib.sha256((ROOT / path).read_bytes()).hexdigest(), sha)

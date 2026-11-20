@@ -41,7 +41,7 @@ Proposals are drafts for the maintainer's decision. They decide nothing; an acce
 | [0011](decisions/0011-first-release-adds-r4d-and-a1.md) | The first release is R3h + R4d + A1 under 0010's terms, after the R3h + `blla` scores; supersedes 0010's scope and, for R4d and A1, 0008's licence and publication clauses |
 | [0012](decisions/0012-real-page-scored-sets.md) | Real pages with human-adjudicated hocrgen references (e.g. E2d3d) are a scored set beside synthetic gold; pseudo-labels and silver text are dev signals only; supersedes 0004 |
 | [0013](decisions/0013-fine-tune-project-recognizers.md) | A recognizer may be fine-tuned from a recognizer heocr-engine trained, pinned by model and record hash; amends 0007 for recognizers; licence and publication unchanged |
-| [0014](decisions/0014-open-release-always.md) | Every trained model is released openly; no licence-tainted inputs |
+| [0014](decisions/0014-open-release-always.md) | Every trained model is released openly; no licence-tainted inputs. The publication policy is superseded by 0027. |
 | [0015](decisions/0015-legal-strategy.md) | Training inputs follow HeOCR's legal strategy for public-domain scans |
 | [0016](decisions/0016-weights-trained-on-wikisource-transcriptions.md) | Weights trained on Hebrew Wikisource transcriptions of public-domain works stay Apache-2.0, with attribution |
 | [0017](decisions/0017-domain-separated-evaluation.md) | Separate evaluation sets per kind of Hebrew document, with character, word, line and page measures |
@@ -52,3 +52,4 @@ Proposals are drafts for the maintainer's decision. They decide nothing; an acce
 | [0022](decisions/0022-htext-releases-by-licence.md) | htext ships one release per licence: a CC0 core (PD, CC0, §6 texts), then CC BY and CC BY-SA supplements; NC and ND text in none; no mixing |
 | [0025](decisions/0025-uc-w-data-split.md) | UC-W uses separate facility groups for the sealed benchmark, calibration and training. Private training components may supplement releasable data. Amends [0024](decisions/0024-use-case-benchmarks-modern-print.md). |
 | [0026](decisions/0026-uc-w-private-training-infrastructure.md) | UC-W training inputs and labels may use private project infrastructure. Benchmark and calibration stay sealed and local. Amends [0025](decisions/0025-uc-w-data-split.md). |
+| [0027](decisions/0027-model-release-hold.md) | Model and pipeline publication stays on hold pending a state-of-the-art result on a registered real held-out document type. |
