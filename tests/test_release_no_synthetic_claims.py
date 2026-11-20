@@ -13,7 +13,8 @@ FORBIDDEN = [r"\bRC2\b", r"generated documents?\b.*\b(error|missed|gain|lower|fe
 
 class NoSyntheticClaims(unittest.TestCase):
     def test_cards(self):
-        for card in sorted(RELEASE.glob("*/card_body.md")):
+        # cards and every NOTICE: heocr bundles NOTICE files in its wheel (pipeline, 2026-11-20)
+        for card in sorted([*RELEASE.glob("*/card_body.md"), *RELEASE.glob("*/NOTICE*")]):
             text = card.read_text(encoding="utf-8")
             for pat in FORBIDDEN:
                 with self.subTest(card=card.parent.name, pattern=pat):
