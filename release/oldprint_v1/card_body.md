@@ -36,7 +36,7 @@ No label is OCR output. It is the model that HeOCR's evaluation recommends for o
 - **Modern office documents, forms and tables.** Use [modern-v1](#related-models).
 - **Rashi script** and other non-square scripts. Every training line is square type.
 - **Handwriting.**
-- **Niqqud (vowel points) and cantillation.** The labels have none.
+- **Niqqud (vowel points) and cantillation.** The labels have none, and pointed print comes out unpointed: it writes almost no points.
 - **Text it cannot write:** geresh `׳`, gershayim `״`, the em dash `—` and Latin letters. Training labels wrote `׳ ״` as `' "` and `—` as `–`.
 - **Unsupervised transcription.** Check the output.
 
@@ -122,7 +122,7 @@ The word list is R7's, unchanged: the model's `lstm-word-dawg` has R7's sha256, 
 - **Training data:** 7 books and editions printed between 1881 and 1923, plus R7's 30 books (1856–1938), and modern Reshumot replay (52% of this round). Other typefaces, layouts and periods may gain less, or lose.
 - **Regressions against R7** on development lines from two scans, *Kevar* and Brainin's Internet Archive copy, small, dark and grainy.
 - **Square type only.** Not for Rashi script, handwriting or Latin text.
-- **No niqqud training.**
+- **No niqqud training, so pointed text comes out unpointed.** HeOCR's held-out pointed-print run found that it writes almost no niqqud. Read its output as unpointed text.
 - **Edition spelling.** The text sources sometimes modernise or vary the spelling of the print, and the labels carry those variants.
 - **Layout is Tesseract's,** or heocr's when used inside heocr.
 - **One training run.** Training-seed variation is not measured.
