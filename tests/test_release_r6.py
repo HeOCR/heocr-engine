@@ -52,9 +52,9 @@ class R6ReleaseFilesTests(unittest.TestCase):
         card = read('card_body.md')
         self.assertIn('tesseract page.png out -l heocr_r6 --tessdata-dir DIR --psm 3', card)
         self.assertIn('tesseract line.png out -l heocr_r6 --tessdata-dir DIR --psm 13', card)
-        self.assertIn('no gain on the hardest development pages', card)
+        self.assertIn('Review transcription on difficult scans.', card)
         self.assertNotIn('<!-- DRAFT', card)
-        self.assertIn('[10.5281/zenodo.24372342](https://doi.org/10.5281/zenodo.24372342)', card)
+        self.assertIn('Former Zenodo version DOI: `10.5281/zenodo.24372342`.', card)
         for doi in PIPELINE_DOIS:
             self.assertNotIn(doi, card)
 

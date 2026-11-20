@@ -1,4 +1,4 @@
-"""The modern-v1 and oldprint-v1 release packages: files, pins and hygiene (drafts; no DOI yet)."""
+"""Files, artifact pins and publication hygiene for modern-v1 and oldprint-v1."""
 import json
 import re
 from pathlib import Path
@@ -13,10 +13,7 @@ FILES = {"modern_v1": ["LICENSE", "NOTICE", "card_body.md", "huggingface.yaml", 
                          "oldprint_v1_training_run.json", "zenodo.yaml"]}
 
 
-DOIS = {"modern_v1": "10.5281/zenodo.24395097", "oldprint_v1": "10.5281/zenodo.24395013"}  # v3 (no synthetic-data claim, 2026-11-20)
-
-# modern-v1's registered held-out figures (RC2 gate-rc2-synth-r2, PS-v1 print_scan_PS-v1_2026-11-18; benchmarks/results.json)
-HELD_OUT_SCORED = {"modern_v1": {"14.1", "14.0", "0.08", "0.74", "1.28"}}  # PS-v1 only: no synthetic figure (Shay, 2026-11-20)
+DOIS = {"modern_v1": "10.5281/zenodo.24395097", "oldprint_v1": "10.5281/zenodo.24395013"}
 
 
 class ReleasePackages(unittest.TestCase):
@@ -41,26 +38,20 @@ class ReleasePackages(unittest.TestCase):
             record = json.loads((folder / f"{model}_training_run.json").read_text(encoding="utf-8"))
             self.assertFalse(record["model_licence"]["published"])
             self.assertNotIn("DOI-TO-BE-RESERVED", (folder / "card_body.md").read_text(encoding="utf-8"))
-            self.assertIn(f"Cite this model by its version DOI: [{DOIS[model]}](https://doi.org/{DOIS[model]}).",
-                          (folder / "card_body.md").read_text(encoding="utf-8"))
             body = (folder / "card_body.md").read_text(encoding="utf-8")
-            evaluation = body[body.index("## Evaluation"):body.index("## Bias, risks and limitations")]
-            if model in HELD_OUT_SCORED:
-                # registered held-out runs only (RC2, PS-v1, NQ1; eval 2026-11-20): every figure in Evaluation is one of
-                # them, and the generated-document gain never appears without the real-photo result beside it
-                figures = set(re.findall(r"\d+\.\d+", evaluation.replace("0.2.0rc1", "")))
-                self.assertLessEqual(figures, HELD_OUT_SCORED[model], figures - HELD_OUT_SCORED[model])
-                self.assertIn("+0.08 points", body)
-            else:
+            self.assertIn(f"Former Zenodo version DOI: `{DOIS[model]}`.", body)
+            evaluation, limitations = body.split("## Evaluation", 1)[1].split("## Bias, risks and limitations", 1)
+            self.assertNotIn("%", evaluation)
+            self.assertIsNone(re.search(r"\b\d+\.\d{2,3}\b(?![0-9a-f])", evaluation))
+            if model == "oldprint_v1":
                 self.assertRegex(body.lower(), r"not measured on a held-out set (of [a-z ]+ )?yet")
-                self.assertIn("HeOCR will score it once in a registered held-out run.", body)
-                # held-out figures only (maintainer, 2026-11-19): no dev, tuning or selection figure as performance
-                self.assertNotIn("%", evaluation)
-                self.assertIsNone(re.search(r"\b\d+\.\d{2,3}\b(?![0-9a-f])", evaluation.replace("5.5.3", "")))
+            else:
+                self.assertIn("The release criterion remains open.", evaluation)
             outside_data = body[:body.index("### Training data")] + body[body.index("### Training procedure"):]
-            if model in HELD_OUT_SCORED:
-                outside_data = outside_data.replace(evaluation, "")  # Evaluation is checked against the held-out figures
-            self.assertIsNone(re.search(r"\d+\.\d+\s*%", outside_data))  # data shares are whole percents
+            self.assertIsNone(re.search(r"\d+\.\d+\s*%", outside_data))
+            limitations = limitations.split("## Related models", 1)[0]
+            for prior_outcome in ("+0.08 points", "53,730 Hebrew letters", "51,687 Hebrew letters"):
+                self.assertNotIn(prior_outcome, limitations)
 
     def test_no_local_paths(self):
         for model in PINS:

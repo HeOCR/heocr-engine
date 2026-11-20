@@ -1,6 +1,8 @@
 # HeOCR oldprint-v1: Hebrew old and rabbinic print recognition for Tesseract
 
-oldprint-v1 is a [Tesseract](https://github.com/tesseract-ocr/tesseract) language model (`.traineddata`) for old printed Hebrew in the square script: 19th- and early-20th-century books and rabbinic editions. HeOCR made it by continuing to train [HeOCR R7](https://doi.org/10.5281/zenodo.24126448), itself a fine-tune of Tesseract's own `heb` model from [tessdata_best](https://github.com/tesseract-ocr/tessdata_best), for one pass over 76,946 lines:
+**Publication status.** This model is unpublished. HeOCR will release models or an OCR pipeline after a registered real held-out comparison shows that it beats the state of the art on at least one document type.
+
+oldprint-v1 is a [Tesseract](https://github.com/tesseract-ocr/tesseract) language model (`.traineddata`) for old printed Hebrew in the square script: 19th- and early-20th-century books and rabbinic editions. HeOCR made it by continuing to train HeOCR R7 (former DOI `10.5281/zenodo.24126448`), itself a fine-tune of Tesseract's own `heb` model from [tessdata_best](https://github.com/tesseract-ocr/tessdata_best), for one pass over 76,946 lines:
 - 22,910 real scanned lines from 4 public-domain books (Internet Archive scans), labelled with the Project Ben-Yehuda transcription of the same edition;
 - 14,036 real scanned lines from 3 rabbinic editions (Internet Archive scans), labelled with public-domain Sefaria texts and Project Gutenberg ebook #43740;
 - 40,000 lines rendered from born-digital booklets of Israel's laws and regulations (Reshumot), labelled with the publisher's own text layer, replayed so that modern print is not lost.
@@ -18,7 +20,7 @@ No label is OCR output. It is the model that HeOCR's evaluation recommends for o
 | sha256 | `f8090760b5b02d09cf4ddb435e7a5e34089f6f17cde9cfb6c67fd06c6f17ec02` |
 | Model type | recognition (line-level LSTM, CTC); Tesseract does the page layout |
 | Format | Tesseract 4/5 LSTM `traineddata`, LSTM only (`--oem 1`; no legacy engine). Trained with Tesseract 5.5.3, built from its upstream tag |
-| Continued from | HeOCR R7 ([10.5281/zenodo.24126448](https://doi.org/10.5281/zenodo.24126448)), `heocr_r7.traineddata`, sha256 `95faab81fba6fe57f854f973c1ccad2b0d1059fb951f34b17277385ceea8b303` |
+| Continued from | HeOCR R7 (`10.5281/zenodo.24126448`), `heocr_r7.traineddata`, sha256 `95faab81fba6fe57f854f973c1ccad2b0d1059fb951f34b17277385ceea8b303` |
 | Base model | tessdata_best `heb.traineddata` at [`e12c65a`](https://github.com/tesseract-ocr/tessdata_best/tree/e12c65a915945e4c28e237a9b52bc4a8f39a0cec) (Apache-2.0), sha256 `dbaa827aea6bc21215638447f17783a1004987c2d0bf5573d111fee397abdae5`, fine-tuned (modified) by HeOCR as R7 and then oldprint-v1 |
 | Character set | R7's, unchanged: stock `heb`'s plus the maqaf `־` and the en dash `–` |
 | Licence | Apache-2.0, Copyright (c) 2026 HeOCR maintainers (see LICENSE, NOTICE and NOTICE.r7) |
@@ -28,7 +30,7 @@ No label is OCR output. It is the model that HeOCR's evaluation recommends for o
 ## Uses
 
 - **OCR of old printed Hebrew** in the square script without niqqud: 19th- and early-20th-century books, and rabbinic editions set in square type. Use it in place of Tesseract's `heb` or R7.
-- **The old-print step of a document pipeline.** heocr routes old print to it.
+- **The old-print step of a document pipeline.** The model is intended for old-print pages.
 - **Line recognition** of single printed Hebrew line images, and **a research baseline** for old Hebrew print.
 
 ### Out of scope
@@ -40,7 +42,7 @@ No label is OCR output. It is the model that HeOCR's evaluation recommends for o
 - **Text it cannot write:** geresh `׳`, gershayim `״`, the em dash `—` and Latin letters. Training labels wrote `׳ ״` as `' "` and `—` as `–`.
 - **Unsupervised transcription.** Check the output.
 
-## How to get started with the model
+## Local use with an authorized copy
 
 Install Tesseract 4 or 5 (trained with 5.5.3). Put `heocr_oldprint_v1.traineddata` in a directory, say `DIR`, and pass that directory and the language name `heocr_oldprint_v1`.
 
@@ -48,13 +50,8 @@ Install Tesseract 4 or 5 (trained with 5.5.3). Put `heocr_oldprint_v1.traineddat
 tesseract page.png out -l heocr_oldprint_v1 --tessdata-dir DIR --psm 3
 ```
 
-audit2 was read this way, whole pages at psm 3. For single line images, use `--psm 7`. In heocr, once the model is registered there:
+audit2 was read this way, whole pages at psm 3. For single line images, use `--psm 7`.
 
-```sh
-heocr --download-model heocr_oldprint_v1
-```
-
-Notes:
 - **`--tessdata-dir` replaces Tesseract's data directory.** Output formats other than plain text read their config files from `DIR/configs`. Link your installation's `configs` folder into `DIR`, or put the model in your installation's tessdata directory and drop `--tessdata-dir`.
 - **Maqaf and dashes.** It writes the maqaf `־` (U+05BE) where many texts write `-`. Fold it if your downstream text uses the ASCII form.
 
@@ -109,10 +106,10 @@ The word list is R7's, unchanged: the model's `lstm-word-dawg` has R7's sha256, 
 
 ## Evaluation
 
-**Not measured on a held-out set of its own domain yet.** HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning. The one held-out result so far is the pointed-print test NQ1, under [Bias, risks and limitations](#bias-risks-and-limitations). oldprint-v1 has no such score yet:
+**Not measured on a held-out set of its own domain yet.** HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning. HeOCR will score it once in a registered held-out run.
 
 - **What was used to choose it is not reported as performance:** audit2, the selection set; the real-print development line sets that guard against regressions; and HeOCR's open synthetic document sets. They are named in hocrsyngen `experiments/phist_v1/RESULTS.md` and evaluation's default-model study report.
-- **Next:** the P-hist test (22 held-out books), once its human references exist. It is a registered run, against R7 and stock tessdata_best `heb` (the base), read the same way. Its result will be added in a new version of this card.
+- **Next:** the P-hist test (22 held-out books), once its human references exist. It is a registered run, against R7 and stock tessdata_best `heb` (the base), read the same way. That comparison will inform the publication decision.
 - **Scoring profile** for that run: `line_fold_v1` (sha256 `2e2627104be4f27dc3204787dd3ff4f8591d95d1d96294c65833d2773041d317`): NFC, whitespace collapsed, and the folds `־`→`-`, `׳`→`'`, `״`→`"`, `“ ” „`→`"`, `—`→`–`.
 
 ## Bias, risks and limitations
@@ -122,14 +119,14 @@ The word list is R7's, unchanged: the model's `lstm-word-dawg` has R7's sha256, 
 - **Training data:** 7 books and editions printed between 1881 and 1923, plus R7's 30 books (1856–1938), and modern Reshumot replay (52% of this round). Other typefaces, layouts and periods may gain less, or lose.
 - **Regressions against R7** on development lines from two scans, *Kevar* and Brainin's Internet Archive copy, small, dark and grainy.
 - **Square type only.** Not for Rashi script, handwriting or Latin text.
-- **Does not output niqqud (vowel points).** On NQ1, HeOCR's held-out pointed-print test (25 pages of modern pointed Hebrew: poetry, Tanakh and nakdan-pointed prose in open fonts, printed and photographed by phone, 101 photos; registered before printing and scored once, 2026-11-20), read through heocr, it wrote almost no marks: 238 in 51,687 Hebrew letters, so pointed text comes out unpointed. It had no niqqud training. Stock `heb` writes some of the marks (about a quarter on NQ1); niqqud support is planned. On modern pointed print, its letter accuracy is below stock `heb`. The set is modern pointed print in open fonts and phone photos, not old pointed books.
+- **Niqqud and cantillation.** Training labels omit these marks. Use a pointed-text model for documents that require them.
 - **Edition spelling.** The text sources sometimes modernise or vary the spelling of the print, and the labels carry those variants.
 - **Layout is Tesseract's,** or heocr's when used inside heocr.
 - **One training run.** Training-seed variation is not measured.
 
 ## Related models
 
-- **HeOCR modern-v1** (`heocr_modern_v1`): the same release round, for modern print and office documents. It is heocr's default model.
+- **HeOCR modern-v1** (`heocr_modern_v1`): the same training round, for modern print and office documents.
 - **HeOCR R7:** the model this one continues from. R7's card, record and deposit are unchanged.
 - **HeOCR R8b:** a separate continuation of R7 for modern print. oldprint-v1 is not derived from it.
 
@@ -158,12 +155,12 @@ The word list is R7's, unchanged: the model's `lstm-word-dawg` has R7's sha256, 
 | Text | Project Ben-Yehuda `public_domain_dump`, release 2026-03; Sefaria public-domain versions; Project Gutenberg #43740 |
 | Training | Tesseract 5.5.3 `lstmtraining`, 2026-11-18, run `20261118-175353-bdbd`; selected checkpoint `heb_final` |
 | Records | hocrsyngen `experiments/phist_v1/` (REGISTRATION.md, RESULTS.md); evaluation's default-model study report |
-| Training record | `oldprint_v1_training_run.json`, in this deposit |
+| Training record | `oldprint_v1_training_run.json`, in this directory |
 
 ## Contact
 
 Report problems and questions as issues on [HeOCR/heocr-engine](https://github.com/HeOCR/heocr-engine/issues). A rights concern can be raised the same way, or by email to heocrproject@gmail.com; name the Internet Archive identifier, the Reshumot booklet or the text source. The takedown procedure is at [heocr.github.io/rights.html](https://heocr.github.io/rights.html).
 
-## Citation
+## Archive reference
 
-Cite this model by its version DOI: [10.5281/zenodo.24395013](https://doi.org/10.5281/zenodo.24395013).
+Former Zenodo version DOI: `10.5281/zenodo.24395013`.

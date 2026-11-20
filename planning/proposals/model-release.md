@@ -1,6 +1,6 @@
 # Proposal: releasing HeOCR's trained weights (R3h first)
 
-> Development / selection evidence; not a performance claim. Held-out results: https://heocr.github.io/benchmarks.html
+> Historical release proposal. [Decision 0027](../decisions/0027-model-release-hold.md) governs current publication.
 
 - Status: **proposal**, for the maintainer's decision. It decides nothing. The maintainer decided §7 items 1–5 and 7 on 2026-11-06; [decision 0010](../decisions/0010-r3h-release.md) records them, and [decision 0011](../decisions/0011-first-release-adds-r4d-and-a1.md) widens the scope to R3h + R4d + A1. The maintainer approved the three model cards (item 6) and decided the accounts (item 7) on 2026-11-06; decision 0011's notes record them.
 - Date: 2026-11-06

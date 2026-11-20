@@ -1,5 +1,7 @@
 # HeOCR R4d: Hebrew document baseline segmentation (kraken)
 
+**Publication status.** This model is unpublished. HeOCR will release models or an OCR pipeline after a registered real held-out comparison shows that it beats the state of the art on at least one document type.
+
 R4d is a [kraken](https://kraken.re) baseline segmentation model for pages of modern Hebrew documents. It finds:
 - each text line's baseline, with a `stamp` line type for lines inside stamps;
 - the line polygons;
@@ -12,11 +14,11 @@ R4d is the segmentation step of HeOCR's three-model pipeline:
 - **A1** puts them in reading order;
 - **R3h** reads them.
 
-The three are released together, as separate records that link to each other (see [The pipeline](#the-pipeline)).
+The three models are designed to work together (see [The pipeline](#the-pipeline)).
 
 It is a research baseline. All of its evaluation is on synthetic pages; no reviewed evaluation on real scans exists yet.
 
-**Performance: not measured on a held-out set yet.** HeOCR reports accuracy only on held-out sets, and this model has not yet been scored on one. No held-out score yet; HeOCR will score it once in a registered held-out run. Its result will be added to this card in a new version.
+**Performance: not measured on a held-out set yet.** HeOCR reports accuracy only on held-out sets, and this model has not yet been scored on one. No held-out score yet; HeOCR will score it once in a registered held-out run. That comparison will inform the publication decision.
 
 - **How it was chosen:** training kept the epoch with the best mean IoU on its own validation pages (see [Training procedure](#training-procedure-and-hyperparameters)). The pipeline was then compared with kraken's default segmenter on synthetic development batches. These sets were used to choose and compare it, so they are not reported here as its performance.
 
@@ -34,9 +36,9 @@ It is a research baseline. All of its evaluation is on synthetic pages; no revie
 
 | Step | Model | Record |
 |---|---|---|
-| Segmentation: baselines, line polygons, typed regions | R4d, this model | [10.5281/zenodo.24372337](https://doi.org/10.5281/zenodo.24372337) |
-| Reading order: line order from each line's region type | A1, `heocr-a1-reading-order.safetensors` (`69aa1946…`) | [10.5281/zenodo.24023071](https://doi.org/10.5281/zenodo.24023071) |
-| Recognition | R3h, `heocr-r3h-recognition.safetensors` (`f76affa8…`) | [10.5281/zenodo.24023073](https://doi.org/10.5281/zenodo.24023073) |
+| Segmentation: baselines, line polygons, typed regions | R4d, this model | `10.5281/zenodo.24372337` |
+| Reading order: line order from each line's region type | A1, `heocr-a1-reading-order.safetensors` (`69aa1946…`) | `10.5281/zenodo.24023071` |
+| Recognition | R3h, `heocr-r3h-recognition.safetensors` (`f76affa8…`) | `10.5281/zenodo.24023073` |
 
 > **A1 needs heocr-engine.** kraken 7.0.2 cannot run A1 by itself, for two reasons:
 > - its neural reading order passes the segmenter's line types to A1, while A1 was trained on region types. kraken rejects the class-mapping mismatch;
@@ -75,7 +77,7 @@ These are hocrsyngen's region names.
 - **Layouts unlike hocrsyngen's seven templates.** This includes multi-column books, newspapers and manuscripts.
 - **Reading order on its own.** kraken's heuristic order is poor with R4d (see below), so use A1.
 
-## How to get started with the model
+## Local use with an authorized copy
 
 **The full pipeline (R4d + A1 + R3h).** This is the configuration HeOCR compared. In a checkout of [heocr-engine](https://github.com/HeOCR/heocr-engine), run `pip install '.[kraken]'`, then:
 
@@ -132,8 +134,7 @@ All synthetic. Nothing was scraped, and no real document or third-party text was
 
 - **Development sets, not reported as performance.** HeOCR compared the pipeline on six synthetic hocrsyngen batches: seed-101, a long-running benchmark read across rounds; the batches named held-out, eval-mixed-heldout, eval-typo-heldout and eval-layout-heldout, which were kept out of the training text but are not registered and were read during the rounds; and hocrgen's fixture batch, on which A1's design was tuned. Despite some of their names, none is a registered held-out set, so their figures are not given here. They are named in heocr-engine's `docs/baselines.md`.
 - **All evaluation is synthetic.** No reviewed real-page evaluation exists.
-- **What the development comparison showed, in words:** R4d found the lines far more reliably than `blla`, and the R4d + A1 + R3h pipeline made far fewer errors than `blla` + R3h. Without A1, kraken's heuristic order was often wrong. Some lines are still split or merged, and some stamp lines are missed (see [Bias, risks and limitations](#bias-risks-and-limitations)).
-- **Next:** a registered held-out run of the R4d + A1 + R3h pipeline, with kraken's default segmenter `blla` beside it and read the same way. Its result will be added in a new version of this card.
+- **Next:** a registered held-out run of the R4d + A1 + R3h pipeline, with kraken's default segmenter `blla` beside it and read the same way. That comparison will inform the publication decision.
 
 ## Bias, risks and limitations
 
@@ -163,13 +164,13 @@ All synthetic. Nothing was scraped, and no real document or third-party text was
 | Training text | `a3f2f0db1bf48d8cdd618579af42ca36710cadf81cdc4d5e89d2dc6c192e6611` (hocrsyngen `hebrew_lines_train_v1.txt`) |
 | Split | per page by hash, 5% validation; assignment `a794ebf3dbe5dd322cc85197a133207409fea0e487d02a23a52b0c76886d4006` |
 | Training code | heocr-engine `aa67fa7`, ketos 7.0.2 |
-| Training record | `r4d_training_run.json` (`heocr_engine_training_run.v1`), in this deposit |
+| Training record | `r4d_training_run.json` (`heocr_engine_training_run.v1`), in this directory |
 | Development scoring | hocrgen `2d3efb0` and `c8fb74e`; heocr-engine `55b0f7d` (end to end), `129c58e` and `eed1839` (line geometry) |
 
 ## Contact
 
 Report problems and questions as issues on [HeOCR/heocr-engine](https://github.com/HeOCR/heocr-engine/issues).
 
-## Citation
+## Archive reference
 
-Cite this model by its version DOI, [10.5281/zenodo.24372337](https://doi.org/10.5281/zenodo.24372337). Never cite the concept DOI.
+Former Zenodo version DOI: `10.5281/zenodo.24372337`.

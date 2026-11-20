@@ -20,7 +20,7 @@ Each run writes one `heocr_engine_prediction.v1` JSON object per page; see [docs
 
 ## Training a recognizer
 
-`heocr-engine train-kraken ANNOTATIONS MANIFEST WORK_DIR RECORD --ketos …` turns a hocrsyngen batch with `line_annotations.json` into PAGE XML, trains a Kraken recognizer from scratch with a local `ketos`, and writes a path-free `heocr_engine_training_run.v1` record. `heocr-engine prepare-kraken-data` runs only the conversion. See [docs/training_run_contract.md](docs/training_run_contract.md) and decision 0007. Trained weights stay local and are not published.
+`heocr-engine train-kraken ANNOTATIONS MANIFEST WORK_DIR RECORD --ketos …` turns a hocrsyngen batch with `line_annotations.json` into PAGE XML, trains a Kraken recognizer from scratch with a local `ketos`, and writes a path-free `heocr_engine_training_run.v1` record. `heocr-engine prepare-kraken-data` runs only the conversion. See [docs/training_run_contract.md](docs/training_run_contract.md) and decision 0007. HeOCR keeps its trained weights private. Model and pipeline release is on hold pending a state-of-the-art result on registered real held-out data for at least one document type. See the [model publication status](release/README.md).
 
 ## Diagnosing segmentation
 

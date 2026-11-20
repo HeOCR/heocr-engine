@@ -1,8 +1,10 @@
 # HeOCR R7: Hebrew printed-text recognition for Tesseract
 
+**Publication status.** This model is unpublished. HeOCR will release models or an OCR pipeline after a registered real held-out comparison shows that it beats the state of the art on at least one document type.
+
 R7 is a [Tesseract](https://github.com/tesseract-ocr/tesseract) language model (`.traineddata`) for printed modern Hebrew. HeOCR made it by fine-tuning Tesseract's own `heb` model from [tessdata_best](https://github.com/tesseract-ocr/tessdata_best) on 95,151 real scanned lines from 30 public-domain books. Seven of the books are National Library of Israel "public domain, free use" scans; 23 are university-library scans from the Internet Archive. Each line is labelled with the Project Ben-Yehuda transcription of the same edition, never with OCR output.
 
-It has the same recipe and the same base as [HeOCR R6](https://doi.org/10.5281/zenodo.24109988), on about seven times as many lines from six times as many books. It does not continue from R6.
+It has the same recipe and the same base as HeOCR R6 (former DOI `10.5281/zenodo.24109988`), on about seven times as many lines from six times as many books. It does not continue from R6.
 
 **Performance: not measured on a held-out set yet.** No held-out score yet; HeOCR will score it once in a registered held-out run. HeOCR reports accuracy only on held-out sets. The result will be added to this card in a new version.
 
@@ -10,7 +12,7 @@ It has the same recipe and the same base as [HeOCR R6](https://doi.org/10.5281/z
 
 **R7 supersedes nothing. R6 remains valid.** Use R7 if you want the newer model trained on more varied books. It is not shown to be better than R6.
 
-It is released on its own, with no link to HeOCR's kraken pipeline (R4d, A1, R3h).
+This is a standalone Tesseract model.
 
 | | |
 |---|---|
@@ -37,7 +39,7 @@ It is released on its own, with no link to HeOCR's kraken pipeline (R4d, A1, R3h
 - **Unsupervised transcription.** Its accuracy has not been measured on a held-out set. Check the output.
 - **Documents that are not mainly Hebrew.** No Latin text was in the training lines.
 
-## How to get started with the model
+## Local use with an authorized copy
 
 Install Tesseract 4 or 5 (tested with 5.5.3). Put `heocr_r7.traineddata` in a directory, say `DIR`, and pass that directory and the language name `heocr_r7`.
 
@@ -136,7 +138,7 @@ The recipe is R6's. Only the line set and the number of iterations changed.
   - 2 from a stock rabbinic title formula (אב"ד ור"מ בק"ק), in Greenwald's *Pe'ere Hakhme Medinatenu*.
 
   No evaluation manifest names an NLI record or an Internet Archive identifier of the training or selection books.
-- **Next:** HeOCR's registered held-out run, against stock tessdata_best `heb` (the base) and R6, shown beside them and read the same way. Its result will be added in a new version of this card.
+- **Next:** HeOCR's registered held-out run, against stock tessdata_best `heb` (the base) and R6, shown beside them and read the same way. That comparison will inform the publication decision.
 
 ## Bias, risks and limitations
 
@@ -171,7 +173,7 @@ The recipe is R6's. Only the line set and the number of iterations changed.
 | Line set | `bynli_lines_v2` (schema `s16c_benyehuda_nli_lines.v2`): `manifest.jsonl` sha256 `53dd7f1a10929ad4a60020ad7f42be62f27ee905cb7e6cfb0e319c5b2f5db7ca`, `summary.json` `faf3faf49dbe4e07fef01606ff2dd07ea1aca57062d666be564f57c061860a5f`; its 102,478 PNGs concatenated in sorted path order `39c1aa7da99866eea22130151e7c65f69cdff6f729f083dfd1400bff2e41e711`. Built with hocrgen `1921bbe`; hand-off record hocrgen `docs/f8f_r7_handoff.md` |
 | Text | Project Ben-Yehuda `public_domain_dump`, release 2026-03 |
 | Training | Tesseract 5.5.3 `lstmtraining` (Homebrew), 2026-11-11; selected checkpoint `lr1e4/heb_0.634_52608_117100` |
-| Training record | `r7_training_run.json` (`heocr_tesseract_training_run.v1`), in this deposit |
+| Training record | `r7_training_run.json` (`heocr_tesseract_training_run.v1`), in this directory |
 | Development scoring | hocrgen `d4a3414` `evaluate-references`, `primary.v1`, Tesseract 5.5.3 psm 3; references `e2d4c_wikisource_printed_v7` (manifest sha256 `0de65f63…`) |
 
 The line set is not yet published. Its per-line manifest names each line's source record (NLI record id or Internet Archive identifier), canvas, box, Ben-Yehuda work and, for Internet Archive lines, the rights justification id, so the training set can be rebuilt from the public scans and texts, or rebuilt without any one book.
@@ -180,6 +182,6 @@ The line set is not yet published. Its per-line manifest names each line's sourc
 
 Report problems and questions as issues on [HeOCR/heocr-engine](https://github.com/HeOCR/heocr-engine/issues). A rights concern about any source book can be raised the same way, or by email to heocrproject@gmail.com; name the NLI record id or the Internet Archive identifier. The takedown procedure is at [heocr.github.io/rights.html](https://heocr.github.io/rights.html).
 
-## Citation
+## Archive reference
 
-Cite this model by its version DOI: [10.5281/zenodo.24372343](https://doi.org/10.5281/zenodo.24372343).
+Former Zenodo version DOI: `10.5281/zenodo.24372343`.

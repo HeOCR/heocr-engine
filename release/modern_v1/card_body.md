@@ -1,5 +1,7 @@
 # HeOCR modern-v1: Hebrew office and modern-print recognition for Tesseract
 
+**Publication status.** This model is unpublished. HeOCR will release models or an OCR pipeline after a registered real held-out comparison shows that it beats the state of the art on at least one document type.
+
 modern-v1 is a [Tesseract](https://github.com/tesseract-ocr/tesseract) language model (`.traineddata`) for modern printed Hebrew: office documents, forms, tables, numbered sections and gazette print. HeOCR made it by fine-tuning Tesseract's own `heb` model from [tessdata_best](https://github.com/tesseract-ocr/tessdata_best) for one pass over 255,143 lines:
 - 117,317 synthetic office-document lines and table cells, rendered by HeOCR in 12 open (SIL OFL 1.1) typefaces and degraded like office scans, photocopies and phone photos;
 - 44,951 lines rendered from born-digital booklets of Israel's laws and regulations (Reshumot), labelled with the publisher's own text layer, and 34,217 more of those lines degraded the same way;
@@ -28,7 +30,7 @@ No label is OCR output. It is the model that HeOCR's evaluation chose as the def
 ## Uses
 
 - **OCR of modern printed Hebrew documents:** office letters, forms, tenders, reports, tables and numbered sections, scanned, photocopied or photographed. Use it in place of Tesseract's `heb`.
-- **The OCR step of a document pipeline.** heocr uses it for pages it reads by OCR.
+- **The OCR step of a document pipeline.** The model is intended for modern-print pages.
 - **Line recognition** of single printed Hebrew line images.
 
 ### Out of scope
@@ -39,7 +41,7 @@ No label is OCR output. It is the model that HeOCR's evaluation chose as the def
 - **Text it cannot write.** Its character set is stock `heb`'s: it writes no maqaf `־`, geresh `׳`, gershayim `״`, en dash `–`, em dash `—` or `―`. Training labels with `–`, `—` or `―` were written `-`.
 - **Unsupervised transcription.** Check the output, above all numbers.
 
-## How to get started with the model
+## Local use with an authorized copy
 
 Install Tesseract 4 or 5 (trained with 5.5.3). Put `heocr_modern_v1.traineddata` in a directory, say `DIR`, and pass that directory and the language name `heocr_modern_v1`.
 
@@ -47,13 +49,8 @@ Install Tesseract 4 or 5 (trained with 5.5.3). Put `heocr_modern_v1.traineddata`
 tesseract page.png out -l heocr_modern_v1 --tessdata-dir DIR --psm 3
 ```
 
-For single line images, use `--psm 7`. In heocr, once the model is registered there:
+For single line images, use `--psm 7`.
 
-```sh
-heocr --download-model heocr_modern_v1
-```
-
-Notes:
 - **`--tessdata-dir` replaces Tesseract's data directory.** Output formats other than plain text read their config files from `DIR/configs`. Link your installation's `configs` folder into `DIR`, or put the model in your installation's tessdata directory and drop `--tessdata-dir`.
 - **The language name is the file name without `.traineddata`.** `-l heocr_modern_v1+eng` runs, but was not evaluated.
 
@@ -95,30 +92,23 @@ The word list is tessdata_best's own, unchanged: the model's `lstm-word-dawg` ha
 
 ## Evaluation
 
-HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning, each registered before it was scored and scored once. Each comparison below is heocr 0.2.0rc1 with this model against the same heocr with stock tessdata_best `heb`, so the difference is this model's contribution. Measure: `line_fold_v1`; intervals are 95% percentile bootstraps (2,000 resamples, seed 0). Details: [heocr.github.io/benchmarks](https://heocr.github.io/en/benchmarks.html).
+The registered PS-v1 real-photo comparison did not establish a gain over stock Tesseract for this model. The release criterion remains open.
 
-**Real phone photos of printed pages (PS-v1, run `print_scan_PS-v1_2026-11-18`).** 12 pages of printed modern Hebrew (legislation and prose), typeset by HeOCR from public-domain texts, printed and photographed by phone. Headline condition (flat, main phone): character error 14.1% with this model against 14.0% with stock `heb`, a difference of **+0.08 points (−0.74 to +1.28): no gain** In the other conditions it is within about a point of stock `heb`. **Caveat:** 12 pages, one printer, three phones, HeOCR's own typesetting; the intervals are wide.
-
-**Pointed print (NQ1).** See [Bias, risks and limitations](#bias-risks-and-limitations): it does not output niqqud.
-
-- **What was used to choose it is not reported as performance.** The development, tuning and selection sets behind the choice (`office_val`, HeOCR's open synthetic document sets, and the real-print development line sets) are named in the experiment records: hocrsyngen `experiments/office_print_v0/RESULTS.md` and evaluation's default-model study report.
-- **Not yet measured:** real scanned office documents. The held-out sets above are photographed pages typeset by HeOCR.
-- **Scoring profile:** `line_fold_v1` (sha256 `2e2627104be4f27dc3204787dd3ff4f8591d95d1d96294c65833d2773041d317`): NFC, whitespace collapsed, and the folds `־`→`-`, `׳`→`'`, `״`→`"`, `“ ” „`→`"`, `—`→`–`. A reference `–` or `―` costs every stock-charset model one substitution.
+Development sets used for checkpoint selection are recorded in the training notes. The PS-v1 comparison used the `line_fold_v1` profile (sha256 `2e2627104be4f27dc3204787dd3ff4f8591d95d1d96294c65833d2773041d317`). It applies NFC, whitespace collapse and the documented punctuation folds.
 
 ## Bias, risks and limitations
 
-- **No measured gain on real pages yet.** On real phone photos of printed pages (PS-v1) it adds nothing over stock `heb` (+0.08 points, −0.74 to +1.28). See [Evaluation](#evaluation).
 - **Synthetic share.** 46% of its lines are synthetic office pages in 12 open faces. Real office documents set in proprietary faces (Arial, David, Times New Roman and others) were never trained on; it was developed only against open look-alike faces (Arimo, Cousine, Tinos).
 - **One source of real text.** All its real and rendered lines are Reshumot laws and regulations. Other registers may gain less.
 - **Gate bias.** The training gates keep what stays legible, so the heaviest photocopy damage drawn is under-represented (about 20% photocopy against 25% planned).
-- **Does not output niqqud (vowel points).** On NQ1, HeOCR's held-out pointed-print test (25 pages of modern pointed Hebrew: poetry, Tanakh and nakdan-pointed prose in open fonts, printed and photographed by phone, 101 photos; registered before printing and scored once, 2026-11-20), read through heocr, it wrote no marks: 0 in 53,730 Hebrew letters, so pointed text comes out unpointed. Stock `heb` writes some of the marks (about a quarter on NQ1); niqqud support is planned. On the letters alone it matches stock `heb` inside heocr. The set is modern pointed print in open fonts and phone photos, not old pointed books.
+- **Niqqud and cantillation.** Training labels omit these marks. Use a pointed-text model for documents that require them.
 - **Character set.** It cannot write `־ ׳ ״ – — ―`, or Latin letters.
 - **Layout is Tesseract's,** or heocr's when used inside heocr. The model changes only the line recognizer.
 - **One training run.** Training-seed variation is not measured.
 
 ## Related models
 
-- **HeOCR oldprint-v1** (`heocr_oldprint_v1`): the same release round, for old and rabbinic print. heocr routes old print to it.
+- **HeOCR oldprint-v1** (`heocr_oldprint_v1`): the same training round, for old and rabbinic print.
 - **HeOCR R8b** and **R7**: earlier HeOCR models for printed Hebrew, continued from R7; modern-v1 is not derived from them.
 
 ## Licence and attribution
@@ -143,12 +133,12 @@ HeOCR reports a model's accuracy only on sets held out from its training, select
 | Training | Tesseract 5.5.3 `lstmtraining`, 2026-11-18, run `20261118-171942-dd68`; selected snapshot `snap_0160m_222700` |
 | Selection | `office_val_sel`, 4,851 crops, sha256 `d77a7fa79c398208bfabe51db4cd982190bcdd9233eed5bbad1d1cec8ea88e51` |
 | Records | hocrsyngen `experiments/office_print_v0/` (REGISTRATION.md with amendments 1 and 2, RESULTS.md); evaluation's default-model study report |
-| Training record | `modern_v1_training_run.json`, in this deposit |
+| Training record | `modern_v1_training_run.json`, in this directory |
 
 ## Contact
 
 Report problems and questions as issues on [HeOCR/heocr-engine](https://github.com/HeOCR/heocr-engine/issues). A rights concern can be raised the same way, or by email to heocrproject@gmail.com. The takedown procedure is at [heocr.github.io/rights.html](https://heocr.github.io/rights.html).
 
-## Citation
+## Archive reference
 
-Cite this model by its version DOI: [10.5281/zenodo.24395097](https://doi.org/10.5281/zenodo.24395097).
+Former Zenodo version DOI: `10.5281/zenodo.24395097`.

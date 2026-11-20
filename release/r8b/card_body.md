@@ -1,6 +1,8 @@
 # HeOCR R8b: Hebrew printed-text recognition for Tesseract
 
-R8b is a [Tesseract](https://github.com/tesseract-ocr/tesseract) language model (`.traineddata`) for printed Hebrew. HeOCR made it by continuing to train [HeOCR R7](https://doi.org/10.5281/zenodo.24126448), itself a fine-tune of Tesseract's own `heb` model from [tessdata_best](https://github.com/tesseract-ocr/tessdata_best), for one pass over 196,275 lines:
+**Publication status.** This model is unpublished. HeOCR will release models or an OCR pipeline after a registered real held-out comparison shows that it beats the state of the art on at least one document type.
+
+R8b is a [Tesseract](https://github.com/tesseract-ocr/tesseract) language model (`.traineddata`) for printed Hebrew. HeOCR made it by continuing to train HeOCR R7 (former DOI `10.5281/zenodo.24126448`), itself a fine-tune of Tesseract's own `heb` model from [tessdata_best](https://github.com/tesseract-ocr/tessdata_best), for one pass over 196,275 lines:
 - 158,104 real scanned lines from 45 public-domain books (8 National Library of Israel "public domain, free use" scans and 37 Internet Archive scans), labelled with the Project Ben-Yehuda transcription of the same edition;
 - 19,533 lines rendered from 48 born-digital booklets of Israel's laws and regulations (Reshumot), labelled with the publisher's own text layer;
 - 11 lines of one Hebrew Wikisource proofread page;
@@ -10,15 +12,15 @@ No label is OCR output.
 
 Its character set adds geresh ׳, gershayim ״ and the em dash —, which R7 cannot output.
 
-**Performance: not measured on a held-out set yet.** HeOCR reports accuracy only on held-out sets. No held-out score yet; HeOCR will score it once in a registered held-out run. Its result will be added to this card in a new version.
+**Performance: not measured on a held-out set yet.** HeOCR reports accuracy only on held-out sets. No held-out score yet; HeOCR will score it once in a registered held-out run. That comparison will inform the publication decision.
 
-- **Why it was released:** HeOCR compared it with R7 on a development set of scanned Reshumot booklets (laws and regulations, 1953–2003), and R8b read it better. That set decided the release, so its figures are not reported here as performance.
+- **Development comparison:** scanned Reshumot booklets were used for model selection.
 - **How its checkpoint was chosen:** on selection lines from two books kept out of training (see [Training procedure](#training-procedure-and-hyperparameters)). Those books are read every round, so they are not held out, and their figures are not reported here.
 - **Known cost: small, dark, grainy scans may lose.** On development lines it read Brainin's collected works, as scanned on the Internet Archive, worse than R7. That scan is small, dark and grainy, and little like R8b's training lines.
 
-**R8b supersedes nothing. R7 remains valid.** Use R8b for modern printed Hebrew, and for text with ׳ ״ —, which R7 cannot output. R7 may still read small, dark, grainy scans like Brainin's Internet Archive copy better. R7's card, record and deposit are unchanged.
+**R8b supersedes nothing. R7 remains valid.** Use R8b for modern printed Hebrew, and for text with ׳ ״ —, which R7 cannot output. R7's card, record and deposit are unchanged.
 
-It is released on its own, with no link to HeOCR's kraken pipeline (R4d, A1, R3h).
+This is a standalone Tesseract model.
 
 | | |
 |---|---|
@@ -26,7 +28,7 @@ It is released on its own, with no link to HeOCR's kraken pipeline (R4d, A1, R3h
 | sha256 | `8cb22dbeb195c3c0ffbe9c66cf956d8c2052d3b1c4a872234a85c975c4526117` |
 | Model type | recognition (line-level LSTM, CTC); Tesseract does the page layout |
 | Format | Tesseract 4/5 LSTM `traineddata`, LSTM only (`--oem 1`; no legacy engine). Trained and tested with Tesseract 5.5.3 |
-| Continued from | HeOCR R7 ([10.5281/zenodo.24126448](https://doi.org/10.5281/zenodo.24126448)), the checkpoint R7 was packed from |
+| Continued from | HeOCR R7 (`10.5281/zenodo.24126448`), the checkpoint R7 was packed from |
 | Base model | tessdata_best `heb.traineddata` at [`e12c65a`](https://github.com/tesseract-ocr/tessdata_best/tree/e12c65a915945e4c28e237a9b52bc4a8f39a0cec) (Apache-2.0), sha256 `dbaa827aea6bc21215638447f17783a1004987c2d0bf5573d111fee397abdae5`, fine-tuned (modified) by HeOCR as R7 and then R8b |
 | Licence | Apache-2.0, Copyright (c) 2026 HeOCR maintainers (see LICENSE and NOTICE) |
 | Training record | `r8b_training_run.json` (`heocr_tesseract_training_run.v1`) |
@@ -46,7 +48,7 @@ It is released on its own, with no link to HeOCR's kraken pipeline (R4d, A1, R3h
 - **Unsupervised transcription.** Check the output.
 - **Documents that are not mainly Hebrew.** Latin letters are not in its character set; Reshumot lines containing them were left out.
 
-## How to get started with the model
+## Local use with an authorized copy
 
 Install Tesseract 4 or 5 (tested with 5.5.3). Put `heocr_r8b.traineddata` in a directory, say `DIR`, and pass that directory and the language name `heocr_r8b`.
 
@@ -145,8 +147,8 @@ So decision 0016 holds: no word list was built from Wikisource text.
   - the checkpoint: the two selection books, *Kevar* and *Yedi'ot ha-Teva*, which are kept out of training but read every round;
   - the development report sets that guard against regressions: Silman, Brainin (the NLI scan and the Internet Archive scan), rendered Reshumot dev, Mekhilta de-Rabbi Shimon, Wikisource dev and Bodek.
 - **Where those figures are:** in HeOCR evaluation's dev record, `eval-domains/outputs/r8b_release_figures_v1.json` (sha256 `22c0305ddafe6f436599df115c1c71345fed3685feae2c3cd9198b5e989909d9`). They are dev and selection figures, not performance.
-- **One caution from them, in words:** on development lines it read Brainin's Internet Archive scan (small, dark and grainy) worse than R7. The added errors are letters (ה/ח, ר/ד, כ/ב), spread over most pages, not a sign convention. Stretching the contrast does not help, because Tesseract normalises each line's levels. Such scans may lose. The next model, R8c, targets them with scan augmentation.
-- **Next:** a registered held-out run, against R7 and stock tessdata_best `heb` (the base), read the same way. Its result will be added in a new version of this card.
+- **Scope:** small, dark and grainy scans are a distinct input condition. Include them in a future registered evaluation.
+- **Next:** a registered held-out run, against R7 and stock tessdata_best `heb` (the base), read the same way. That comparison will inform the publication decision.
 - **Scoring profile** for that run: `line_fold_v1` (sha256 `2e2627104be4f27dc3204787dd3ff4f8591d95d1d96294c65833d2773041d317`): NFC, whitespace collapsed, and five folds of signs the references write inconsistently: `־`→`-`, `׳`→`'`, `״`→`"`, `“ ” „`→`"`, `—`→`–`. Nothing else is folded. Every reference line is scored, at psm 13, and characters a model cannot output are charged.
 
 ### Text overlap with training
@@ -202,7 +204,7 @@ The training labels were checked against the evaluation text with word 6-grams (
 | Text | Project Ben-Yehuda `public_domain_dump`, release 2026-03 |
 | Synthetic lines | `s17a_addon_v1.1`: generator and build recipe in HeOCR/hocrsyngen `3b55d4aff3de9f3211bc1573f2e0644748e84d63`, `experiments/learned_generation_v0/s17a_scanifier/`; generator weights sha256 `efdb5f82…` |
 | Training | Tesseract 5.5.3 `lstmtraining` (Homebrew), 2026-11-12; selected checkpoint `main/heb_snap_final` (sha256 `5526f713…`) |
-| Training record | `r8b_training_run.json` (`heocr_tesseract_training_run.v1`), in this deposit |
+| Training record | `r8b_training_run.json` (`heocr_tesseract_training_run.v1`), in this directory |
 | Scoring | `eval-domains/scripts/score_lines.py`, profile `line_fold_v1`; dev and selection figures behind the choice in `r8b_release_figures_v1.json` (sha256 `22c0305d…`), not performance |
 
 The line sets are not yet published. Their per-line manifests name each line's source (NLI record id, Internet Archive identifier, Reshumot booklet or Wikisource page), its box and its label source, and for Internet Archive and Wikisource lines the rights justification id, so the training set can be rebuilt from the public sources, or rebuilt without any one of them.
@@ -211,6 +213,6 @@ The line sets are not yet published. Their per-line manifests name each line's s
 
 Report problems and questions as issues on [HeOCR/heocr-engine](https://github.com/HeOCR/heocr-engine/issues). A rights concern about any source can be raised the same way, or by email to heocrproject@gmail.com; name the NLI record id, the Internet Archive identifier, the Reshumot booklet or the Wikisource page. The takedown procedure is at [heocr.github.io/rights.html](https://heocr.github.io/rights.html).
 
-## Citation
+## Archive reference
 
-Cite this model by its version DOI: [10.5281/zenodo.24372346](https://doi.org/10.5281/zenodo.24372346).
+Former Zenodo version DOI: `10.5281/zenodo.24372346`.

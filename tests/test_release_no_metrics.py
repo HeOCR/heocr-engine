@@ -1,8 +1,4 @@
-"""Held-out figures only (maintainer, 2026-11-19): no release front matter carries a metrics field.
-
-No HeOCR model has a registered held-out score yet, so neither the Zenodo front matter (zenodo.yaml, which becomes
-the deposit README's HTRMoPo `metrics`) nor the Hugging Face front matter (`model-index`/`metrics`) may hold one.
-"""
+"""Publication hold and front-matter rules for the archived model cards."""
 import unittest
 from pathlib import Path
 
@@ -24,6 +20,19 @@ class NoMetricsInFrontMatter(unittest.TestCase):
                             if line and not line[0].isspace() and not line.startswith(("#", "-")) and ":" in line}
                     self.assertNotIn("metrics", keys)
                     self.assertNotIn("model-index", keys)
+
+    def test_cards_display_publication_hold_without_download_links(self):
+        cards = sorted(RELEASE.glob("*/card_body.md"))
+        self.assertEqual(len(cards), 8)
+        for card in cards:
+            with self.subTest(model=card.parent.name):
+                intro = card.read_text(encoding="utf-8").split("\n\n", 2)[1]
+                self.assertIn("This model is unpublished.", intro)
+                self.assertIn("registered real held-out comparison", intro)
+                self.assertIn("beats the state of the art on at least one document type", intro)
+                body = card.read_text(encoding="utf-8")
+                self.assertNotIn("--download-model", body)
+                self.assertNotIn("https://doi.org/10.5281/zenodo.", body)
 
 
 if __name__ == "__main__":

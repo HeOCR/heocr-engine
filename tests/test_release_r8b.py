@@ -114,7 +114,7 @@ class R8bReleaseFilesTests(unittest.TestCase):
                        '70,171 entries', '24 bracket or arrow tokens', *WORD_DAWG.values()):
             with self.subTest(needle=needle[:40]):
                 self.assertTrue(needle in card, f'card lacks {needle!r}')
-        self.assertIn(f'https://doi.org/{R7_CONCEPT}', card)  # R7 is named, not replaced
+        self.assertIn(f'former DOI `{R7_CONCEPT}`', card)  # R7 is named, not replaced
 
     def test_card_reports_no_dev_or_selection_figure(self):
         # held-out figures only (maintainer, 2026-11-19): R8b's OLB dev, selection-book and report-set
@@ -151,14 +151,14 @@ class R8bReleaseFilesTests(unittest.TestCase):
                 with self.subTest(view=name, model=model):
                     self.assertNotIn(f'{cer:.3f}', card)
 
-    def test_card_cites_its_reserved_doi_and_links_no_pipeline_record(self):
+    def test_card_preserves_its_former_version_doi(self):
         card = read('card_body.md')
-        self.assertIn('[10.5281/zenodo.24372346](https://doi.org/10.5281/zenodo.24372346)', card)
+        self.assertIn('Former Zenodo version DOI: `10.5281/zenodo.24372346`.', card)
         self.assertNotIn('DRAFT', card)
         self.assertNotIn('sharp', card.lower())  # eval: the two sharpness measures disagree on Brainin IA
         self.assertNotIn('whose labels are exact', card)  # every OLB dev line is layer-exact; 'exact' is the tier
-        citation = card.split('## Citation', 1)[1]
-        self.assertNotIn(R7_DOI, citation)  # R8b cites its own DOI (plan step 2)
+        citation = card.split('## Archive reference', 1)[1]
+        self.assertNotIn(R7_DOI, citation)  # R8b preserves its own former DOI
         for doi in PIPELINE_DOIS:
             self.assertNotIn(doi, card)
 
