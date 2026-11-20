@@ -469,13 +469,13 @@ The maintainer's rule is "we only produce metrics on held-out sets", and his go 
 | Model | v1 (deleted) | v2 DOI | Concept DOI |
 |---|---|---|---|
 | R4d | 10.5281/zenodo.24023070 | 10.5281/zenodo.24372337 | 10.5281/zenodo.24023069 |
-| A1 | 10.5281/zenodo.24023072 | 10.5281/zenodo.24372338 | 10.5281/zenodo.24023071 |
+| A1 | 10.5281/zenodo.24023072 | 10.5281/zenodo.24372338 (deleted 2026-11-20; v3 10.5281/zenodo.24395014) | 10.5281/zenodo.24023071 |
 | R3h | 10.5281/zenodo.24023074 | 10.5281/zenodo.24372341 | 10.5281/zenodo.24023073 |
 | R6 | 10.5281/zenodo.24109989 | 10.5281/zenodo.24372342 | 10.5281/zenodo.24109988 |
 | R7 | 10.5281/zenodo.24126449 | 10.5281/zenodo.24372343 | 10.5281/zenodo.24126448 |
 | R8b | 10.5281/zenodo.24156688 | 10.5281/zenodo.24372346 | 10.5281/zenodo.24156687 |
-| modern-v1 | 10.5281/zenodo.24371757 | 10.5281/zenodo.24372349 | 10.5281/zenodo.24371756 |
-| oldprint-v1 | 10.5281/zenodo.24371759 | 10.5281/zenodo.24372352 | 10.5281/zenodo.24371758 |
+| modern-v1 | 10.5281/zenodo.24371757 | 10.5281/zenodo.24372349 (deleted 2026-11-20; v3 10.5281/zenodo.24395010, then v4 10.5281/zenodo.24395097) | 10.5281/zenodo.24371756 |
+| oldprint-v1 | 10.5281/zenodo.24371759 | 10.5281/zenodo.24372352 (deleted 2026-11-20; v3 10.5281/zenodo.24395013) | 10.5281/zenodo.24371758 |
 
 **v3 (2026-11-20).** Three models got a third version, because their v2 cards carried claims measured on synthetic data (maintainer's rule: nothing reported on synthetic data stays public). The weights are unchanged; only README.md and, for modern-v1, NOTICE differ. A1: 10.5281/zenodo.24395014. modern-v1: 10.5281/zenodo.24395010, then **v4** 10.5281/zenodo.24395097 (its NOTICE named RC2, a generated-document run; v4's names only PS-v1 and NQ1). oldprint-v1: 10.5281/zenodo.24395013. Concept DOIs are unchanged.
 
