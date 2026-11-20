@@ -53,3 +53,4 @@ Proposals are drafts for the maintainer's decision. They decide nothing; an acce
 | [0025](decisions/0025-uc-w-data-split.md) | UC-W uses separate facility groups for the sealed benchmark, calibration and training. Private training components may supplement releasable data. Amends [0024](decisions/0024-use-case-benchmarks-modern-print.md). |
 | [0026](decisions/0026-uc-w-private-training-infrastructure.md) | UC-W training inputs and labels may use private project infrastructure. Benchmark and calibration stay sealed and local. Amends [0025](decisions/0025-uc-w-data-split.md). |
 | [0027](decisions/0027-model-release-hold.md) | Model and pipeline publication stays on hold pending a state-of-the-art result on a registered real held-out document type. |
+| [0028](decisions/0028-contamination-policy-v2.md) | Exclude shared sources and synthetic renders of benchmark text. Tag allowed shared text and report scores on all and non-overlapping lines. |
