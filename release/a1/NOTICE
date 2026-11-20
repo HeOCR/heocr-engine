@@ -1,0 +1,39 @@
+HeOCR A1 Hebrew document reading-order model
+Copyright (c) 2026 HeOCR maintainers
+
+This model (heocr-a1-reading-order.safetensors, trained as
+best_0.0000.safetensors, sha256
+69aa1946583bb68ddf13ef20860582f4aa982a46b2f79e38bd7d9ae20535fb56) is
+licensed under the Apache License, Version 2.0. See LICENSE.
+
+It was trained from scratch. No third-party model weights were loaded.
+
+Software
+--------
+
+The model was trained with, and runs in, kraken / ketos 7.0.2
+(https://github.com/mittagessen/kraken), licensed under the Apache License,
+Version 2.0. The model file uses kraken's safetensors format for kraken's line
+reading-order network (ROMLP). It contains no kraken code.
+
+Training data
+-------------
+
+The training data is synthetic: page images rendered by hocrsyngen
+(https://github.com/HeOCR/hocrsyngen, MIT License).
+
+Fonts. The page images were rendered in these two fonts. The model contains
+no font data, and the fonts are not distributed with it. They are credited
+here:
+
+- Alef, Copyright (c) 2012, HaGilda & Mushon Zer-Aviv, with Reserved Font
+  Name Alef. Licensed under the SIL Open Font License, Version 1.1.
+- Gveret Levin, Copyright 2024 The Gveret Levin Project Authors. Licensed
+  under the SIL Open Font License, Version 1.1.
+
+Text. The rendered text is original text authored by AI agents (Claude Opus
+5.5 sessions run in Claude Code) for HeOCR. It is the hocrsyngen corpora
+S10b and S13a. No third-party text is included. The corpora are
+dedicated to the public domain under CC0 1.0 Universal (see hocrsyngen
+src/hocrsyngen/data/synthetic/texts/LICENSE-CC0-1.0.txt and hocrsyngen
+ADR 0008).

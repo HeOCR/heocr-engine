@@ -1,0 +1,22 @@
+# Hugging Face repository: HeOCR/heocr-r8b-tesseract-heb (the HeOCR organisation).
+# Hugging Face model-card front matter. The repository's README.md is this front
+# matter between `---` lines, followed by card_body.md. LICENSE, NOTICE and the
+# training record go beside the weights.
+# `base_model`: R8b continues from HeOCR R7's weights, and R7 is on the Hub
+# (HeOCR/heocr-r7-tesseract-heb). R7's own base, tessdata_best heb, is on
+# GitHub, not on the Hub; the card body and NOTICE name it (tesseract-ocr/
+# tessdata_best e12c65a).
+# No `library_name`: Tesseract is not a Hub library; the `tesseract` tag says it.
+license: apache-2.0
+base_model: HeOCR/heocr-r7-tesseract-heb
+base_model_relation: finetune
+language:
+  - he
+pipeline_tag: image-to-text
+tags:
+  - tesseract
+  - ocr
+  - hebrew
+  - text-recognition
+  - printed
+  - traineddata

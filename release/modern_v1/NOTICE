@@ -1,0 +1,123 @@
+HeOCR modern-v1 Hebrew office and modern-print recognition model for Tesseract
+Copyright (c) 2026 HeOCR maintainers
+
+This model (heocr_modern_v1.traineddata, trained as heb.traineddata,
+selected snapshot snap_0160m_222700, sha256
+6275943bf68f3d44ecc32f8d4c4195c890c96602111542ebe1f0ae0d8a6a5201, 3,704,077
+bytes) is licensed under the Apache License, Version 2.0. See LICENSE.
+
+Base model
+----------
+
+This model is a modified version of the tessdata_best Hebrew model
+(heb.traineddata) of the Tesseract OCR project,
+https://github.com/tesseract-ocr/tessdata_best, commit
+e12c65a915945e4c28e237a9b52bc4a8f39a0cec, sha256
+dbaa827aea6bc21215638447f17783a1004987c2d0bf5573d111fee397abdae5, licensed
+under the Apache License, Version 2.0.
+
+HeOCR modified it on 2026-11-18: its LSTM network was fine-tuned with
+Tesseract's lstmtraining on synthetic office-document lines, rendered
+born-digital lines and real scanned lines. Its character set and its
+dictionary components are the base model's, unchanged. No word list was
+built from any training text.
+
+Software
+--------
+
+The model was trained with, and runs in, Tesseract 5.5.3
+(https://github.com/tesseract-ocr/tesseract), licensed under the Apache
+License, Version 2.0. The model file contains no Tesseract code.
+
+Training data: Reshumot (laws and regulations)
+----------------------------------------------
+
+Training lines were rendered by HeOCR from born-digital PDF booklets of
+ספר החוקים (Sefer ha-Hukim) and קובץ התקנות (Kovetz ha-Takanot), published
+by Reshumot (רשומות), the official gazette of the State of Israel, and
+labelled with the publisher's own PDF text layer for each line. The same
+text was laid out again in HeOCR's synthetic office pages. Further training
+lines are scans of Reshumot booklets. Laws and regulations carry no
+copyright in Israel (Copyright Act 2007, section 6; PD-IL). Their status
+outside Israel, including the United States, is not asserted here. No line
+comes from an evaluation booklet. The booklet identifiers are in
+modern_v1_training_run.json.
+
+Training data: Hebrew Wikisource (text)
+---------------------------------------
+
+The labels of 58,658 scanned Reshumot training lines (line set
+olbreshumotlines_v1) are the same-wording text of ספר החוקים הפתוח (the
+Open Law Book) on Hebrew Wikisource, by Hebrew Wikisource contributors,
+licensed under the Creative Commons Attribution-ShareAlike 4.0 licence
+(CC BY-SA 4.0, https://creativecommons.org/licenses/by-sa/4.0/). Each page's
+revision id and permalink is listed in modern_v1_training_run.json. Per heocr-engine decision 0016 the weights
+stay Apache-2.0 with this credit, and no word list or dawg was built from
+Wikisource text: the model's word list is the base model's.
+
+Training data: synthetic office pages
+-------------------------------------
+
+117,317 training lines are crops of HeOCR's synthetic office pages (CC0
+1.0), made by the office_pages generator in HeOCR/hocrsyngen
+(https://github.com/HeOCR/hocrsyngen), commit 749069d, seed 20261118. Their
+text is the Reshumot text above, with generated numbers. They were rendered
+in these typefaces, all licensed under the SIL Open Font License 1.1
+(https://openfontlicense.org), with the copyright notices their font files
+carry. The fonts are not distributed with the model.
+
+  Alef: Copyright (c) 2012 by Hagilda.
+  Arimo: Copyright 2020 The Arimo Project Authors
+    (https://github.com/googlefonts/arimo).
+  Assistant: Copyright 2020 The Assistant Project Authors
+    (https://github.com/hafontia/Assistant). Copyright 2010 The Source Sans
+    Pro Authors (https://github.com/adobe-fonts/source-sans-pro), with
+    Reserved Font Name 'Source'.
+  Cousine: Copyright 2026 The Cousine Project Authors
+    (https://github.com/googlefonts/cousine).
+  David Libre: Copyright 2016 The David Libre Project Authors
+    (https://github.com/meirsadan/david-libre).
+  Frank Ruhl Libre: Copyright 2015 The Frank Ruhl Libre Project Authors
+    (https://github.com/fontef/frankruhllibre).
+  Heebo: Copyright 2014 The Heebo Project Authors
+    (https://github.com/OdedEzer/heebo).
+  Miriam Libre: Copyright 2023 The Miriam Libre Project Authors
+    (https://github.com/simoncozens/Miriam-Libre/).
+  Noto Sans Hebrew and Noto Serif Hebrew: Copyright 2024 and 2022 The Noto
+    Project Authors (https://github.com/notofonts/hebrew).
+  Open Sans: Copyright 2020 The Open Sans Project Authors
+    (https://github.com/googlefonts/opensans).
+  Rubik: Copyright 2015 The Rubik Project Authors
+    (https://github.com/googlefonts/rubik).
+
+Tinos (Copyright 2026 The Tinos Project Authors,
+https://github.com/googlefonts/tinos; SIL OFL 1.1) was used only for the
+checkpoint-selection set. No proprietary typeface was used.
+
+The model contains no images, no fonts and no text files.
+
+Evaluation data (not used for training)
+---------------------------------------
+
+The model was chosen on HeOCR's open synthetic document sets (CC0 code; text
+from Reshumot, PD-IL) and on development line sets whose references come
+from Hebrew Wikisource (CC BY-SA 4.0), Project Ben-Yehuda (public domain),
+Sefaria (public domain) and Reshumot (PD-IL). They were never trained on.
+The model contains no evaluation text. Its held-out results (registered
+runs PS-v1 and NQ1, on real photographed pages) are on its model card.
+
+No endorsement
+--------------
+
+Neither Reshumot or the State of Israel, Wikisource or the Wikimedia
+Foundation, the Tesseract OCR project nor the authors of the typefaces
+above endorses HeOCR or this model.
+
+Rights concerns
+---------------
+
+If you believe a source item is subject to a valid copyright or another
+binding restriction, email heocrproject@gmail.com or open an issue at
+https://github.com/HeOCR/heocr-engine/issues, and name its Reshumot booklet
+or Wikisource page. The takedown procedure is at
+https://heocr.github.io/rights.html.

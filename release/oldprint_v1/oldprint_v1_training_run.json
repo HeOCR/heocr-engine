@@ -1,0 +1,833 @@
+{
+ "schema_version": "heocr_tesseract_training_run.v1",
+ "schema_note": "A minimal record for a Tesseract fine-tune, defined in release/README.md (R6). Counts, ids, hashes, licences and attribution only: no label text, no local paths.",
+ "model": "HeOCR oldprint-v1",
+ "task": "recognition",
+ "engine": {
+  "name": "tesseract",
+  "version": "5.5.3",
+  "build": "built on the training pod from the upstream tag 5.5.3",
+  "commit": "db0ec62f81b0737fbbe184d8fea40af5738f8eef",
+  "tag_object": "6951ffe1",
+  "refuses_other_versions": true
+ },
+ "trainer": {
+  "name": "lstmtraining",
+  "version": "5.5.3"
+ },
+ "init": {
+  "kind": "continue_from_project_model",
+  "from_model": {
+   "name": "HeOCR R7",
+   "doi": "10.5281/zenodo.24126449",
+   "released_model_sha256": "95faab81fba6fe57f854f973c1ccad2b0d1059fb951f34b17277385ceea8b303",
+   "note": "continue_from, old_traineddata and traineddata are R7"
+  },
+  "base_model": {
+   "name": "tessdata_best heb",
+   "repository": "https://github.com/tesseract-ocr/tessdata_best",
+   "commit": "e12c65a915945e4c28e237a9b52bc4a8f39a0cec",
+   "file_name": "heb.traineddata",
+   "sha256": "dbaa827aea6bc21215638447f17783a1004987c2d0bf5573d111fee397abdae5",
+   "licence": "Apache-2.0",
+   "network_spec": "[1,36,0,1Ct3,3,16Mp3,3Lfys48Lfx96Lrx96Lfx192O1c1]"
+  },
+  "unicharset": "R7's, unchanged (no layer surgery)",
+  "dictionary": "R7's, unchanged"
+ },
+ "experiment": {
+  "name": "P-hist round v1, arm r7",
+  "registration": "HeOCR/hocrsyngen experiments/phist_v1/REGISTRATION.md",
+  "results": "HeOCR/hocrsyngen experiments/phist_v1/RESULTS.md"
+ },
+ "data": {
+  "list": {
+   "name": "phist_r7.list",
+   "lines": 76946,
+   "sha256": "0cd3e7e8788f3c278ae9083f953a88f7319c70910d75423d0349733f7f72820c",
+   "labels_sha256": "bbdaade092892644bea4397061cbc1a88f9537a5f59412e12c0b0ab59c9cf33b",
+   "shuffle_seed": 20261130
+  },
+  "pool": {
+   "name": "phist_pool_v1",
+   "sha256": "f99e5239db0dcfb98e71d54193d48557dcee83227d6f90c9a2a71ee8667d960a",
+   "rule": "books whose labels passed the per-book audit (at most 1 word error in 32 seeded lines)",
+   "dropped_official_6gram": 76,
+   "per_book_cap_share": 0.08
+  },
+  "line_sets": [
+   {
+    "name": "bynli_lines_v3",
+    "manifest_sha256": "4cba250f0f3e9207d26fd6e7415b1ed37132123c9c0c9ec961cc58ed0490994e"
+   },
+   {
+    "name": "rablines_v1",
+    "manifest_sha256": "8583cf4129262ab27a22f94f11287d987e2d2a030fe20557d0957f4a866dd3a3"
+   }
+  ],
+  "books": [
+   {
+    "book": "zikhronotlebetda01reck",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "zikhronotlebetda01reck",
+    "source_class": "ia_library_scan_no_licence_field",
+    "text_source": "benyehuda",
+    "text_licence": "public domain (Project Ben-Yehuda dump)",
+    "text_version": null,
+    "lines": 6099,
+    "rights_justification_ids": [
+     "rj:zikhronotlebetda01reck:14daf4733d9d",
+     "rj:zikhronotlebetda01reck:49533807a706",
+     "rj:zikhronotlebetda01reck:c66b429a14e0",
+     "rj:zikhronotlebetda01reck:e735696e55c2",
+     "rj:zikhronotlebetda01reck:f689cc78922a"
+    ]
+   },
+   {
+    "book": "machzor-vitry-berlin-1889-97-gcopy",
+    "line_set": "rablines_v1",
+    "ia_identifier": "mahzor-vitri-abraham-berliner-1893",
+    "source_class": "ia_google_digitized_scan",
+    "text_source": "sefaria",
+    "text_licence": "Public Domain",
+    "text_version": "Machzor Vitry, Berlin, 1893-97",
+    "lines": 6077,
+    "rights_justification_ids": [
+     "rj:mahzor-vitri-abraham-berliner-1893:9c0de612060f"
+    ]
+   },
+   {
+    "book": "lekach-tov-buber-vilna-1884-vol3-5",
+    "line_set": "rablines_v1",
+    "ia_identifier": "midrashleaovhame0305tobi",
+    "source_class": "ia_library_scan_no_licence_field",
+    "text_source": "sefaria",
+    "text_licence": "Public Domain",
+    "text_version": "Midrash Lekach Tov on Torah, Vilna 1884",
+    "lines": 6063,
+    "rights_justification_ids": [
+     "rj:midrashleaovhame0305tobi:17beae08d0ee"
+    ]
+   },
+   {
+    "book": "afahleneemaniml00fngoog",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "afahleneemaniml00fngoog",
+    "source_class": "ia_google_digitized_scan",
+    "text_source": "benyehuda",
+    "text_licence": "public domain (Project Ben-Yehuda dump)",
+    "text_version": null,
+    "lines": 5749,
+    "rights_justification_ids": [
+     "rj:afahleneemaniml00fngoog:c8c573c32d3b"
+    ]
+   },
+   {
+    "book": "kolkitveylkatsen018800",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "kolkitveylkatsen018800",
+    "source_class": "ia_library_scan_no_licence_field",
+    "text_source": "benyehuda",
+    "text_licence": "public domain (Project Ben-Yehuda dump)",
+    "text_version": null,
+    "lines": 5712,
+    "rights_justification_ids": [
+     "rj:kolkitveylkatsen018800:02d20f72ddd3",
+     "rj:kolkitveylkatsen018800:0aac3fbe5339",
+     "rj:kolkitveylkatsen018800:0af9fc6e48e9",
+     "rj:kolkitveylkatsen018800:105a55fdf5ac",
+     "rj:kolkitveylkatsen018800:1815681da980",
+     "rj:kolkitveylkatsen018800:47634da006c9",
+     "rj:kolkitveylkatsen018800:59f0acc8a32b",
+     "rj:kolkitveylkatsen018800:71572ac1e0eb",
+     "rj:kolkitveylkatsen018800:83ab0ea1506a",
+     "rj:kolkitveylkatsen018800:a56bed353833",
+     "rj:kolkitveylkatsen018800:aa004913dcff",
+     "rj:kolkitveylkatsen018800:ac47218d2ae4",
+     "rj:kolkitveylkatsen018800:b2472c69ddaa",
+     "rj:kolkitveylkatsen018800:bad4bbc2fe3a",
+     "rj:kolkitveylkatsen018800:de1e6434684d"
+    ]
+   },
+   {
+    "book": "seferhademaotmeo0000bern",
+    "line_set": "bynli_lines_v3",
+    "ia_identifier": "seferhademaotmeo0000bern",
+    "source_class": "ia_library_scan_no_licence_field",
+    "text_source": "benyehuda",
+    "text_licence": "public domain (Project Ben-Yehuda dump)",
+    "text_version": null,
+    "lines": 5350,
+    "rights_justification_ids": [
+     "rj:seferhademaotmeo0000bern:9e70fdd6fdd2",
+     "rj:seferhademaotmeo0000bern:c5341051cd56"
+    ]
+   },
+   {
+    "book": "toratan-shel-rishonim-frankfurt-1881",
+    "line_set": "rablines_v1",
+    "ia_identifier": "betnekhothahalak01horouoft",
+    "source_class": "ia_library_scan_no_licence_field",
+    "text_source": "gutenberg",
+    "text_licence": "Public domain in the USA.",
+    "text_version": "Bet Nekhot ha-Halakhot o Toratan shel Rishonim, part I, ed. Chaim Meir Horowitz, Frankfurt am Main 1881",
+    "lines": 1896,
+    "rights_justification_ids": [
+     "rj:betnekhothahalak01horouoft:c3b2b70b56f2"
+    ]
+   }
+  ],
+  "replay": {
+   "lines": 40000,
+   "source": "office-print v0 lists_v2 decontaminated anchor (45,250 lines)",
+   "seed": 20261129,
+   "share": 0.5198,
+   "kind": "Reshumot lines rendered from born-digital PDFs, publisher text-layer labels",
+   "licence": "PD-IL (Copyright Act 2007 s. 6); status outside Israel not asserted",
+   "booklets": [
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6391",
+     "lines": 153
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6395",
+     "lines": 84
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6396",
+     "lines": 84
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6398",
+     "lines": 206
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6400",
+     "lines": 53
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6401",
+     "lines": 262
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6402",
+     "lines": 54
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6403",
+     "lines": 533
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6406",
+     "lines": 33
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6407",
+     "lines": 631
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6408",
+     "lines": 70
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6409",
+     "lines": 38
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6410",
+     "lines": 125
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6415",
+     "lines": 283
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6416",
+     "lines": 263
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6417",
+     "lines": 300
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6418",
+     "lines": 49
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6420",
+     "lines": 12
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6421",
+     "lines": 632
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6422",
+     "lines": 701
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6423",
+     "lines": 16
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6424",
+     "lines": 299
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6425",
+     "lines": 131
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6426",
+     "lines": 500
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6428",
+     "lines": 200
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6429",
+     "lines": 103
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6430",
+     "lines": 97
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6431",
+     "lines": 1355
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6432",
+     "lines": 33
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6434",
+     "lines": 710
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6435",
+     "lines": 8
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6436",
+     "lines": 220
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6437",
+     "lines": 154
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6438",
+     "lines": 320
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6439",
+     "lines": 85
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6440",
+     "lines": 12
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6441",
+     "lines": 546
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6442",
+     "lines": 357
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6443",
+     "lines": 349
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6444",
+     "lines": 691
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6445",
+     "lines": 176
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6446",
+     "lines": 1566
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6447",
+     "lines": 437
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6448",
+     "lines": 476
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6449",
+     "lines": 358
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "6450",
+     "lines": 188
+    },
+    {
+     "series": "kovetz_hatakanot",
+     "booklet_number": "7070",
+     "lines": 5
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1976",
+     "lines": 190
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1980",
+     "lines": 245
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1981",
+     "lines": 60
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1982",
+     "lines": 2229
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1983",
+     "lines": 354
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1984",
+     "lines": 70
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1985",
+     "lines": 56
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1986",
+     "lines": 116
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1987",
+     "lines": 37
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1988",
+     "lines": 210
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1989",
+     "lines": 648
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1990",
+     "lines": 25
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1991",
+     "lines": 117
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1992",
+     "lines": 99
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1993",
+     "lines": 266
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1994",
+     "lines": 427
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1996",
+     "lines": 177
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1997",
+     "lines": 3601
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1998",
+     "lines": 109
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "1999",
+     "lines": 219
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2000",
+     "lines": 705
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2001",
+     "lines": 40
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2002",
+     "lines": 94
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2003",
+     "lines": 154
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2004",
+     "lines": 186
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2005",
+     "lines": 899
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2006",
+     "lines": 418
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2007",
+     "lines": 35
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2008",
+     "lines": 229
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2010",
+     "lines": 30
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2012",
+     "lines": 1118
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2013",
+     "lines": 153
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2014",
+     "lines": 187
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2015",
+     "lines": 71
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2016",
+     "lines": 106
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2017",
+     "lines": 172
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2019",
+     "lines": 69
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2020",
+     "lines": 577
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2021",
+     "lines": 107
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2022",
+     "lines": 204
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2023",
+     "lines": 2493
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2024",
+     "lines": 3951
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2025",
+     "lines": 232
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2027",
+     "lines": 498
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2028",
+     "lines": 445
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2029",
+     "lines": 61
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2030",
+     "lines": 29
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2031",
+     "lines": 41
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2032",
+     "lines": 13
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2033",
+     "lines": 81
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2034",
+     "lines": 28
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2035",
+     "lines": 374
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2036",
+     "lines": 124
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2038",
+     "lines": 492
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2039",
+     "lines": 1162
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2040",
+     "lines": 257
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2041",
+     "lines": 201
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2042",
+     "lines": 91
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2043",
+     "lines": 567
+    },
+    {
+     "series": "sefer_hachukim",
+     "booklet_number": "2044",
+     "lines": 93
+    }
+   ]
+  },
+  "decontamination": {
+   "check": "eval's official check_train_overlap (word 6-grams after folding, every target, restricted ones included); a list counts as clean only on eval's own run",
+   "final": "CLEAN, 0 hits on every target (2026-11-18)",
+   "holdout_page_check": "P-hist hold-out: 5 pages share text; they stay out of scoring"
+  },
+  "labels": {
+   "order": "logical, NFC",
+   "folds": {
+    "׳": "'",
+    "״": "\"",
+    "—": "–"
+   }
+  },
+  "scans_note": "Internet Archive only (route internet_archive); two Google-class scans retrieved via the Internet Archive (legal strategy rule 3, decision 0015), Google front matter excluded, no watermark on training pages; none from NLI"
+ },
+ "truth_order": {
+  "ground_truth": "logical",
+  "training_order": "Tesseract LSTM order (make_lstmf.py, tesseract --psm 13 lstm.train)",
+  "inference_output": "logical"
+ },
+ "hyperparameters": {
+  "learning_rate": 0.0001,
+  "reset_learning_rate": true,
+  "max_iterations": 76946,
+  "target_error_rate": 0.01,
+  "eval_listfile": null,
+  "snapshot_every": "10 minutes",
+  "omp_thread_limit": 4
+ },
+ "run": {
+  "run_id": "20261118-175353-bdbd",
+  "date": "2026-11-18",
+  "device": "cpu",
+  "machine": "RunPod cpu3c, 16 vCPUs (fallback from the registered 32)",
+  "deterministic": false,
+  "inputs_manifest_sha256": "250de59de77f6fd1353d68f2ddb88b5a4858ed33855a536429d67f1993b8733e",
+  "inputs_verified_on_pod": true
+ },
+ "outcome": {
+  "iterations_completed": 76946,
+  "exit": 0,
+  "timed_out": false,
+  "candidates_evaluated": 20,
+  "selection_rule": "lowest micro page CER (line_fold_v1) on audit2, psm 3; ties earlier, then arm r7",
+  "selection_set": {
+   "name": "audit2",
+   "pages": 38,
+   "books": 13,
+   "role": "P-hist dev"
+  },
+  "selected": {
+   "arm": "r7",
+   "checkpoint": "heb_final",
+   "training_iteration": 76946,
+   "selection_cer_percent": 16.753
+  },
+  "context_on_selection_set_cer_percent": {
+   "stock": 20.261,
+   "r7": 18.33
+  },
+  "runner_up": {
+   "arm": "stock",
+   "checkpoint": "heb_final",
+   "selection_cer_percent": 16.814
+  }
+ },
+ "evaluation": {
+  "profile": {
+   "name": "line_fold_v1",
+   "sha256": "2e2627104be4f27dc3204787dd3ff4f8591d95d1d96294c65833d2773041d317",
+   "folds": "־→-, ׳→', ״→\", “ ” „→\", —→–; NFC; whitespace collapsed",
+   "lines_a_model_cannot_output": "charged"
+  },
+  "test_score": "none: the P-hist test has no references yet",
+  "sources": [
+   "P-hist v1 RESULTS.md §2-§3",
+   "heocr-eval default-model study report (2026-11-19)"
+  ],
+  "audit2_vs_stock": {
+   "delta": -3.51,
+   "ci95": [
+    -6.1,
+    0.3
+   ],
+   "note": "selection set: optimistic"
+  },
+  "note": "aggregates only"
+ },
+ "word_list_check": {
+  "lstm_word_dawg_sha256": "cddcc086c241eeaf0f29b77f7955770d4fe3b2832f8fec986e53c7a0a579fcdb",
+  "equals": "HeOCR R7",
+  "entries": 70171,
+  "entries_from_training_text": 0
+ },
+ "output": {
+  "model_sha256": "f8090760b5b02d09cf4ddb435e7a5e34089f6f17cde9cfb6c67fd06c6f17ec02",
+  "bytes": 3628595,
+  "file_name": "heb_final.traineddata",
+  "release_file_name": "heocr_oldprint_v1.traineddata",
+  "language_name": "heocr_oldprint_v1",
+  "byte_reproducible": false
+ },
+ "model_licence": {
+  "status": "Apache-2.0",
+  "owner": "maintainer",
+  "basis": "planning/decisions/0014-open-release-always.md",
+  "published": false
+ }
+}

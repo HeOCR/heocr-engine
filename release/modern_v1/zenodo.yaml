@@ -1,0 +1,43 @@
+# Zenodo deposit metadata for modern-v1, read by release/zenodo_deposit.py (`--models modern_v1`,
+# to be added at deposit). A Tesseract model, as R6, R7 and R8b are: NOT HTRMoPo front matter, no
+# `software_hints`, not for the `ocr_models` community. The deposit card is this front matter
+# between `---` lines, with `id` added (the version DOI reserved for this record's draft),
+# followed by card_body.md.
+summary: Hebrew office and modern-print recognition for Tesseract, fine-tuned from tessdata_best heb on synthetic office pages, born-digital and scanned Reshumot lines (HeOCR modern-v1)
+# Creators: as the earlier records (release/README.md, "Deposits"). Person names
+# are "Family, Given"; `type` is the InvenioRDM creator type.
+authors:
+  - name: Palachy Affek, Shay
+    type: personal
+    orcid: https://orcid.org/0000-0002-1459-9320
+  - name: HeOCR maintainers
+    type: organizational
+license: Apache-2.0
+software_name: tesseract
+language:
+  - heb
+script:
+  - Hebr
+tags:
+  - tesseract
+  - traineddata
+  - hebrew
+  - printed
+  - office documents
+  - ocr
+  - text-recognition
+  - HeOCR
+model_type:
+  - recognition
+# No metrics: HeOCR reports figures only on held-out sets, and this model has none yet (see the card).
+# isDerivedFrom links: the base model, the synthetic generator and the Open Law Book. The Reshumot
+# booklets are not linked here (opaque publisher API links); they are in the training record.
+related:
+  - identifier: https://github.com/tesseract-ocr/tessdata_best/blob/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/heb.traineddata
+    resource_type: software
+  - identifier: https://github.com/HeOCR/hocrsyngen/tree/749069d
+    resource_type: software
+  - identifier: https://he.wikisource.org/wiki/ספר_החוקים_הפתוח
+    resource_type: dataset
+communities:
+  - heocr

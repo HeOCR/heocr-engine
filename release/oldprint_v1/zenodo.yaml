@@ -1,0 +1,60 @@
+# Zenodo deposit metadata for oldprint-v1, read by release/zenodo_deposit.py (`--models oldprint_v1`,
+# to be added at deposit). A Tesseract model, as R6, R7 and R8b are: NOT HTRMoPo front matter, no
+# `software_hints`, not for the `ocr_models` community. The deposit card is this front matter
+# between `---` lines, with `id` added (the version DOI reserved for this record's draft),
+# followed by card_body.md.
+summary: Hebrew old-print recognition for Tesseract, continued from HeOCR R7 on Internet Archive scans of public-domain books and rabbinic editions, with Reshumot replay (HeOCR oldprint-v1)
+# Creators: as the earlier records (release/README.md, "Deposits"). Person names
+# are "Family, Given"; `type` is the InvenioRDM creator type.
+authors:
+  - name: Palachy Affek, Shay
+    type: personal
+    orcid: https://orcid.org/0000-0002-1459-9320
+  - name: HeOCR maintainers
+    type: organizational
+license: Apache-2.0
+software_name: tesseract
+language:
+  - heb
+script:
+  - Hebr
+tags:
+  - tesseract
+  - traineddata
+  - hebrew
+  - printed
+  - historical
+  - ocr
+  - text-recognition
+  - real scans
+  - HeOCR
+model_type:
+  - recognition
+# No metrics: HeOCR reports figures only on held-out sets, and this model has none yet (see the card).
+# isDerivedFrom links: the base model, HeOCR R7 (continued from; R7 is not superseded), the
+# training scans (7 Internet Archive items) and the text sources.
+related:
+  - identifier: https://github.com/tesseract-ocr/tessdata_best/blob/e12c65a915945e4c28e237a9b52bc4a8f39a0cec/heb.traineddata
+    resource_type: software
+  - identifier: https://doi.org/10.5281/zenodo.24126448
+    resource_type: software
+  - identifier: https://archive.org/details/zikhronotlebetda01reck
+    resource_type: image
+  - identifier: https://archive.org/details/mahzor-vitri-abraham-berliner-1893
+    resource_type: image
+  - identifier: https://archive.org/details/midrashleaovhame0305tobi
+    resource_type: image
+  - identifier: https://archive.org/details/afahleneemaniml00fngoog
+    resource_type: image
+  - identifier: https://archive.org/details/kolkitveylkatsen018800
+    resource_type: image
+  - identifier: https://archive.org/details/seferhademaotmeo0000bern
+    resource_type: image
+  - identifier: https://archive.org/details/betnekhothahalak01horouoft
+    resource_type: image
+  - identifier: https://github.com/projectbenyehuda/public_domain_dump
+    resource_type: dataset
+  - identifier: https://www.gutenberg.org/ebooks/43740
+    resource_type: dataset
+communities:
+  - heocr

@@ -1,0 +1,125 @@
+# 0011 — The first release adds R4d and A1 to R3h
+
+- Status: accepted
+- Date: 2026-11-06
+- Decided by: the maintainer (Shay), 2026-11-06; written by R4b at the HeOCR team lead's request
+- Supersedes:
+  - decision 0010's scope (item 5, "R3h alone for the first release");
+  - for the R4d segmenter and the A1 reading-order model, decision 0008's licence clause (`Needs verification`) and its "No publication" clause.
+
+## Context
+
+Decision 0010 scoped the first release to the R3h recognizer. Its card's end-to-end figures came from HeOCR's own pipeline: the R4d segmenter with the A1 reading order. Those two models were not part of that release.
+
+So R3h was then scored with kraken's default `blla` segmentation, the pipeline a user of R3h alone would run:
+- `segment -bl -d horizontal-rl`, then `ocr --reorder --base-dir R`, with kraken 7.0.2;
+- through heocr-engine's CLI stage at `6f6df8b`;
+- scored with hocrgen's `primary.v1` profile (`2d3efb0` for seed-101 and held-out, `c8fb74e` for the rest).
+
+Every page was scored.
+
+| Batch | R3h + `blla` CER | R3h + R4d + A1 CER |
+|---|---|---|
+| seed-101 | 0.168 | 0.020 |
+| held-out | 0.238 | 0.010 |
+| eval-mixed-heldout | 0.230 | 0.017 |
+| eval-typo-heldout | 0.291 | 0.009 |
+| eval-layout-heldout | 0.498 | 0.124 |
+| hocrgen fixture (development set) | 0.404 | 0.130 |
+
+The loss comes from `blla`'s segmentation and line order, not from the recognizer: R4a found the same for R3b with `blla`.
+
+## Decision
+
+- **Scope: R3h, R4d and A1** in the first release.
+- **0010's other decisions apply to all three models:**
+  - Apache-2.0 weights;
+  - licensor "HeOCR maintainers";
+  - the two OFL fonts credited, with OFL-1.1 not reaching the weights;
+  - Zenodo with a version DOI, and Hugging Face Hub.
+
+## Still open
+
+As in decision 0010, now for all three models:
+- the card text, which the maintainer reads himself (item 6);
+- the Zenodo and Hugging Face accounts or organisations (item 7);
+- a separate go-ahead for each publishing action (item 8).
+
+## Consequences
+
+- **Each model gets its own deposit:** card, front matter, NOTICE, LICENSE and sanitised training record. The cards link to each other as one pipeline.
+- **A1 needs a proper record first.** It has no `heocr_engine_training_run.v1` record (proposal §4). One is written from the run's evidence before release, and fields the evidence cannot supply are marked as such.
+- **A1's training pages** come from two hocrsyngen batches: R4d's (S10b text) and R3d's (S10b + S13a text). All of that text is CC0-1.0 (hocrsyngen ADR 0008).
+- **Nothing is published by this record.** Every training record keeps `published: false` until a deposit actually happens.
+- **Other models keep their records' terms.** Decision 0008 still applies to segmenters other than R4d and to reading-order models other than A1. Decision 0007 still applies to recognizers other than R3h.
+
+## Note (2026-11-06): item 6 and the NOTICE text decided
+
+On 2026-11-06 the maintainer approved the three model cards as they stand on main at `952e5b5`. This closes sign-off item 6. The approved files are:
+
+| Card | sha256, with the production DOIs (plan step 2) |
+|---|---|
+| `release/r3h/card_body.md` | `575ef80d447af31884d6f38996ff8625f2849be23863e7bf8ba60c5941dcfd05` |
+| `release/r4d/card_body.md` | `08d7d20c9b99650a5592e9e47f68d8f5b66755029ac61191fe9347e34780215e` |
+| `release/a1/card_body.md` | `9e85491573efa19f3d5508687f250d1a732c1c864120737b3f3450c97487f150` |
+
+In a separate approval the same day, the maintainer approved the three NOTICE files. That decides item 4's NOTICE text. The approval came with one change, a grammar fix in R4d's NOTICE: it names one corpus, so "The corpus is dedicated" replaces "The corpora are dedicated". The approved files, after that fix, are:
+
+| NOTICE | sha256 |
+|---|---|
+| `release/r3h/NOTICE` | `9711f741296fa7ee5cbf60900864c24b52b17884be3d4f8a579bc90790f14276` (unchanged from `952e5b5`) |
+| `release/r4d/NOTICE` | `520faa889f2c9ca5f254168cea91ff017fa0f6dcc4c12054754cff8655266956` (with the fix) |
+| `release/a1/NOTICE` | `c8b3ca662a59dfbc39a1df08a2f2589b174104ba9122fe0bb0f6822522349fae` (unchanged from `952e5b5`) |
+
+- **The one planned change:** the reserved version DOIs go into each card's pipeline table and Citation section (`release/README.md`, plan step 2). Any other change to a card or a NOTICE needs the maintainer's review again.
+- **Amendment, 2026-11-19 (held-out figures only):** the maintainer's rule is "we only produce metrics on held-out sets", and his decision is to replace every card with dev-set results. HeOCR evaluation found that none of the six synthetic sets these cards scored on is a registered held-out set. So the three cards drop every figure, and say "not measured on a held-out set yet". The pins above are the held-out-only cards, which cite their v2 DOIs (R4d `10.5281/zenodo.24372337`, A1 `10.5281/zenodo.24372338` (deleted 2026-11-20; A1's v3 is `10.5281/zenodo.24395014`), R3h `10.5281/zenodo.24372341`), whose links to the sibling models use their concept DOIs (which survive a deleted version); the earlier pins were r3h `da8b4e84…`, r4d `0b4c4313…` and a1 `6a03f50b…`. **This change needs the maintainer's review**, which is requested in the PR that made it.
+- **2026-11-06, plan step 2, pending the maintainer's approval of the diff:** only the DOI lines changed, four per card:
+  - three pipeline-table rows, each with that model's production version DOI and its `https://doi.org/` link;
+  - the Citation line.
+
+  The DOIs, reserved on zenodo.org, are R4d `10.5281/zenodo.24023070`, A1 `10.5281/zenodo.24023072` and R3h `10.5281/zenodo.24023074`. The approved cards at `952e5b5` had the sha256s r3h `8a068719…`, r4d `ff7d7a89…` and a1 `1b5d7439…`. The NOTICEs are unchanged.
+- **2026-11-07, the DOI diff approved:** the maintainer approved the plan-step-2 diff (#51, four DOI lines per card), and it was merged as `8d4bb03`. The card pins above are the approved cards.
+- **2026-11-07, published on Zenodo** (plan steps 3–6), each with its own go-ahead from the maintainer:
+  - **Deposits:** from main at `8d4bb03`, with the repository's `release/` files and the original training weights.
+  - **Checks:** every file was downloaded and checked before publishing:
+    - each weights file matches its record's `model_sha256`;
+    - each NOTICE matches its pin;
+    - each `README.md` body matches its pinned card and cites its own DOI.
+  - **Records:**
+
+    | Model | Record | Version DOI |
+    |---|---|---|
+    | R4d | https://zenodo.org/records/24023070 | `10.5281/zenodo.24023070` |
+    | A1 | https://zenodo.org/records/24023072 | `10.5281/zenodo.24023072` |
+    | R3h | https://zenodo.org/records/24023074 | `10.5281/zenodo.24023074` |
+
+  - **DOIs:** registered with DataCite, and resolving through https://doi.org.
+  - **Communities:**
+    - each record is in the `heocr` community; the maintainer's account accepted those requests with `zenodo_deposit.py accept`;
+    - each record's inclusion request to `ocr_models` was submitted and waits for that community's moderators.
+  - **Discovery:** `kraken list` and `htrmopo show` do not find the records yet, which is expected while `ocr_models` inclusion is pending. Check again later.
+- **2026-11-07, mirrored on Hugging Face** (plan step 7), after the maintainer's go-ahead ("Upload"):
+  - **Upload:** `release/hf_upload.py` from main at `d2764b7`, with the same weights as the Zenodo deposits. Each repository is public and has one release commit, after the commit Hugging Face makes when it creates a repository (`.gitattributes`).
+  - **Repositories:**
+
+    | Model | Repository | Release commit |
+    |---|---|---|
+    | R4d | https://huggingface.co/HeOCR/heocr-r4d-segmentation | `8ec88ad1e43c12a1ec4dfaf6dabc6553eea07b24` |
+    | A1 | https://huggingface.co/HeOCR/heocr-a1-reading-order | `7cca82818df632236a38f27f5b16374911926688` |
+    | R3h | https://huggingface.co/HeOCR/heocr-r3h-recognition | `2b309a7ab15621225e8eee8e201f7520610bacce` |
+
+  - **Checks:** read back anonymously, with no token. Each repository is public and not gated, and holds exactly the planned files: `README.md`, the weights, `LICENSE`, `NOTICE` and the training record. Every size matches the dry run. Each downloaded file matches its sha256, and so does each weights file's LFS sha256. Each `README.md` is the `huggingface.yaml` front matter plus the approved card body, which cites its own DOI.
+- **Still open:** `ocr_models` inclusion, waiting for its moderators, and then the `kraken list` / `htrmopo show` check.
+
+## Note (2026-11-06): item 7's accounts decided
+
+The maintainer decided the publishing accounts on 2026-11-06:
+- **Hugging Face:** a new HeOCR organisation, which he creates, with the repositories `HeOCR/heocr-r3h-recognition`, `HeOCR/heocr-r4d-segmentation` and `HeOCR/heocr-a1-reading-order`.
+- **Zenodo:** deposits from his personal Zenodo account, into a new HeOCR community that he creates.
+- **Zenodo creators:** Shay Palachy Affek, as a person (with his ORCID iD, if he has one), and "HeOCR maintainers", as an organisation.
+
+How this is carried out, and the tokens he creates and keeps outside every repository, are in `release/README.md` ("Before step 1" and the plan for item 8). Item 8 stays open: each publishing action gets its own go-ahead.
+
+**Amendment (2026-11-20):** the A1 card lost one sentence reporting tagging on synthetic development batches, under Shay's rule that nothing reported on synthetic data stays public. New card pin `cf631b69427bad05f83e0fff60f12db054487a7cab22cdc014dbccb1b860d178`; sent to Shay for his review with the publish question.
+
+**Amendment (2026-11-20, v3):** the A1 card now cites its v3 DOI 10.5281/zenodo.24395014 (no other change). New card pin `9e85491573efa19f3d5508687f250d1a732c1c864120737b3f3450c97487f150`.
