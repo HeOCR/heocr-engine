@@ -7,7 +7,7 @@ oldprint-v1 is a [Tesseract](https://github.com/tesseract-ocr/tesseract) languag
 
 No label is OCR output. It is the model that HeOCR's evaluation recommends for old print in [heocr](https://github.com/HeOCR/heocr), the HeOCR document pipeline, beside [modern-v1](#related-models) for modern print. (In the experiment records it is P-hist round v1, arm r7, `heb_final`.)
 
-**Performance: not measured on a held-out set yet.** No held-out score yet; HeOCR will score it once in a registered held-out run. That run is the P-hist test (22 held-out books), once its human references exist, against R7 and stock `heb`; the result will be added to this card in a new version.
+**Performance: not measured on a held-out set of old and rabbinic print yet.** HeOCR will score it once in a registered held-out run. The one held-out result so far is a pointed-print test: it does not output niqqud (see [Bias, risks and limitations](#bias-risks-and-limitations)). That run is the P-hist test (22 held-out books), once its human references exist, against R7 and stock `heb`; the result will be added to this card in a new version.
 
 - **How it was chosen:** the lowest page CER on audit2, a development set of 38 old-print pages from 13 books read whole at psm 3, among 20 candidates (8 snapshots, the training-best checkpoint and the final model of this arm and of a second arm started from stock `heb`). audit2 made the choice, so no figure from it is reported here.
 - **Not for modern office documents.** On HeOCR's synthetic office development sets, inside heocr, it reads worse than stock `heb` on scanned and image-only PDFs and scanned tables. Use modern-v1 there.
@@ -36,7 +36,7 @@ No label is OCR output. It is the model that HeOCR's evaluation recommends for o
 - **Modern office documents, forms and tables.** Use [modern-v1](#related-models).
 - **Rashi script** and other non-square scripts. Every training line is square type.
 - **Handwriting.**
-- **Niqqud (vowel points) and cantillation.** The labels have none.
+- **Niqqud (vowel points) and cantillation.** The labels have none, and pointed print comes out unpointed (see [Bias, risks and limitations](#bias-risks-and-limitations)).
 - **Text it cannot write:** geresh `׳`, gershayim `״`, the em dash `—` and Latin letters. Training labels wrote `׳ ״` as `' "` and `—` as `–`.
 - **Unsupervised transcription.** Check the output.
 
@@ -109,7 +109,7 @@ The word list is R7's, unchanged: the model's `lstm-word-dawg` has R7's sha256, 
 
 ## Evaluation
 
-**Not measured on a held-out set yet.** HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning. oldprint-v1 has no such score yet:
+**Not measured on a held-out set of its own domain yet.** HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning. The one held-out result so far is the pointed-print test NQ1, under [Bias, risks and limitations](#bias-risks-and-limitations). oldprint-v1 has no such score yet:
 
 - **What was used to choose it is not reported as performance:** audit2, the selection set; the real-print development line sets that guard against regressions; and HeOCR's open synthetic document sets. They are named in hocrsyngen `experiments/phist_v1/RESULTS.md` and evaluation's default-model study report.
 - **Next:** the P-hist test (22 held-out books), once its human references exist. It is a registered run, against R7 and stock tessdata_best `heb` (the base), read the same way. Its result will be added in a new version of this card.
@@ -117,12 +117,12 @@ The word list is R7's, unchanged: the model's `lstm-word-dawg` has R7's sha256, 
 
 ## Bias, risks and limitations
 
-- **Not measured on a held-out set yet.** See [Evaluation](#evaluation).
+- **Not measured on a held-out set of its own domain yet.** See [Evaluation](#evaluation).
 - **Worse than stock on modern office documents** inside heocr. Route modern print to modern-v1.
 - **Training data:** 7 books and editions printed between 1881 and 1923, plus R7's 30 books (1856–1938), and modern Reshumot replay (52% of this round). Other typefaces, layouts and periods may gain less, or lose.
 - **Regressions against R7** on development lines from two scans, *Kevar* and Brainin's Internet Archive copy, small, dark and grainy.
 - **Square type only.** Not for Rashi script, handwriting or Latin text.
-- **No niqqud training.**
+- **Does not output niqqud (vowel points).** On NQ1, HeOCR's held-out pointed-print test (25 pages of modern pointed Hebrew: poetry, Tanakh and nakdan-pointed prose in open fonts, printed and photographed by phone, 101 photos; registered before printing and scored once, 2026-11-20), read through heocr, it wrote almost no marks: 238 in 51,687 Hebrew letters, so pointed text comes out unpointed. It had no niqqud training. Stock `heb` writes some of the marks (about a quarter on NQ1); niqqud support is planned. On modern pointed print, its letter accuracy is below stock `heb`. The set is modern pointed print in open fonts and phone photos, not old pointed books.
 - **Edition spelling.** The text sources sometimes modernise or vary the spelling of the print, and the labels carry those variants.
 - **Layout is Tesseract's,** or heocr's when used inside heocr.
 - **One training run.** Training-seed variation is not measured.

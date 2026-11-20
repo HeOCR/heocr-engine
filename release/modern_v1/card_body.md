@@ -7,7 +7,7 @@ modern-v1 is a [Tesseract](https://github.com/tesseract-ocr/tesseract) language 
 
 No label is OCR output. It is the model that HeOCR's evaluation chose as the default for modern print in [heocr](https://github.com/HeOCR/heocr), the HeOCR document pipeline. (In the experiment records it is office-print v0, arm A, snapshot `snap_0160m_222700`.)
 
-**Performance: not measured on a held-out set yet.** No held-out score yet; HeOCR will score it once in a registered held-out run. HeOCR reports accuracy only on held-out sets; the result will be added to this card in a new version.
+**Performance, on HeOCR's registered held-out runs** (heocr with this model against the same heocr with stock `heb`): lower character error and fewer missed numbers on generated documents (RC2), but **no gain on real phone photos of printed pages (PS-v1)**, and no niqqud output (NQ1). The two document results always go together; see [Evaluation](#evaluation).
 
 - **How it was chosen:** first, its checkpoint: the lowest line CER on `office_val` (synthetic crops in a held-out face, from held-out booklets) among 11 candidates, the 9 snapshots, the training-best checkpoint and the final model. Then HeOCR's evaluation chose it as heocr's default for modern print in a pre-registered default-model study (2026-11-19). The study compared it with stock `heb` and the other arm, inside heocr, on HeOCR's open synthetic document sets, and on real-print development line sets. These sets made the choice, so no figure from them is reported here.
 - **Known cost: some numbers stock read are now lost,** mostly outline labels such as `2.1.3`. heocr's own number handling is meant to catch these; it is not part of this model. Check numbers that matter.
@@ -35,7 +35,7 @@ No label is OCR output. It is the model that HeOCR's evaluation chose as the def
 
 - **Old and rabbinic print.** Use [oldprint-v1](#related-models).
 - **Handwriting,** Rashi script and other non-square scripts. None was trained.
-- **Niqqud (vowel points) and cantillation.** The labels have none.
+- **Niqqud (vowel points) and cantillation.** The labels have none, and pointed print comes out unpointed (see [Bias, risks and limitations](#bias-risks-and-limitations)).
 - **Text it cannot write.** Its character set is stock `heb`'s: it writes no maqaf `־`, geresh `׳`, gershayim `״`, en dash `–`, em dash `—` or `―`. Training labels with `–`, `—` or `―` were written `-`.
 - **Unsupervised transcription.** Check the output, above all numbers.
 
@@ -95,19 +95,37 @@ The word list is tessdata_best's own, unchanged: the model's `lstm-word-dawg` ha
 
 ## Evaluation
 
-**Not measured on a held-out set yet.** HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning. modern-v1 has no such score yet:
+HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning, each registered before it was scored and scored once. Each comparison below is heocr 0.2.0rc1 with this model against the same heocr with stock tessdata_best `heb`, so the difference is this model's contribution. Measure: `line_fold_v1`; intervals are 95% percentile bootstraps (2,000 resamples, seed 0). Details: [heocr.github.io/benchmarks](https://heocr.github.io/en/benchmarks.html).
+
+**Generated documents (RC2, the release gate's fresh set, run `gate-rc2-synth-r2`).** Documents generated after the code freeze, with exact gold; text from the Reshumot gazette (PD-IL).
+
+| Document type | Measure | This model | Stock `heb` | Difference (95% interval) |
+|---|---|---|---|---|
+| Scan with a wrong OCR text layer (PDF T4, 40 documents) | Character error | 1.3% | 3.3% | −2.01 points (−2.27 to −1.75) |
+| | Numbers missed | 5.2% | 22.7% | −17.50 points (−19.58 to −15.46) |
+| Text layer plus text drawn as images (PDF T6, 40 documents) | Character error | 0.13% | 0.19% | −0.06 points (−0.10 to −0.03) |
+| | Numbers missed | 0.09% | 0.31% | −0.23 points (−0.39 to −0.09) |
+| Scanned pages with a ruled table (120 documents) | Character error | 0.4% | 1.4% | −1.05 points (−1.23 to −0.87) |
+| | Numbers missed | 0.5% | 2.2% | −1.70 points (−2.11 to −1.30) |
+
+**Caveat:** these documents are drawn by the same generators heocr is developed against, so they favour it. A good figure here means good on generated documents of this kind, not more. **Read them with the photo result below.**
+
+**Real phone photos of printed pages (PS-v1, run `print_scan_PS-v1_2026-11-18`).** 12 pages of printed modern Hebrew (legislation and prose), typeset by HeOCR from public-domain texts, printed and photographed by phone. Headline condition (flat, main phone): character error 14.1% with this model against 14.0% with stock `heb`, a difference of **+0.08 points (−0.74 to +1.28): no gain**. In the other conditions it is within about a point of stock `heb`. **Caveat:** 12 pages, one printer, three phones, HeOCR's own typesetting; the intervals are wide.
+
+**Pointed print (NQ1).** See [Bias, risks and limitations](#bias-risks-and-limitations): it does not output niqqud.
 
 - **What was used to choose it is not reported as performance.** The development, tuning and selection sets behind the choice (`office_val`, HeOCR's open synthetic document sets, and the real-print development line sets) are named in the experiment records: hocrsyngen `experiments/office_print_v0/RESULTS.md` and evaluation's default-model study report.
-- **Next:** HeOCR's registered held-out run of the default model, against stock tessdata_best `heb` (the base), shown beside it and read the same way. Its result will be added in a new version of this card.
-- **Scoring profile** for that run: `line_fold_v1` (sha256 `2e2627104be4f27dc3204787dd3ff4f8591d95d1d96294c65833d2773041d317`): NFC, whitespace collapsed, and the folds `־`→`-`, `׳`→`'`, `״`→`"`, `“ ” „`→`"`, `—`→`–`. A reference `–` or `―` costs every stock-charset model one substitution.
+- **Not yet measured:** real scanned office documents. The held-out sets above are generated documents and photographed pages typeset by HeOCR.
+- **Scoring profile:** `line_fold_v1` (sha256 `2e2627104be4f27dc3204787dd3ff4f8591d95d1d96294c65833d2773041d317`): NFC, whitespace collapsed, and the folds `־`→`-`, `׳`→`'`, `״`→`"`, `“ ” „`→`"`, `—`→`–`. A reference `–` or `―` costs every stock-charset model one substitution.
 
 ## Bias, risks and limitations
 
-- **Not measured on a held-out set yet.** See [Evaluation](#evaluation).
+- **The held-out gain is on generated documents only.** On real phone photos of printed pages (PS-v1) it adds nothing over stock `heb` (+0.08 points, −0.74 to +1.28). See [Evaluation](#evaluation).
 - **Lost numbers.** On synthetic development scans it loses some numbers that stock reads, mostly outline labels. Check numbers that matter.
 - **Synthetic share.** 46% of its lines are synthetic office pages in 12 open faces. Real office documents set in proprietary faces (Arial, David, Times New Roman and others) were never trained on; it was developed only against open look-alike faces (Arimo, Cousine, Tinos).
 - **One source of real text.** All its real and rendered lines are Reshumot laws and regulations. Other registers may gain less.
 - **Gate bias.** The training gates keep what stays legible, so the heaviest photocopy damage drawn is under-represented (about 20% photocopy against 25% planned).
+- **Does not output niqqud (vowel points).** On NQ1, HeOCR's held-out pointed-print test (25 pages of modern pointed Hebrew: poetry, Tanakh and nakdan-pointed prose in open fonts, printed and photographed by phone, 101 photos; registered before printing and scored once, 2026-11-20), read through heocr, it wrote no marks: 0 in 53,730 Hebrew letters, so pointed text comes out unpointed. Stock `heb` writes some of the marks (about a quarter on NQ1); niqqud support is planned. On the letters alone it matches stock `heb` inside heocr. The set is modern pointed print in open fonts and phone photos, not old pointed books.
 - **Character set.** It cannot write `־ ׳ ״ – — ―`, or Latin letters.
 - **Layout is Tesseract's,** or heocr's when used inside heocr. The model changes only the line recognizer.
 - **One training run.** Training-seed variation is not measured.

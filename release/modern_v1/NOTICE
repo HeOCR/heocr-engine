@@ -103,8 +103,8 @@ The model was chosen on HeOCR's open synthetic document sets (CC0 code; text
 from Reshumot, PD-IL) and on development line sets whose references come
 from Hebrew Wikisource (CC BY-SA 4.0), Project Ben-Yehuda (public domain),
 Sefaria (public domain) and Reshumot (PD-IL). They were never trained on.
-The model contains no evaluation text. Its accuracy is not measured on a
-held-out set yet.
+The model contains no evaluation text. Its held-out results (registered
+runs RC2, PS-v1 and NQ1) are on its model card.
 
 No endorsement
 --------------

@@ -15,6 +15,13 @@ FILES = {"modern_v1": ["LICENSE", "NOTICE", "card_body.md", "huggingface.yaml", 
 
 DOIS = {"modern_v1": "10.5281/zenodo.24372349", "oldprint_v1": "10.5281/zenodo.24372352"}  # v2 (held-out-only card)
 
+# modern-v1's registered held-out figures (RC2 gate-rc2-synth-r2, PS-v1 print_scan_PS-v1_2026-11-18; benchmarks/results.json)
+HELD_OUT_SCORED = {"modern_v1": {"1.3", "3.3", "2.01", "2.27", "1.75", "5.2", "22.7", "17.50", "19.58", "15.46",
+                                 "0.13", "0.19", "0.06", "0.10", "0.03", "0.09", "0.31", "0.23", "0.39",
+                                 "0.4", "1.4", "1.05", "1.23", "0.87", "0.5", "2.2", "1.70", "2.11", "1.30",
+                                 "14.1", "14.0", "0.08", "0.74", "1.28"}}
+
+
 class ReleasePackages(unittest.TestCase):
     def test_files(self):
         for model, names in FILES.items():
@@ -40,13 +47,26 @@ class ReleasePackages(unittest.TestCase):
             self.assertIn(f"Cite this model by its version DOI: [{DOIS[model]}](https://doi.org/{DOIS[model]}).",
                           (folder / "card_body.md").read_text(encoding="utf-8"))
             body = (folder / "card_body.md").read_text(encoding="utf-8")
-            self.assertIn("not measured on a held-out set yet", body.lower())
-            self.assertIn("No held-out score yet; HeOCR will score it once in a registered held-out run.", body)
-            # held-out figures only (maintainer, 2026-11-19): no dev, tuning or selection figure as performance
             evaluation = body[body.index("## Evaluation"):body.index("## Bias, risks and limitations")]
-            self.assertNotIn("%", evaluation)
-            self.assertIsNone(re.search(r"\b\d+\.\d{2,3}\b(?![0-9a-f])", evaluation.replace("5.5.3", "")))
+            if model in HELD_OUT_SCORED:
+                # registered held-out runs only (RC2, PS-v1, NQ1; eval 2026-11-20): every figure in Evaluation is one of
+                # them, and the generated-document gain never appears without the real-photo result beside it
+                figures = set(re.findall(r"\d+\.\d+", evaluation.replace("0.2.0rc1", "")))
+                self.assertLessEqual(figures, HELD_OUT_SCORED[model], figures - HELD_OUT_SCORED[model])
+                for part in (body[:body.index("## Uses")], evaluation):
+                    if "RC2" in part:
+                        self.assertIn("PS-v1", part)
+                        self.assertIn("no gain", part)
+                self.assertIn("+0.08 points", body)
+            else:
+                self.assertRegex(body.lower(), r"not measured on a held-out set (of [a-z ]+ )?yet")
+                self.assertIn("HeOCR will score it once in a registered held-out run.", body)
+                # held-out figures only (maintainer, 2026-11-19): no dev, tuning or selection figure as performance
+                self.assertNotIn("%", evaluation)
+                self.assertIsNone(re.search(r"\b\d+\.\d{2,3}\b(?![0-9a-f])", evaluation.replace("5.5.3", "")))
             outside_data = body[:body.index("### Training data")] + body[body.index("### Training procedure"):]
+            if model in HELD_OUT_SCORED:
+                outside_data = outside_data.replace(evaluation, "")  # Evaluation is checked against the held-out figures
             self.assertIsNone(re.search(r"\d+\.\d+\s*%", outside_data))  # data shares are whole percents
 
     def test_no_local_paths(self):
