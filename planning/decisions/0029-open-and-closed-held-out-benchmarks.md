@@ -1,6 +1,6 @@
 # 0029 — Lead with open held-out benchmarks
 
-- Status: proposed, pending maintainer approval
+- Status: accepted
 - Date: 2026-11-21
 - Decision owner: the maintainer
 - Amends: [0012](0012-real-page-scored-sets.md), [0017](0017-domain-separated-evaluation.md), [0023](0023-open-by-default.md), and [0024](0024-use-case-benchmarks-modern-print.md)
@@ -20,7 +20,11 @@ Use the closed set to cover settings and real documents whose images or referenc
 
 ## Launch and reporting
 
-The launch criterion remains the currently registered rule until separately amended. Whether only OPEN sets can count toward launch is pending a maintainer decision. This proposal sets the reporting order and creates no launch result. Give every category an open headline or an explicit pending status, and disclose unresolved required comparators. Preserve prior scores on their original scope as supplemental evidence.
+Only registered real OPEN held-out sets count toward launch. HeOCR must demonstrate at least a **3% relative CER improvement in at least one of the six categories**, against every eligible registered comparator in that category, under the paired test defined in the dated launch preregistration amendment. The primary target is **modern printed, unpointed Hebrew**. Give every category an open headline or an explicit pending status, and disclose unresolved required comparators. Preserve prior scores on their original scope as supplemental evidence.
+
+Shay approved this rule on 2026-11-21. His decision, verbatim:
+
+> החלטה 29: רק סטים פתוחים, אבל נשנה את קריטריון ההשקה ל-3% לפחות בקטגוריה אחת לפחות, כשאנחנו בגדול מכוונים לעברית מודרנית מודפסת לא מנוקדת.
 
 Apply decision 0028 to both cohorts. Keep source reservations and exact training provenance, tag allowed same-text exposure, and report the all-lines and non-overlap views with their denominators and any unavailable coverage. Use the same pinned scoring rules and eligible reader inputs within each comparison. The model, pipeline and app release hold remains in force until the launch criterion and maintainer approval are both satisfied.
 
