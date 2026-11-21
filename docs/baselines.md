@@ -230,6 +230,8 @@ Limits:
   - Selected the lower learning-rate arm on the development set.
   - Model sha256 `95faab81…`.
 
+R7 checkpoint selection used 7,092 development rows from two sources now reserved in line_verify. R7 and its verified descendants carry that exposure. Comparisons on those sources are selection-exposed.
+
 **38 pages, `primary.v1`:** CER / WER, with R7 minus baseline as Δ [page interval]; cl [Wikisource-Index cluster interval].
 
 | Baseline | CER: base → R7 | ΔCER | WER: base → R7 | ΔWER |

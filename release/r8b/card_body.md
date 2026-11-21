@@ -140,6 +140,8 @@ So decision 0016 holds: no word list was built from Wikisource text.
 
 ## Evaluation
 
+The R7-derived readers shown here inherit R7 checkpoint-selection exposure to 7,092 development rows from two sources now reserved in line_verify. Comparisons on those sources are selection-exposed.
+
 **Performance: not measured on a held-out set yet.** HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning. R8b has no such score yet. No held-out score yet; HeOCR will score it once in a registered held-out run.
 
 - **What was used to choose it is not reported as performance:**
