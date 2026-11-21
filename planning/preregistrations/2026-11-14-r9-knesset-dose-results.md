@@ -46,6 +46,8 @@ The set is `olbreshumotlines_v1_dev`: 55 units and 3,254 lines, with intervals f
 - **The "excluded" view equals "all":** no dev line shares a word 6-gram with `train_b.list`.
 - **Why R8b's exposure is gone:** R8b's 11 exposed OLB lines all came through reshumotlines_v1, which R9 swapped out. Both R9 lists also passed the official check against the OLB dev target.
 
+R7 checkpoint selection used 7,092 development rows from two sources now reserved in line_verify. R7 and its verified descendants carry that exposure. Comparisons on those sources are selection-exposed.
+
 | View | Lines | **A** | **B** | R8b | R7 | stock | A − B [95%] |
 |---|---|---|---|---|---|---|---|
 | excluded (= all) | 3,254 | 2.124 | 2.033 | 2.129 | 2.934 | 5.428 | **+0.091 [+0.031, +0.129]** |

@@ -106,6 +106,8 @@ The word list is R7's, unchanged: the model's `lstm-word-dawg` has R7's sha256, 
 
 ## Evaluation
 
+HeOCR oldprint-v1 inherits R7 checkpoint-selection exposure to 7,092 development rows from two sources now reserved in line_verify. Comparisons on those sources are selection-exposed.
+
 **Not measured on a held-out set of its own domain yet.** HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning. HeOCR will score it once in a registered held-out run.
 
 - **What was used to choose it is not reported as performance:** audit2, the selection set; the real-print development line sets that guard against regressions; and HeOCR's open synthetic document sets. They are named in hocrsyngen `experiments/phist_v1/RESULTS.md` and evaluation's default-model study report.

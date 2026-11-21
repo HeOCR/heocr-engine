@@ -127,6 +127,8 @@ The recipe is R6's. Only the line set and the number of iterations changed.
 
 ## Evaluation
 
+R7 checkpoint selection used 7,092 development rows from two sources now reserved in line_verify. R7 and its verified descendants carry that exposure. Comparisons on those sources are selection-exposed.
+
 **Performance: not measured on a held-out set yet.** No held-out score yet; HeOCR will score it once in a registered held-out run. HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning. R7 has no such score yet:
 
 - **What was used to choose and compare it is not reported as performance.** Two development sets were used:
