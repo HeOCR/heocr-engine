@@ -155,6 +155,8 @@ The R7-derived readers shown here inherit R7 checkpoint-selection exposure to 7,
 
 ### Text overlap with training
 
+**Audit scope.** The figures below describe a historical six-word overlap screen against the reference revisions available at the time. Short matches, source and edition identity, and inherited checkpoint-selection exposure require separate checks. A registered comparison will apply [contamination policy v2](../../planning/decisions/0028-contamination-policy-v2.md) to the exact reader lineages and frozen reference set. It will report the full eligible set and the common verified non-overlap subset, with denominators and any gaps in training ancestry. For the closed use cases, [decision 0024](../../planning/decisions/0024-use-case-benchmarks-modern-print.md) limits public reporting to anonymized aggregates.
+
 The training labels were checked against the evaluation text with word 6-grams (letters only, niqqud stripped).
 - **HeOCR's evaluation check** finds no training line sharing a 6-gram with the P-mod evaluation booklets, wave 1, the verified line references or the restricted tender pages.
   - 158 training lines share one with the dev and report sets: 62 with Brainin IA, 56 with Mekhilta and 40 with Reshumot dev; none with *Kevar* or *Yedi'ot ha-Teva*.
@@ -164,7 +166,7 @@ The training labels were checked against the evaluation text with word 6-grams (
   - An earlier check used an incomplete version of this text and found 81 lines.
   - When R8b gets a mid-century score, the headline will cover only pages with no exposure to R8b's or R7's training lines. The full set will be reported second, with its exposure stated.
 - **Why the overlap reached training** (found 2026-11-13). R8b's list builder checked only its newly added sources against the dev and report text. The lines it carried over from R8a, and the S17a add-on, were checked only against the two new dev units. Its letters-only 6-grams also let through some Reshumot lines that share word 6-grams with Reshumot dev. The OLB dev set was built after training.
-  - **Rule from R9 on:** a training list counts as clean only when HeOCR's evaluation check (`check_train_overlap.py`: word 6-grams after folding, every target) passes on the whole list, inherited parts included. Builders may pre-filter, but their own checks don't count.
+  - **Whole-list coverage from R9 on.** Check the final training list, including inherited inputs, against the registered targets. Under policy v2, source exclusions and permitted different-format text exposure have separate dispositions.
 - **The 38 E2d4c reference pages:** 1 of the 196,275 training labels shares a 6-gram, the abbreviated rabbinic title formula אב"ד ור"מ דק"ק. The method splits it into six tokens; it is boilerplate, not shared text. R8b has no score on those pages.
 
 ## Bias, risks and limitations
