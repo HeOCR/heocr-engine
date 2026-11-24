@@ -55,3 +55,4 @@ Proposals are drafts for the maintainer's decision. They decide nothing; an acce
 | [0027](decisions/0027-model-release-hold.md) | Model and pipeline publication stays on hold pending a state-of-the-art result on a registered real held-out document type. |
 | [0028](decisions/0028-contamination-policy-v2.md) | Exclude shared sources and synthetic renders of benchmark text. Tag allowed shared text and report scores on all and non-overlapping lines. |
 | [0029](decisions/0029-open-and-closed-held-out-benchmarks.md) | Proposed open and closed held-out sets with open headline reporting. |
+| [0030](decisions/0030-efficiency-launch-path.md) | Add an OPEN held-out efficiency route to launch alongside decision 0029. |
