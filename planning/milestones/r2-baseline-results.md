@@ -10,6 +10,7 @@ Record the first scored baseline runs, then fix what those runs exposed in the r
 
 | Notation | Summary | Status |
 |---|---|---|
+| R2c1 | Register an additional OPEN held-out efficiency route to launch | accepted (decision 0030) |
 | R2c | Proposal for open and closed real held-out benchmarks by category | proposed (decision 0029) |
 | R2b | Experimental geometry-guarded line bidi projection, with explicit abstention and raw prediction preserved separately | implemented (PR #17) |
 | R2a | First synthetic-gold results for Tesseract and Kraken in `docs/baselines.md`; `run_process` failures name the failing command; the Kraken 7.0.2 macOS exit-time crash is documented | done (PR #5) |
