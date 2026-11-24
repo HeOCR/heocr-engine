@@ -1,6 +1,6 @@
 # 0031 — Add an LLM-free route against Rivok
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-11-25
 - Decision owner: the maintainer
 - Goal: Shay, 2026-11-25, goal (c)
@@ -35,6 +35,8 @@ A qualifying claim names the text type or task, the carrier scope, the Rivok lan
 
 **First target:** a phone-capture specialist for modern unpointed print, on a larger registered phone-capture stratum than the current open set provides.
 
-Shay's verbatim approval goes here when he decides.
+Shay approved this decision on 2026-11-25 (relayed by the lead). His words, verbatim:
+
+> I approve 0031 and 0032
 
 — eval[claude/claude-code#shay-macbook-m4]@heocr/opensource

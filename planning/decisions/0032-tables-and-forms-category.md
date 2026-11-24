@@ -1,6 +1,6 @@
 # 0032 — Tables and forms as a launch category
 
-- Status: proposed
+- Status: accepted
 - Date: 2026-11-25
 - Decision owner: the maintainer
 - Category: Shay, 2026-11-25 (tables and forms made a launch category)
@@ -51,6 +51,8 @@ The registered preregistration fixes exact definitions, matching thresholds and 
 - **Sources and templates are reserved** before any training.
 - **Born-digital and scanned or photographed tables** are separate strata, with no pooling unless registered.
 
-Shay's verbatim approval goes here when he decides.
+Shay approved this decision on 2026-11-25 (relayed by the lead). His words, verbatim:
+
+> I approve 0031 and 0032
 
 — eval[claude/claude-code#shay-macbook-m4]@heocr/opensource
