@@ -16,7 +16,7 @@ Its character set adds geresh ׳, gershayim ״ and the em dash —, which R7 can
 
 - **Development comparison:** scanned Reshumot booklets were used for model selection.
 - **How its checkpoint was chosen:** on selection lines from two books kept out of training (see [Training procedure](#training-procedure-and-hyperparameters)). Those books are read every round, so they are not held out, and their figures are not reported here.
-- **Known cost: small, dark, grainy scans may lose.** On development lines it read Brainin's collected works, as scanned on the Internet Archive, worse than R7. That scan is small, dark and grainy, and little like R8b's training lines.
+- **Known cost: small, dark, grainy scans may lose.** On development lines it read Brainin's collected works, as scanned on the Internet Archive, worse than R7. That scan is small, dark and grainy, and little like R8b's training lines. The [development reference audit](#development-reference-audit) covers this scan and both selection books.
 
 **R8b supersedes nothing. R7 remains valid.** Use R8b for modern printed Hebrew, and for text with ׳ ״ —, which R7 cannot output. R7's card, record and deposit are unchanged.
 
@@ -152,6 +152,18 @@ The R7-derived readers shown here inherit R7 checkpoint-selection exposure to 7,
 - **Scope:** small, dark and grainy scans are a distinct input condition. Include them in a future registered evaluation.
 - **Next:** a registered held-out run, against R7 and stock tessdata_best `heb` (the base), read the same way. That comparison will inform the publication decision.
 - **Scoring profile** for that run: `line_fold_v1` (sha256 `2e2627104be4f27dc3204787dd3ff4f8591d95d1d96294c65833d2773041d317`): NFC, whitespace collapsed, and five folds of signs the references write inconsistently: `־`→`-`, `׳`→`'`, `״`→`"`, `“ ” „`→`"`, `—`→`–`. Nothing else is folded. Every reference line is scored, at psm 13, and characters a model cannot output are charged.
+
+### Development reference audit
+
+The audit checked 32 seeded development reference lines per book for word errors. [Audit record](https://github.com/HeOCR/hocrsyngen/blob/e615acc093e18dfc86cc319bd946864a36f2bb86/experiments/phist_v1/REGISTRATION.md#L137-L143)
+
+| Development set | Sampled lines with a word error |
+|---|---:|
+| *Kevar* | 0/32 |
+| Brainin's collected works, Internet Archive scan | 1/32 |
+| *Yedi'ot ha-Teva* | 3/32 |
+
+For *Yedi'ot ha-Teva*, 3/32 sampled lines carry a one-letter error from the edition text. The error affects every reader equally, so it doesn't change the comparison between readers.
 
 ### Text overlap with training
 
