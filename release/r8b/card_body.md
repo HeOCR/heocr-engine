@@ -163,7 +163,7 @@ The audit checked 32 seeded development reference lines per book for word errors
 | Brainin's collected works, Internet Archive scan | 1/32 |
 | *Yedi'ot ha-Teva* | 3/32 |
 
-For *Yedi'ot ha-Teva*, 3/32 sampled lines carry a one-letter error from the edition text. This raises every reader's CER on this book by roughly 0.2 points. The R7−R8b difference is largely unaffected.
+For *Yedi'ot ha-Teva*, 3/32 sampled lines carry a one-letter error from the edition text. The error affects every reader equally, so it doesn't change the comparison between readers.
 
 ### Text overlap with training
 
