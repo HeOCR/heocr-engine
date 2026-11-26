@@ -140,7 +140,7 @@ So decision 0016 holds: no word list was built from Wikisource text.
 
 ## Evaluation
 
-The R7-derived readers shown here inherit R7 checkpoint-selection exposure to 7,092 development rows from two sources now reserved in line_verify. Comparisons on those sources are selection-exposed.
+The R7-derived readers shown here inherit R7 checkpoint-selection exposure to development rows from two sources now reserved in line_verify. Comparisons on those sources are selection-exposed.
 
 **Performance: not measured on a held-out set yet.** HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning. R8b has no such score yet. No held-out score yet; HeOCR will score it once in a registered held-out run.
 
@@ -155,15 +155,7 @@ The R7-derived readers shown here inherit R7 checkpoint-selection exposure to 7,
 
 ### Development reference audit
 
-The audit checked 32 seeded development reference lines per book for word errors. [Audit record](https://github.com/HeOCR/hocrsyngen/blob/e615acc093e18dfc86cc319bd946864a36f2bb86/experiments/phist_v1/REGISTRATION.md#L137-L143)
-
-| Development set | Sampled lines with a word error |
-|---|---:|
-| *Kevar* | 0/32 |
-| Brainin's collected works, Internet Archive scan | 1/32 |
-| *Yedi'ot ha-Teva* | 3/32 |
-
-For *Yedi'ot ha-Teva*, 3/32 sampled lines carry a one-letter error from the edition text. The error affects every reader equally, so it doesn't change the comparison between readers.
+The audit checked the development references for *Kevar*, the Brainin Internet Archive scan and *Yedi'ot ha-Teva*. It found edition-text discrepancies, including one-letter differences in *Yedi'ot ha-Teva*. Those differences can add apparent errors across readers. The audit informed development only. Public accuracy reporting uses [registered real held-out benchmarks](https://heocr.org/en/benchmarks.html).
 
 ### Text overlap with training
 
@@ -171,8 +163,7 @@ For *Yedi'ot ha-Teva*, 3/32 sampled lines carry a one-letter error from the edit
 
 The training labels were checked against the evaluation text with word 6-grams (letters only, niqqud stripped).
 - **HeOCR's evaluation check** finds no training line sharing a 6-gram with the P-mod evaluation booklets, wave 1, the verified line references or the restricted tender pages.
-  - 158 training lines share one with the dev and report sets: 62 with Brainin IA, 56 with Mekhilta and 40 with Reshumot dev; none with *Kevar* or *Yedi'ot ha-Teva*.
-  - 13 share one with the OLB dev set, all Reshumot boilerplate.
+  - The screen found overlap on some development and report sets. The OLB development matches were Reshumot boilerplate.
 - **Mid-century test pages** (heocr-eval's human-reviewed set, not yet scored), rechecked 2026-11-13 with their full text: the batch v1 pre-fills, the blind pre-fills and Claude's readings.
   - 116 training lines share a 6-gram with that text, and 33 of the 298 pages hold a training 6-gram, each on fewer than 3 in 10 of its lines.
   - An earlier check used an incomplete version of this text and found 81 lines.
@@ -214,7 +205,7 @@ The training labels were checked against the evaluation text with word 6-grams (
 | Part | Identity |
 |---|---|
 | Base model | tessdata_best `heb.traineddata` at `e12c65a915945e4c28e237a9b52bc4a8f39a0cec`, sha256 `dbaa827aea6bc21215638447f17783a1004987c2d0bf5573d111fee397abdae5` |
-| Continued from | HeOCR R7, checkpoint `lr1e4/heb_0.634_52608_117100` (sha256 `7bfac6d3…`), released as `heocr_r7.traineddata` (sha256 `95faab81…`) |
+| Continued from | HeOCR R7, checkpoint `lr1e4/heb_0.634_52608_117100` (sha256 `7bfac6d3…`), archived as `heocr_r7.traineddata` (sha256 `95faab81…`) |
 | Starter | the R8 starter: R7's character set plus `׳ ״ —` (73 codes), the base's word list, langdata_lstm `07930fd`; `heb.traineddata` sha256 `202272593630b4eddba57d5b09f5d3a142ed551b9550094e2885eb1b359fe037` |
 | Line sets | `bynli_lines_v2` (manifest sha256 `53dd7f1a…`), `bynli_lines_v3` (`4cba250f…`), `reshumotlines_v1` (`a6de99ba…`), `wslines_v1` (`25ed7ff9…`), `s17a_addon_v1.1` (`3f79461b…`); full values in the training record |
 | Text | Project Ben-Yehuda `public_domain_dump`, release 2026-03 |

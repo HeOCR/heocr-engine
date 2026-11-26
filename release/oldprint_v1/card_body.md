@@ -9,7 +9,7 @@ oldprint-v1 is a [Tesseract](https://github.com/tesseract-ocr/tesseract) languag
 
 No label is OCR output. It is the model that HeOCR's evaluation recommends for old print in [heocr](https://github.com/HeOCR/heocr), the HeOCR document pipeline, beside [modern-v1](#related-models) for modern print. (In the experiment records it is P-hist round v1, arm r7, `heb_final`.)
 
-**Performance: not measured on a held-out set of old and rabbinic print yet.** HeOCR will score it once in a registered held-out run. That run is the P-hist test (22 held-out books), once its human references exist, against R7 and stock `heb`; the result will be added to this card in a new version. The one held-out result so far is a pointed-print test: it does not output niqqud (see [Bias, risks and limitations](#bias-risks-and-limitations)).
+**Performance: not measured on a held-out set of old and rabbinic print for this checkpoint yet.** Public accuracy reporting uses [registered real held-out benchmarks](https://heocr.org/en/benchmarks.html).
 
 - **How it was chosen:** the lowest page CER on audit2, a development set of 38 old-print pages from 13 books read whole at psm 3, among 20 candidates (8 snapshots, the training-best checkpoint and the final model of this arm and of a second arm started from stock `heb`). audit2 made the choice, so no figure from it is reported here.
 - **Not for modern office documents.** It was not made or chosen for them. Use modern-v1 there.
@@ -106,11 +106,11 @@ The word list is R7's, unchanged: the model's `lstm-word-dawg` has R7's sha256, 
 
 ## Evaluation
 
-HeOCR oldprint-v1 inherits R7 checkpoint-selection exposure to 7,092 development rows from two sources now reserved in line_verify. Comparisons on those sources are selection-exposed.
+HeOCR oldprint-v1 inherits R7 checkpoint-selection exposure to development rows from two sources now reserved in line_verify. Comparisons on those sources are selection-exposed.
 
 **Not measured on a held-out set of its own domain yet.** HeOCR reports a model's accuracy only on sets held out from its training, selection and tuning. HeOCR will score it once in a registered held-out run.
 
-- **What was used to choose it is not reported as performance:** audit2, the selection set; the real-print development line sets that guard against regressions; and HeOCR's open synthetic document sets. They are named in hocrsyngen `experiments/phist_v1/RESULTS.md` and evaluation's default-model study report.
+- **What was used to choose it is not reported as performance:** audit2, the selection set; the real-print development line sets that guard against regressions; and HeOCR's open synthetic document sets. The training notes record the selection protocol.
 - **Next:** the P-hist test (22 held-out books), once its human references exist. It is a registered run, against R7 and stock tessdata_best `heb` (the base), read the same way. That comparison will inform the publication decision.
 - **Scoring profile** for that run: `line_fold_v1` (sha256 `2e2627104be4f27dc3204787dd3ff4f8591d95d1d96294c65833d2773041d317`): NFC, whitespace collapsed, and the folds `־`→`-`, `׳`→`'`, `״`→`"`, `“ ” „`→`"`, `—`→`–`.
 
@@ -129,7 +129,7 @@ HeOCR oldprint-v1 inherits R7 checkpoint-selection exposure to 7,092 development
 ## Related models
 
 - **HeOCR modern-v1** (`heocr_modern_v1`): the same training round, for modern print and office documents.
-- **HeOCR R7:** the model this one continues from. R7's card, record and deposit are unchanged.
+- **HeOCR R7:** the model this one continues from. R7's archival card documents the training lineage.
 - **HeOCR R8b:** a separate continuation of R7 for modern print. oldprint-v1 is not derived from it.
 
 ## Licence and attribution
