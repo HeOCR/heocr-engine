@@ -88,7 +88,7 @@ Earlier development work used template-rendered pages for recognizer training an
   - **C:** half and half.
 - All pages render the same text, so glyph realism is the only difference between A and B.
 - Segmentation is held fixed. Each model re-recognises saved line geometry of the 38 pages for three line sources:
-  - R4d + A1, the released pipeline;
+  - R4d + A1, the archived pipeline configuration;
   - Tesseract psm 3 lines;
   - `blla`.
 - **Checkpoints:** each arm's `best` is chosen on its own synthetic validation split. In all three it is the last epoch, so E2d3d plays no part in selection.
@@ -200,7 +200,7 @@ Limits:
 - **Overlap with E2d3d:** checked on 2026-11-10 for the R6 release (`release/r6/card_body.md`). The 13,648 training labels share no word 6-gram with the 38 reference texts. The full Ben-Yehuda texts of the five training books share three, all from two Bible verses that one Frank story and one evaluation page both quote, and none of them is in Frank's 8 training lines. The scans differ (NLI, not Wikisource), and no evaluation manifest names an NLI record. data-collection's later F8f3 search excludes such works.
 - **Line sources:** R3j's rows re-recognise saved line geometry, and the Tesseract rows run full-page psm 3, so their segmentation differs.
 - **The audited references** carry the Tesseract-agreement caveat above.
-- **Publication.** Under decision 0014, R6 is released as `heocr_r6.traineddata` (version DOI [10.5281/zenodo.24109989](https://doi.org/10.5281/zenodo.24109989), Hugging Face `HeOCR/heocr-r6-tesseract-heb`; `release/r6/`). R3j and R5 are not released. Predictions, reports and line sets stay local.
+- **Publication.** R6, R3j and R5 weights are held privately under the current [publication status](../release/README.md).
 
 ### Run identities (R3j, R5, R6)
 
@@ -219,7 +219,7 @@ Limits:
 
 ## R7: Tesseract fine-tuned on more real books, scored once on real pages (2026-11-11)
 
-**Status: scored once under decision 0012 rule 3. Published under decision 0014** as `heocr_r7.traineddata`, version DOI [10.5281/zenodo.24126449](https://doi.org/10.5281/zenodo.24126449) (`release/r7/`).
+**Historical evaluation.** Scored once under decision 0012 rule 3. The [R7 card](../release/r7/card_body.md) documents the archived model. Its weights are held privately.
 
 - **Recipe:** R6's recipe and base, on more data.
   - Base: tessdata_best `heb` `e12c65a`, with R6's starter. R7 does not continue from R6.
@@ -230,7 +230,7 @@ Limits:
   - Selected the lower learning-rate arm on the development set.
   - Model sha256 `95faab81…`.
 
-R7 checkpoint selection used 7,092 development rows from two sources now reserved in line_verify. R7 and its verified descendants carry that exposure. Comparisons on those sources are selection-exposed.
+R7 checkpoint selection used development rows from two sources now reserved in line_verify. R7 and its verified descendants carry that exposure. Comparisons on those sources are selection-exposed.
 
 **38 pages, `primary.v1`:** CER / WER, with R7 minus baseline as Δ [page interval]; cl [Wikisource-Index cluster interval].
 

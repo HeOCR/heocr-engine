@@ -7,11 +7,11 @@ modern-v1 is a [Tesseract](https://github.com/tesseract-ocr/tesseract) language 
 - 44,951 lines rendered from born-digital booklets of Israel's laws and regulations (Reshumot), labelled with the publisher's own text layer, and 34,217 more of those lines degraded the same way;
 - 58,658 real scanned Reshumot lines, labelled with the same-wording text of the Open Law Book on Hebrew Wikisource.
 
-No label is OCR output. It is the model that HeOCR's evaluation chose as the default for modern print in [heocr](https://github.com/HeOCR/heocr), the HeOCR document pipeline. (In the experiment records it is office-print v0, arm A, snapshot `snap_0160m_222700`.)
+No label is OCR output. HeOCR selected this model for an experimental modern-print configuration of its document pipeline. (In the experiment records it is office-print v0, arm A, snapshot `snap_0160m_222700`.)
 
-**Performance, on HeOCR's registered held-out runs** (heocr with this model against the same heocr with stock `heb`): **no gain on real phone photos of printed pages (PS-v1)**, and no niqqud output (NQ1). It has no held-out score on real office documents yet; see [Evaluation](#evaluation).
+**Evaluation.** See the registered [P-mod-open v0 benchmark](https://huggingface.co/datasets/HeOCR/p-mod-open-v0) for measurements on real modern printed documents. The release criterion remains open.
 
-- **How it was chosen:** first, its checkpoint: the lowest line CER on `office_val` (synthetic crops in a held-out face, from held-out booklets) among 11 candidates, the 9 snapshots, the training-best checkpoint and the final model. Then HeOCR's evaluation chose it as heocr's default for modern print in a pre-registered default-model study (2026-11-19). The study compared it with stock `heb` and the other arm, inside heocr, on HeOCR's open synthetic document sets, and on real-print development line sets. These sets made the choice, so no figure from them is reported here.
+- **How it was chosen:** first, its checkpoint: the lowest line CER on `office_val` (synthetic crops in a held-out face, from held-out booklets) among 11 candidates, the 9 snapshots, the training-best checkpoint and the final model. Then HeOCR's evaluation chose it for an experimental modern-print configuration in a pre-registered default-model study (2026-11-19). The study compared it with stock `heb` and the other arm, inside heocr, on HeOCR's open synthetic document sets, and on real-print development line sets. These sets made the choice, so no figure from them is reported here.
 - **Check numbers that matter.** No held-out run has measured how well it reads numbers on real office documents.
 - **For old print, use HeOCR [oldprint-v1](#related-models).**
 
@@ -92,9 +92,9 @@ The word list is tessdata_best's own, unchanged: the model's `lstm-word-dawg` ha
 
 ## Evaluation
 
-The registered PS-v1 real-photo comparison did not establish a gain over stock Tesseract for this model. The release criterion remains open.
+The public [P-mod-open v0 benchmark](https://huggingface.co/datasets/HeOCR/p-mod-open-v0) identifies the registered configuration and results on real held-out documents. The release criterion remains open.
 
-Development sets used for checkpoint selection are recorded in the training notes. The PS-v1 comparison used the `line_fold_v1` profile (sha256 `2e2627104be4f27dc3204787dd3ff4f8591d95d1d96294c65833d2773041d317`). It applies NFC, whitespace collapse and the documented punctuation folds.
+Development sets informed checkpoint and route selection. The GitHub installation of the pipeline uses stock Tesseract by default.
 
 ## Bias, risks and limitations
 

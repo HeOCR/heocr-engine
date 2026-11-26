@@ -56,19 +56,7 @@ PAGE XML is necessary because the installed ketos 7.0.2 `train -f path` claims
 to accept path data but fails before training. The first failed attempt took six
 seconds and produced no model.
 
-Recorded run: 24/8/12 pages and 92/25/36 retained train/validation/test body
-lines, with 4/7/12 flagged lines excluded respectively. The retained sets contain
-62/17/24 unique strings. Crops were rescaled to 0.8, 1.0 and 1.2; only nine
-sample images were visually checked, not all labels. The two-epoch run took
-71.33 seconds and produced about 113 MB of checkpoints; epoch 0 was selected
-on validation (a tie at 0.9980 character accuracy). Both model evaluations
-returned 36/36 outputs. Raw Unicode code-point edits were 275/1,397 base and
-269/1,397 tuned; raw whitespace-token word edits were 171/222 and 169/222.
-The small difference on correlated synthetic material is not evidence of a
-meaningful improvement, and raw line WER of roughly 77% remains high. The
-Kraken test command also reported normalized character and word accuracy; the
-raw comparison is the primary figure. No real-source images, references,
-weights, predictions or sensitive payloads are included here.
+The recorded run compared the base and tuned recognizers on generated lines. It checked the mechanics of crop preparation, checkpoint selection and paired scoring. The exercise is for development. Public OCR performance is reported on [registered held-out sets of real documents](https://heocr.org/en/benchmarks.html). No source images, references, weights or predictions are included here.
 
 Model fitting is not bitwise deterministic across environments. CPU model,
 Pillow/font rendering and exact dependencies can change assets, checkpoints and
